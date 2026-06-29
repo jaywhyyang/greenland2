@@ -59,16 +59,16 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-29 21:00</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-29 22:00</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
-<div class="card"><div class="k">예매율</div><div class="v">6.1%</div></div>
-<div class="card"><div class="k">예매관객수</div><div class="v">8,919</div></div>
-<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,169</div></div>
+<div class="card"><div class="k">예매율</div><div class="v">6.0%</div></div>
+<div class="card"><div class="k">예매관객수</div><div class="v">9,030</div></div>
+<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,280</div></div>
 <div class="card"><div class="k">누적관객수</div><div class="v">418</div></div>
-<div class="card"><div class="k">직전 1시간 증가</div><div class="v">136</div></div>
-<div class="card"><div class="k">오늘 증가</div><div class="v">1,163</div></div>
+<div class="card"><div class="k">직전 1시간 증가</div><div class="v">111</div></div>
+<div class="card"><div class="k">오늘 증가</div><div class="v">1,274</div></div>
 <div class="card"><div class="k">최고 증가</div><div class="v">575 (06-29 19:00)</div></div>
 
   </div>
@@ -87,17 +87,17 @@
     <table>
       <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
       <tbody>
-<tr><td>2026-06-29</td><td>4</td><td>7,756</td><td>8,919</td><td class='gain'>+1,163</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.8%</td></tr>
+<tr><td>2026-06-29</td><td>5</td><td>7,756</td><td>9,030</td><td class='gain'>+1,274</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.9%</td></tr>
 
       </tbody>
     </table>
   </div>
 
-  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 4개 시점</div>
+  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 5개 시점</div>
 </div>
 
 <script>
-const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}];
+const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}];
 Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
@@ -129,7 +129,7 @@ const lastOnly = (key, color, suffix='') => ({
 })();
 
 // 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
-const LAST = "2026-06-29 21:00:02";
+const LAST = "2026-06-29 22:00:02";
 (function(){
   const el = document.getElementById('status');
   if(!el) return;
