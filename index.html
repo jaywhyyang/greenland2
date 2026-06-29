@@ -37,18 +37,18 @@
 <body>
 <div class="wrap">
   <h1>🎬 그린랜드 2: 마이그레이션</h1>
-  <div class="sub">KOBIS 실시간 예매율 · 개봉일 2026-07-01 · 마지막 갱신 <b>2026-06-29 18:58</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 개봉일 2026-07-01 · 마지막 갱신 <b>2026-06-29 19:00</b> · 10분마다 자동 새로고침</div>
   <div id="status" class="status"></div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
-<div class="card"><div class="k">예매율</div><div class="v">5.4%</div></div>
-<div class="card"><div class="k">예매관객수</div><div class="v">7,756</div></div>
+<div class="card"><div class="k">예매율</div><div class="v">5.8%</div></div>
+<div class="card"><div class="k">예매관객수</div><div class="v">8,331</div></div>
 <div class="card"><div class="k">누적관객수</div><div class="v">418</div></div>
-<div class="card"><div class="k">직전 1시간 증가</div><div class="v">-</div></div>
-<div class="card"><div class="k">오늘 증가</div><div class="v">-</div></div>
-<div class="card"><div class="k">시간당 평균</div><div class="v">-</div></div>
-<div class="card"><div class="k">최고 증가</div><div class="v">-</div></div>
+<div class="card"><div class="k">직전 1시간 증가</div><div class="v">575</div></div>
+<div class="card"><div class="k">오늘 증가</div><div class="v">575</div></div>
+<div class="card"><div class="k">시간당 평균</div><div class="v">575</div></div>
+<div class="card"><div class="k">최고 증가</div><div class="v">575 (06-29 19:00)</div></div>
 
   </div>
 
@@ -62,17 +62,17 @@
     <table>
       <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
       <tbody>
-<tr><td>2026-06-29</td><td>1</td><td>7,756</td><td>7,756</td><td class='gain'>+0</td><td>- <span class='muted'>(-)</span></td><td>5.4%</td></tr>
+<tr><td>2026-06-29</td><td>2</td><td>7,756</td><td>8,331</td><td class='gain'>+575</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.6%</td></tr>
 
       </tbody>
     </table>
   </div>
 
-  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 1개 시점</div>
+  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 2개 시점</div>
 </div>
 
 <script>
-const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}];
+const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}];
 Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
@@ -94,7 +94,7 @@ const lastOnly = (key, color, suffix='') => ({
 });
 
 // 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
-const LAST = "2026-06-29 18:00:02";
+const LAST = "2026-06-29 19:00:02";
 (function(){
   const el = document.getElementById('status');
   if(!el) return;
