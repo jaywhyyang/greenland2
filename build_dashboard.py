@@ -17,6 +17,11 @@ MA_WINDOW = 6          # 이동평균 윈도우(시간)
 SPIKE_MULT = 2.0       # 스파이크 기준: 직전 평균의 N배
 SPIKE_MIN_ABS = 100    # 스파이크 최소 절대 증가분(소소한 변화 무시)
 
+# 히어로(상단 꾸미기) 정보 — 필요시 여기만 수정
+POSTER = "poster.jpg"
+TAGLINE = "최후의 희망을 향한 가족의 사투"
+CAST = "제라드 버틀러 · 모레나 바카린"
+
 
 def _num(s):
     if s is None:
@@ -160,9 +165,22 @@ HTML = r"""<!DOCTYPE html>
   body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; margin:0;
          background:#0f1117; color:#e7e9ee; }
   .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
-  h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:#9aa0ab; font-size:13px; margin-bottom:10px; }
-  .status { display:inline-block; font-size:12px; padding:6px 12px; border-radius:999px; margin-bottom:22px; }
+  h1 { font-size:26px; margin:6px 0 6px; line-height:1.2; }
+  /* 히어로 */
+  .hero { position:relative; display:flex; gap:22px; align-items:flex-end; overflow:hidden;
+          padding:26px; border-radius:16px; border:1px solid #3a2a1a; margin-bottom:12px;
+          background:linear-gradient(135deg,#3a1c0e 0%,#1a1d27 65%); }
+  .hero::before { content:''; position:absolute; inset:0; z-index:0;
+          background:url('__POSTER__') center/cover no-repeat; filter:blur(34px) brightness(.35); opacity:.55; }
+  .hero > * { position:relative; z-index:1; }
+  .poster { width:132px; flex-shrink:0; border-radius:10px; box-shadow:0 10px 28px rgba(0,0,0,.55); }
+  .tagline { color:#f4c89a; font-size:14px; font-style:italic; margin:0 0 8px; }
+  .meta { color:#d4d8e0; font-size:13px; margin:0 0 12px; }
+  .dday { display:inline-block; background:#ef4444; color:#fff; font-size:12px; font-weight:700;
+          padding:4px 11px; border-radius:999px; }
+  .sub { color:#9aa0ab; font-size:13px; margin-bottom:22px; }
+  .status { display:inline-block; font-size:12px; padding:6px 12px; border-radius:999px; }
+  @media (max-width:560px){ .hero{ flex-direction:column; align-items:center; text-align:center; } }
   .status.ok { background:#13241a; color:#4ade80; border:1px solid #1f3a2a; }
   .status.warn { background:#2a1416; color:#f87171; border:1px solid #4a1f23; }
   .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:28px; }
@@ -183,9 +201,17 @@ HTML = r"""<!DOCTYPE html>
 </head>
 <body>
 <div class="wrap">
-  <h1>🎬 __MOVIE__</h1>
-  <div class="sub">KOBIS 실시간 예매율 · 개봉일 __OPEN__ · 마지막 갱신 <b>__UPDATED__</b> · 10분마다 자동 새로고침</div>
-  <div id="status" class="status"></div>
+  <div class="hero">
+    <img class="poster" src="__POSTER__" alt="__MOVIE__ 포스터" onerror="this.style.display='none'">
+    <div class="hero-body">
+      <span id="dday" class="dday"></span>
+      <h1>🎬 __MOVIE__</h1>
+      <p class="tagline">“__TAGLINE__”</p>
+      <p class="meta">개봉 __OPEN__ · __CAST__</p>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>__UPDATED__</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 __CARDS__
@@ -230,6 +256,16 @@ const lastOnly = (key, color, suffix='') => ({
   align:'top', color, font:{ weight:'bold', size:13 },
   formatter: v => v==null ? '' : won(v)+suffix
 });
+
+// 개봉 D-day 뱃지
+(function(){
+  const el=document.getElementById('dday'); if(!el) return;
+  const d=new Date("__OPEN__"+"T00:00:00");
+  if(isNaN(d.getTime())){ el.style.display='none'; return; }
+  const today=new Date(); today.setHours(0,0,0,0);
+  const diff=Math.round((d-today)/86400000);
+  el.textContent = diff>0 ? `개봉까지 D-${diff}` : (diff===0 ? '🎬 오늘 개봉!' : `개봉 ${-diff+1}일차`);
+})();
 
 // 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
 const LAST = "__LASTTIME__";
@@ -302,6 +338,9 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
+            .replace("__POSTER__", POSTER)
+            .replace("__TAGLINE__", TAGLINE)
+            .replace("__CAST__", CAST)
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
             .replace("__CARDS__", build_cards(pts))
