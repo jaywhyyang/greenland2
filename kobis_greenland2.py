@@ -91,7 +91,39 @@ def main():
     except Exception as e:
         print("대시보드 생성 건너뜀:", e)
 
+    # GitHub로 자동 publish (원격 'origin'이 연결돼 있을 때만)
+    try:
+        publish_to_github(now)
+    except Exception as e:
+        print("publish 건너뜀:", e)
+
     return 0
+
+
+def publish_to_github(now):
+    import subprocess
+    repo = os.path.dirname(os.path.abspath(__file__))
+
+    def git(*args, check=True):
+        return subprocess.run(["git", "-C", repo, *args],
+                              capture_output=True, text=True, encoding="utf-8")
+
+    # 원격이 없으면 아무 것도 하지 않음
+    remotes = git("remote").stdout.split()
+    if "origin" not in remotes:
+        print("publish 건너뜀: GitHub 원격(origin) 미연결")
+        return
+
+    git("add", "index.html", "greenland2_hourly.csv")
+    # 변경사항 없으면 커밋 스킵
+    diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
+    if diff.returncode != 0:
+        git("commit", "-m", f"data update {now}")
+    push = git("push", "origin", "main")
+    if push.returncode == 0:
+        print("publish 완료: GitHub push OK")
+    else:
+        print("publish 실패:", (push.stderr or "").strip()[:200])
 
 
 if __name__ == "__main__":
