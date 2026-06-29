@@ -22,6 +22,11 @@ POSTER = "poster.jpg"
 TAGLINE = "최후의 희망을 향한 가족의 사투"
 CAST = "제라드 버틀러 · 모레나 바카린"
 
+# 프로모션 물량(예매관객수에 선반영됨) — 무료 6,750 + 2,000원 1,000 = 7,750
+PROMO_FREE = 6750
+PROMO_PAID = 1000
+PROMO_TICKETS = PROMO_FREE + PROMO_PAID
+
 
 def _num(s):
     if s is None:
@@ -107,14 +112,15 @@ def build_cards(pts):
     # 최고 증가 시점
     peak = max((p for p in pts if p["inc"] is not None), key=lambda x: x["inc"], default=None)
 
+    organic = (last.get("book") - PROMO_TICKETS) if last.get("book") is not None else None
     cards = [
         ("현재 순위", f'{last.get("rank","-")}위'),
         ("예매율", f'{last.get("rate","-")}%' if last.get("rate") is not None else "-"),
         ("예매관객수", fmt(last.get("book"))),
+        ("순수 예매 (프로모션 제외)", fmt(organic)),
         ("누적관객수", fmt(last.get("cumul"))),
         ("직전 1시간 증가", fmt(last.get("inc"))),
         ("오늘 증가", fmt(today_gain)),
-        ("시간당 평균", fmt(avg_hr)),
         ("최고 증가", f'{fmt(peak["inc"])} ({peak["label"]})' if peak else "-"),
     ]
     html = ""
@@ -219,7 +225,8 @@ __CARDS__
 
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
-  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas></div>
+  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
+    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
   <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
   <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas></div>
 
@@ -298,9 +305,14 @@ new Chart(c_rate, { type:'line',
   options:base() });
 
 new Chart(c_book, { type:'line',
-  data:{ labels, datasets:[{ label:'예매관객수', data:PTS.map(p=>p.book),
-    borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', tension:.3, fill:true, spanGaps:true,
-    datalabels:lastOnly('book','#4ade80') }] },
+  data:{ labels, datasets:[
+    { label:'예매관객수', data:PTS.map(p=>p.book),
+      borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', tension:.3, fill:true, spanGaps:true,
+      datalabels:lastOnly('book','#4ade80') },
+    { label:'프로모션 물량(7,750)', data:labels.map(()=>__PROMO__),
+      borderColor:'#9aa0ab', borderDash:[6,4], borderWidth:1.5, pointRadius:0, fill:false,
+      datalabels:{ display:false } }
+  ]},
   options:base() });
 
 new Chart(c_cumul, { type:'line',
@@ -341,6 +353,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__POSTER__", POSTER)
             .replace("__TAGLINE__", TAGLINE)
             .replace("__CAST__", CAST)
+            .replace("__PROMO__", str(PROMO_TICKETS))
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
             .replace("__CARDS__", build_cards(pts))
