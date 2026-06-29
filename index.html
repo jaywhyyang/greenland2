@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그린랜드 2: 마이그레이션 · KOBIS 실시간 예매 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; margin:0;
+         background:#0f1117; color:#e7e9ee; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:#9aa0ab; font-size:13px; margin-bottom:24px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:28px; }
+  .card { background:#1a1d27; border:1px solid #262a36; border-radius:12px; padding:16px; }
+  .card .k { font-size:12px; color:#9aa0ab; }
+  .card .v { font-size:24px; font-weight:700; margin-top:6px; }
+  .panel { background:#1a1d27; border:1px solid #262a36; border-radius:12px; padding:18px; margin-bottom:20px; }
+  .panel h2 { font-size:15px; margin:0 0 14px; color:#c7ccd6; }
+  canvas { width:100% !important; }
+  .foot { color:#6b7280; font-size:12px; margin-top:16px; text-align:center; }
+  a { color:#6ea8fe; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 그린랜드 2: 마이그레이션</h1>
+  <div class="sub">KOBIS 실시간 예매율 · 개봉일 2026-07-01 · 마지막 갱신 <b>2026-06-29 17:42</b></div>
+
+  <div class="cards">
+    <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
+    <div class="card"><div class="k">예매율</div><div class="v">5.2%</div></div>
+    <div class="card"><div class="k">예매관객수</div><div class="v">7,542</div></div>
+    <div class="card"><div class="k">누적관객수</div><div class="v">418</div></div>
+  </div>
+
+  <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="110"></canvas></div>
+  <div class="panel"><h2>예매관객수 / 누적관객수 추이</h2><canvas id="c_aud" height="110"></canvas></div>
+  <div class="panel"><h2>시간당 예매관객 증가분</h2><canvas id="c_hourly" height="110"></canvas></div>
+
+  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 3개 시점</div>
+</div>
+
+<script>
+const DATA = {"labels": ["06-29 17:34", "06-29 17:35", "06-29 17:41"], "rate": [5.1, 5.1, 5.2], "book": [7438, 7438, 7542], "cumul": [418, 418, 418], "hourly": [null, 0, 104]};
+const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
+const baseOpts = sets => ({
+  responsive:true,
+  interaction:{ mode:'index', intersect:false },
+  plugins:{ legend:{ labels:{ color:'#c7ccd6' } } },
+  scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick } }
+});
+new Chart(c_rate, { type:'line',
+  data:{ labels:DATA.labels, datasets:[{ label:'예매율(%)', data:DATA.rate,
+    borderColor:'#6ea8fe', backgroundColor:'rgba(110,168,254,.15)', tension:.3, fill:true, spanGaps:true }] },
+  options:baseOpts() });
+new Chart(c_aud, { type:'line',
+  data:{ labels:DATA.labels, datasets:[
+    { label:'예매관객수', data:DATA.book, borderColor:'#4ade80', tension:.3, spanGaps:true, yAxisID:'y' },
+    { label:'누적관객수', data:DATA.cumul, borderColor:'#f59e0b', tension:.3, spanGaps:true, yAxisID:'y1' }
+  ] },
+  options:{ ...baseOpts(), scales:{ x:{ grid, ticks:tick },
+    y:{ position:'left', grid, ticks:tick }, y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:tick } } } });
+new Chart(c_hourly, { type:'bar',
+  data:{ labels:DATA.labels, datasets:[{ label:'시간당 증가분', data:DATA.hourly, backgroundColor:'#a78bfa' }] },
+  options:baseOpts() });
+</script>
+</body>
+</html>
