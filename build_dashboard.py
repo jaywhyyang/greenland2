@@ -11,6 +11,7 @@ import datetime
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, "greenland2_hourly.csv")
+BOX_CSV = os.path.join(BASE, "greenland2_boxoffice.csv")  # 개봉 후 일별 박스오피스
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
 MA_WINDOW = 6          # 이동평균 윈도우(시간)
@@ -156,6 +157,48 @@ def build_daily_table(pts):
     return rows_html
 
 
+def load_box():
+    rows = []
+    if not os.path.exists(BOX_CSV):
+        return rows
+    with open(BOX_CSV, encoding="utf-8-sig", newline="") as f:
+        for d in csv.DictReader(f):
+            if d.get("날짜"):
+                rows.append(d)
+    return rows
+
+
+def build_box(rows):
+    out = []
+    for d in rows:
+        t = d.get("날짜", "")
+        out.append({
+            "d": t[5:] if len(t) >= 10 else t,        # MM-DD
+            "audi": _num(d.get("관객수")),
+            "cum": _num(d.get("누적관객수")),
+            "occ": _num(d.get("좌석점유율")),
+            "seat": _num(d.get("좌석판매율")),
+            "screens": _num(d.get("스크린수")),
+            "shows": _num(d.get("상영횟수")),
+            "sales": _num(d.get("매출액")),
+        })
+    return out
+
+
+def box_section(has_data):
+    if not has_data:
+        return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:42px 18px">'
+                '<div style="font-size:15px;color:#c7ccd6;margin-bottom:10px">🎟️ 개봉 후 실적 (박스오피스)</div>'
+                '개봉일(2026-07-01)부터 <b>일일 관객수 · 누적관객수 · 좌석점유율 · 스크린수/상영횟수</b>가<br>'
+                '이 자리에 자동으로 채워집니다.<br>'
+                '<span style="font-size:12px">매일 오전 9시 전날 확정치 수집 · 현재는 개봉 전</span></div>')
+    return (
+        '  <div class="panel"><h2>🎟️ 일일 관객수</h2><canvas id="c_box_audi" height="100"></canvas></div>\n'
+        '  <div class="panel"><h2>누적 관객수</h2><canvas id="c_box_cum" height="100"></canvas></div>\n'
+        '  <div class="panel"><h2>좌석점유율 / 좌석판매율 (%)</h2><canvas id="c_box_seat" height="100"></canvas></div>\n'
+        '  <div class="panel"><h2>스크린수 / 상영횟수</h2><canvas id="c_box_supply" height="100"></canvas></div>')
+
+
 HTML = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -229,6 +272,9 @@ __CARDS__
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
   <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
   <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas></div>
+
+  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 실적 —</div>
+__BOX_SECTION__
 
   <div class="panel"><h2>📅 일자별 요약</h2>
     <table>
@@ -332,6 +378,41 @@ new Chart(c_hourly, { type:'bar',
       datalabels:{ display:false } }
   ]},
   options:{ ...base(), scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick, beginAtZero:true } } } });
+
+// ===== 개봉 후 박스오피스 차트 (데이터 있을 때만) =====
+const BOX = __BOX_JSON__;
+if (BOX.length) {
+  const bl = BOX.map(b=>b.d);
+  const boxAll = BOX.length <= 36;
+  const lastIdxB = key => { for(let i=BOX.length-1;i>=0;i--){ if(BOX[i][key]!=null) return i; } return -1; };
+  const lastLabB = (key,color,suffix='') => ({ display:ctx=>ctx.dataIndex===lastIdxB(key),
+    align:'top', color, font:{weight:'bold',size:13}, formatter:v=>v==null?'':won(v)+suffix });
+
+  new Chart(c_box_audi, { type:'bar',
+    data:{ labels:bl, datasets:[{ label:'일일 관객수', data:BOX.map(b=>b.audi), backgroundColor:'#22d3ee',
+      datalabels:{ display:ctx=>boxAll&&ctx.dataset.data[ctx.dataIndex]!=null, anchor:'end', align:'end',
+        color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
+    options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+
+  new Chart(c_box_cum, { type:'line',
+    data:{ labels:bl, datasets:[{ label:'누적 관객수', data:BOX.map(b=>b.cum), borderColor:'#34d399',
+      backgroundColor:'rgba(52,211,153,.12)', fill:true, tension:.3, spanGaps:true, datalabels:lastLabB('cum','#34d399') }] },
+    options:base() });
+
+  new Chart(c_box_seat, { type:'line',
+    data:{ labels:bl, datasets:[
+      { label:'좌석점유율', data:BOX.map(b=>b.occ), borderColor:'#fbbf24', tension:.3, spanGaps:true, datalabels:lastLabB('occ','#fbbf24','%') },
+      { label:'좌석판매율', data:BOX.map(b=>b.seat), borderColor:'#60a5fa', tension:.3, spanGaps:true, datalabels:lastLabB('seat','#60a5fa','%') }
+    ]},
+    options:base() });
+
+  new Chart(c_box_supply, { type:'line',
+    data:{ labels:bl, datasets:[
+      { label:'스크린수', data:BOX.map(b=>b.screens), borderColor:'#f472b6', tension:.3, spanGaps:true, datalabels:lastLabB('screens','#f472b6') },
+      { label:'상영횟수', data:BOX.map(b=>b.shows), borderColor:'#a78bfa', tension:.3, spanGaps:true, datalabels:lastLabB('shows','#a78bfa') }
+    ]},
+    options:base() });
+}
 </script>
 </body>
 </html>
@@ -347,6 +428,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
           "inc": p["inc"], "ma": p["ma"], "spike": p["spike"], "rank": _num(p["rank"])} for p in pts],
         ensure_ascii=False,
     )
+    box = build_box(load_box())
+    box_json = json.dumps(box, ensure_ascii=False)
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
@@ -359,6 +442,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
+            .replace("__BOX_SECTION__", box_section(bool(box)))
+            .replace("__BOX_JSON__", box_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
