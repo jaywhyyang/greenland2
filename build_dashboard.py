@@ -153,6 +153,7 @@ HTML = r"""<!DOCTYPE html>
 <meta http-equiv="refresh" content="600">
 <title>__MOVIE__ · KOBIS 실시간 예매 대시보드</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root { color-scheme: dark; }
   * { box-sizing: border-box; }
@@ -187,8 +188,9 @@ __CARDS__
   </div>
 
   <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
-  <div class="panel"><h2>예매관객수 / 누적관객수 추이</h2><canvas id="c_aud" height="100"></canvas></div>
-  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="100"></canvas></div>
+  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas></div>
+  <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
+  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas></div>
 
   <div class="panel"><h2>📅 일자별 요약</h2>
     <table>
@@ -204,35 +206,55 @@ __DAILY__
 
 <script>
 const PTS = __DATA_JSON__;
+Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
+const won = v => (v==null ? '' : Number(v).toLocaleString());
+const lastIdx = key => { for(let i=PTS.length-1;i>=0;i--){ if(PTS[i][key]!=null) return i; } return -1; };
+const showAllBars = PTS.length <= 36;   // 점이 너무 많으면 라벨 생략(가독성)
+
 const base = () => ({
   responsive:true, interaction:{ mode:'index', intersect:false },
-  plugins:{ legend:{ labels:{ color:'#c7ccd6' } } },
+  layout:{ padding:{ top:22 } },
+  plugins:{ legend:{ labels:{ color:'#c7ccd6' } }, datalabels:{ display:false } },
   scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick } }
+});
+// 선 그래프: 마지막(현재) 값만 라벨로 표시
+const lastOnly = (key, color, suffix='') => ({
+  display: ctx => ctx.dataIndex === lastIdx(key),
+  align:'top', color, font:{ weight:'bold', size:13 },
+  formatter: v => v==null ? '' : won(v)+suffix
 });
 
 new Chart(c_rate, { type:'line',
   data:{ labels, datasets:[{ label:'예매율(%)', data:PTS.map(p=>p.rate),
-    borderColor:'#6ea8fe', backgroundColor:'rgba(110,168,254,.15)', tension:.3, fill:true, spanGaps:true }] },
+    borderColor:'#6ea8fe', backgroundColor:'rgba(110,168,254,.15)', tension:.3, fill:true, spanGaps:true,
+    datalabels:lastOnly('rate','#6ea8fe','%') }] },
   options:base() });
 
-new Chart(c_aud, { type:'line',
-  data:{ labels, datasets:[
-    { label:'예매관객수', data:PTS.map(p=>p.book), borderColor:'#4ade80', tension:.3, spanGaps:true, yAxisID:'y' },
-    { label:'누적관객수', data:PTS.map(p=>p.cumul), borderColor:'#f59e0b', tension:.3, spanGaps:true, yAxisID:'y1' }
-  ]},
-  options:{ ...base(), scales:{ x:{ grid, ticks:tick },
-    y:{ position:'left', grid, ticks:tick }, y1:{ position:'right', grid:{drawOnChartArea:false}, ticks:tick } } } });
+new Chart(c_book, { type:'line',
+  data:{ labels, datasets:[{ label:'예매관객수', data:PTS.map(p=>p.book),
+    borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', tension:.3, fill:true, spanGaps:true,
+    datalabels:lastOnly('book','#4ade80') }] },
+  options:base() });
+
+new Chart(c_cumul, { type:'line',
+  data:{ labels, datasets:[{ label:'누적관객수', data:PTS.map(p=>p.cumul),
+    borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.12)', tension:.3, fill:true, spanGaps:true,
+    datalabels:lastOnly('cumul','#f59e0b') }] },
+  options:base() });
 
 new Chart(c_hourly, { type:'bar',
   data:{ labels, datasets:[
     { type:'bar', label:'시간당 증가분', data:PTS.map(p=>p.inc),
-      backgroundColor:PTS.map(p=> p.spike ? '#ef4444' : '#a78bfa'), order:2 },
-    { type:'line', label:`이동평균(${PTS.length?'최근'+6+'시간':''})`, data:PTS.map(p=>p.ma),
-      borderColor:'#c084fc', borderDash:[5,4], pointRadius:0, tension:.3, spanGaps:true, order:1 }
+      backgroundColor:PTS.map(p=> p.spike ? '#ef4444' : '#a78bfa'), order:2,
+      datalabels:{ display: ctx => showAllBars && ctx.dataset.data[ctx.dataIndex]!=null,
+        anchor:'end', align:'end', color:'#e7e9ee', font:{ size:11, weight:'bold' }, formatter:won } },
+    { type:'line', label:'이동평균(최근 6시간)', data:PTS.map(p=>p.ma),
+      borderColor:'#c084fc', borderDash:[5,4], pointRadius:0, tension:.3, spanGaps:true, order:1,
+      datalabels:{ display:false } }
   ]},
-  options:base() });
+  options:{ ...base(), scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick, beginAtZero:true } } } });
 </script>
 </body>
 </html>
