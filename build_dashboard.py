@@ -161,7 +161,10 @@ HTML = r"""<!DOCTYPE html>
          background:#0f1117; color:#e7e9ee; }
   .wrap { max-width:1100px; margin:0 auto; padding:24px 16px 64px; }
   h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:#9aa0ab; font-size:13px; margin-bottom:24px; }
+  .sub { color:#9aa0ab; font-size:13px; margin-bottom:10px; }
+  .status { display:inline-block; font-size:12px; padding:6px 12px; border-radius:999px; margin-bottom:22px; }
+  .status.ok { background:#13241a; color:#4ade80; border:1px solid #1f3a2a; }
+  .status.warn { background:#2a1416; color:#f87171; border:1px solid #4a1f23; }
   .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:28px; }
   .card { background:#1a1d27; border:1px solid #262a36; border-radius:12px; padding:16px; }
   .card .k { font-size:12px; color:#9aa0ab; }
@@ -182,11 +185,13 @@ HTML = r"""<!DOCTYPE html>
 <div class="wrap">
   <h1>🎬 __MOVIE__</h1>
   <div class="sub">KOBIS 실시간 예매율 · 개봉일 __OPEN__ · 마지막 갱신 <b>__UPDATED__</b> · 10분마다 자동 새로고침</div>
+  <div id="status" class="status"></div>
 
   <div class="cards">
 __CARDS__
   </div>
 
+  <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
   <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas></div>
   <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
@@ -225,6 +230,30 @@ const lastOnly = (key, color, suffix='') => ({
   align:'top', color, font:{ weight:'bold', size:13 },
   formatter: v => v==null ? '' : won(v)+suffix
 });
+
+// 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
+const LAST = "__LASTTIME__";
+(function(){
+  const el = document.getElementById('status');
+  if(!el) return;
+  if(!LAST){ el.textContent='수집 데이터 없음'; el.className='status warn'; return; }
+  const t = new Date(LAST.replace(' ','T'));
+  const mins = Math.floor((Date.now() - t.getTime())/60000);
+  let txt, cls;
+  if(mins < 2){ txt='🟢 방금 수집됨'; cls='ok'; }
+  else if(mins <= 75){ txt=`🟢 정상 · 마지막 수집 ${mins}분 전`; cls='ok'; }
+  else { const h=Math.floor(mins/60), m=mins%60;
+    txt=`⚠️ 수집 지연 · 마지막 수집 ${h>0?h+'시간 ':''}${m}분 전 (PC 꺼짐/절전 확인)`; cls='warn'; }
+  el.textContent = txt; el.className = 'status '+cls;
+})();
+
+new Chart(c_rank, { type:'line',
+  data:{ labels, datasets:[{ label:'순위', data:PTS.map(p=>p.rank),
+    borderColor:'#f472b6', backgroundColor:'rgba(244,114,182,.12)', tension:.3, fill:false, spanGaps:true,
+    datalabels:{ display: ctx=>ctx.dataIndex===lastIdx('rank'), align:'top', color:'#f472b6',
+      font:{weight:'bold',size:13}, formatter:v=>v==null?'':v+'위' } }] },
+  options:{ ...base(), scales:{ x:{ grid, ticks:tick },
+    y:{ reverse:true, min:1, grid, ticks:{ color:'#9aa0ab', stepSize:1, precision:0 } } } } });
 
 new Chart(c_rate, { type:'line',
   data:{ labels, datasets:[{ label:'예매율(%)', data:PTS.map(p=>p.rate),
@@ -267,13 +296,14 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     last = latest(pts)
     data_json = json.dumps(
         [{"label": p["label"], "rate": p["rate"], "book": p["book"], "cumul": p["cumul"],
-          "inc": p["inc"], "ma": p["ma"], "spike": p["spike"]} for p in pts],
+          "inc": p["inc"], "ma": p["ma"], "spike": p["spike"], "rank": _num(p["rank"])} for p in pts],
         ensure_ascii=False,
     )
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
+            .replace("__LASTTIME__", last.get("time", "") or "")
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
