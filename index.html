@@ -59,20 +59,25 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 11:22</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 12:00</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
-<div class="card"><div class="k">예매율</div><div class="v">5.7%</div></div>
-<div class="card"><div class="k">예매관객수</div><div class="v">9,290</div></div>
-<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,540</div></div>
+<div class="card"><div class="k">예매율</div><div class="v">5.6%</div></div>
+<div class="card"><div class="k">예매관객수</div><div class="v">9,306</div></div>
+<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,556</div></div>
 <div class="card"><div class="k">누적관객수</div><div class="v">418</div></div>
-<div class="card"><div class="k">직전 1시간 증가</div><div class="v">17</div></div>
-<div class="card"><div class="k">오늘 증가</div><div class="v">50</div></div>
+<div class="card"><div class="k">직전 1시간 증가</div><div class="v">16</div></div>
+<div class="card"><div class="k">오늘 증가</div><div class="v">66</div></div>
 <div class="card"><div class="k">최고 증가</div><div class="v">575 (06-29 19:00)</div></div>
 
   </div>
 
+  <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
+  <div class="panel"><h2>🥊 경쟁작 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>
+  <div class="panel"><h2>예매율 추이 비교 (상위 영화, %)</h2><canvas id="c_comp_rate" height="110"></canvas></div>
+
+  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
   <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
@@ -89,17 +94,17 @@
       <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
       <tbody>
 <tr><td>2026-06-29</td><td>5</td><td>7,756</td><td>9,030</td><td class='gain'>+1,274</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.9%</td></tr>
-<tr><td>2026-06-30</td><td>5</td><td>9,240</td><td>9,290</td><td class='gain'>+50</td><td>31 <span class='muted'>(06-30 11:00)</span></td><td>5.7%</td></tr>
+<tr><td>2026-06-30</td><td>6</td><td>9,240</td><td>9,306</td><td class='gain'>+66</td><td>31 <span class='muted'>(06-30 11:00)</span></td><td>5.7%</td></tr>
 
       </tbody>
     </table>
   </div>
 
-  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 10개 시점</div>
+  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 11개 시점</div>
 </div>
 
 <script>
-const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": null, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 254.8, "spike": false, "rank": 5}, {"label": "06-30 11:00", "rate": 5.7, "book": 9273, "cumul": 418, "inc": 31, "ma": 140.2, "spike": false, "rank": 5}, {"label": "06-30 11:22", "rate": 5.7, "book": 9290, "cumul": 418, "inc": 17, "ma": 56.0, "spike": false, "rank": 5}];
+const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": null, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 254.8, "spike": false, "rank": 5}, {"label": "06-30 11:00", "rate": 5.7, "book": 9273, "cumul": 418, "inc": 31, "ma": 140.2, "spike": false, "rank": 5}, {"label": "06-30 11:22", "rate": 5.7, "book": 9290, "cumul": 418, "inc": 17, "ma": 56.0, "spike": false, "rank": 5}, {"label": "06-30 12:00", "rate": 5.6, "book": 9306, "cumul": 418, "inc": 16, "ma": 32.2, "spike": false, "rank": 5}];
 Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
@@ -120,6 +125,37 @@ const lastOnly = (key, color, suffix='') => ({
   formatter: v => v==null ? '' : won(v)+suffix
 });
 
+// ===== 경쟁작 비교 =====
+const COMP = {"latest": [{"name": "토이 스토리 5", "book": 35419, "rate": 21.3, "g": false}, {"name": "마티 슈프림", "book": 28324, "rate": 17.0, "g": false}, {"name": "눈동자", "book": 18750, "rate": 11.3, "g": false}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 9860, "rate": 5.9, "g": false}, {"name": "그린랜드 2: 마이그레이션", "book": 9306, "rate": 5.6, "g": true}, {"name": "군체", "book": 6221, "rate": 3.7, "g": false}, {"name": "짝사랑 세계", "book": 4975, "rate": 3.0, "g": false}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4526, "rate": 2.7, "g": false}], "labels": ["06-30 11:22", "06-30 12:00"], "series": [{"name": "토이 스토리 5", "g": false, "rates": [21.6, 21.3]}, {"name": "마티 슈프림", "g": false, "rates": [17.4, 17.0]}, {"name": "눈동자", "g": false, "rates": [11.4, 11.3]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [6.0, 5.9]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.7, 5.6]}, {"name": "군체", "g": false, "rates": [3.8, 3.7]}]};
+if (COMP.latest && COMP.latest.length) {
+  // 현재 예매관객수 가로 막대 (그린랜드2 강조)
+  new Chart(c_comp_bar, { type:'bar',
+    data:{ labels: COMP.latest.map(m=>m.name.length>16?m.name.slice(0,15)+'…':m.name),
+      datasets:[{ label:'예매관객수', data:COMP.latest.map(m=>m.book),
+        backgroundColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#3b4252'),
+        borderColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#4c566a'), borderWidth:1,
+        datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:46}},
+      plugins:{ legend:{display:false}, datalabels:{} },
+      scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6' } } } } });
+
+  // 예매율 추이 멀티라인 (그린랜드2 굵게)
+  const palette = ['#f59e0b','#60a5fa','#f472b6','#a78bfa','#22d3ee','#fb7185'];
+  let ci=0;
+  const ds = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci++)%palette.length];
+    return { label: s.name.length>14?s.name.slice(0,13)+'…':s.name, data: s.rates,
+      borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?3:0,
+      datalabels:{ display: ctx=>ctx.dataIndex===s.rates.length-1, align:'right', color,
+        font:{weight: s.g?'bold':'normal', size:11}, formatter:v=>v==null?'':v+'%' } };
+  });
+  new Chart(c_comp_rate, { type:'line',
+    data:{ labels: COMP.labels, datasets: ds },
+    options:{ ...base(), layout:{padding:{right:60, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+}
+
 // 개봉 D-day 뱃지
 (function(){
   const el=document.getElementById('dday'); if(!el) return;
@@ -131,7 +167,7 @@ const lastOnly = (key, color, suffix='') => ({
 })();
 
 // 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
-const LAST = "2026-06-30 11:22:23";
+const LAST = "2026-06-30 12:00:02";
 (function(){
   const el = document.getElementById('status');
   if(!el) return;
