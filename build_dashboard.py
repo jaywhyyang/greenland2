@@ -231,41 +231,50 @@ def load_competitors():
 
 
 def build_comp(rows):
-    """경쟁작: 최신 스냅샷(예매관객수 정렬 top8) + 상위 6편 예매율 시계열."""
+    """경쟁작: 그린랜드2와 '같은 개봉일'인 영화만 비교.
+    최신 스냅샷(예매관객수 정렬 top8) + 상위 6편 예매율 시계열."""
+    empty = {"latest": [], "labels": [], "series": [], "open": ""}
     if not rows:
-        return {"latest": [], "labels": [], "series": []}
+        return empty
     times = sorted({r["수집시각"] for r in rows})
     last = times[-1]
-    snap = [r for r in rows if r["수집시각"] == last]
+    snap_all = [r for r in rows if r["수집시각"] == last]
+    # 그린랜드2 개봉일을 기준 날짜로 사용
+    target = ""
+    for r in snap_all:
+        if GKEY in r["영화명"]:
+            target = (r.get("개봉일") or "").strip()
+            break
+    if not target:
+        target = "2026-07-01"
+
+    def same(r):
+        return (r.get("개봉일") or "").strip() == target
+
+    snap = [r for r in snap_all if same(r)]
     snap.sort(key=lambda r: _num(r.get("예매관객수")) or 0, reverse=True)
     latest = [{"name": r["영화명"], "book": _num(r.get("예매관객수")),
                "rate": _num(r.get("예매율")), "g": GKEY in r["영화명"]}
               for r in snap[:8]]
-    # 상위 6편 예매율 시계열 (그린랜드2 항상 포함)
     top_names = [x["name"] for x in latest[:6]]
-    if not any(GKEY in n for n in top_names):
-        for r in snap:
-            if GKEY in r["영화명"]:
-                top_names = top_names[:5] + [r["영화명"]]
-                break
-    by = {}  # (name, time) -> rate
+    by = {}  # (name, time) -> rate, 같은 개봉일만
     for r in rows:
-        by[(r["영화명"], r["수집시각"])] = _num(r.get("예매율"))
-    series = []
-    for nm in top_names:
-        series.append({"name": nm, "g": GKEY in nm,
-                       "rates": [by.get((nm, t)) for t in times]})
+        if same(r):
+            by[(r["영화명"], r["수집시각"])] = _num(r.get("예매율"))
+    series = [{"name": nm, "g": GKEY in nm,
+               "rates": [by.get((nm, t)) for t in times]} for nm in top_names]
     short = [t[5:16] for t in times]
-    return {"latest": latest, "labels": short, "series": series}
+    return {"latest": latest, "labels": short, "series": series, "open": target}
 
 
-def comp_section(has_data):
+def comp_section(has_data, open_date=""):
     if not has_data:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
-                '🥊 경쟁작 비교 — 매시간 TOP10을 함께 수집합니다. 곧 표시됩니다.</div>')
+                '🥊 경쟁작 비교 — 매시간 동일 개봉작을 함께 수집합니다. 곧 표시됩니다.</div>')
+    d = open_date or "동일 개봉일"
     return (
-        '  <div class="panel"><h2>🥊 경쟁작 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>\n'
-        '  <div class="panel"><h2>예매율 추이 비교 (상위 영화, %)</h2><canvas id="c_comp_rate" height="110"></canvas></div>')
+        f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 · 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>\n'
+        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>')
 
 
 HTML = r"""<!DOCTYPE html>
@@ -551,7 +560,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__N__", str(len(pts)))
             .replace("__BOX_SECTION__", box_section(bool(box)))
             .replace("__BOX_JSON__", box_json)
-            .replace("__COMP_SECTION__", comp_section(bool(comp["latest"])))
+            .replace("__COMP_SECTION__", comp_section(bool(comp["latest"]), comp.get("open", "")))
             .replace("__COMP_JSON__", comp_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:

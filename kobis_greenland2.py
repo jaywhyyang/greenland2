@@ -20,7 +20,7 @@ MOVIE_KEYWORD = "그린랜드 2"
 _DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_CSV = os.path.join(_DIR, "greenland2_hourly.csv")
 COMP_CSV = os.path.join(_DIR, "competitors_hourly.csv")  # 경쟁작 비교용 TOP-N 스냅샷
-TOP_N = 10  # 매시간 상위 N편 같이 수집
+TOP_N = 25  # 매시간 상위 N편 수집(개봉일 필터 후 동일 개봉작 비교용으로 넉넉히)
 
 COLUMNS = ["순위", "영화명", "개봉일", "예매율", "예매매출액", "누적매출액", "예매관객수", "누적관객수"]
 
@@ -114,7 +114,7 @@ def save_competitors(html, now):
     m = re.search(r"<tbody>(.*?)</tbody>", html, re.S)
     if not m:
         return
-    header = ["수집시각", "순위", "영화명", "예매율", "예매관객수", "누적관객수"]
+    header = ["수집시각", "순위", "영화명", "개봉일", "예매율", "예매관객수", "누적관객수"]
     new_file = not os.path.exists(COMP_CSV)
     cnt = 0
     with open(COMP_CSV, "a", newline="", encoding="utf-8-sig") as f:
@@ -126,7 +126,7 @@ def save_competitors(html, now):
                    for t in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
             tds = [t for t in tds if t != ""]
             if len(tds) >= 8:
-                w.writerow([now, tds[0], tds[1], tds[3], tds[6], tds[7]])
+                w.writerow([now, tds[0], tds[1], tds[2], tds[3], tds[6], tds[7]])
                 cnt += 1
             if cnt >= TOP_N:
                 break
