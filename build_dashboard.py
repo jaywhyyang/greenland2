@@ -412,11 +412,17 @@ if (COMP.latest && COMP.latest.length) {
   let ci=0;
   const ds = COMP.series.map(s => {
     const color = s.g ? '#4ade80' : palette[(ci++)%palette.length];
-    return { label: s.name.length>14?s.name.slice(0,13)+'…':s.name, data: s.rates,
+    // 현재 예매율을 범례에 함께 표기 → 모든 영화 수치가 겹침 없이 보임
+    let lastRate = null;
+    for (let i=s.rates.length-1;i>=0;i--){ if(s.rates[i]!=null){ lastRate=s.rates[i]; break; } }
+    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
+    const lbl = (s.g?'★ ':'') + nm + (lastRate!=null ? `  ${lastRate}%` : '');
+    // 끝 % 라벨은 그린랜드2만(겹침/잘림 방지)
+    return { label: lbl, data: s.rates,
       borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
       borderWidth: s.g?3:1.5, pointRadius: s.g?3:0,
-      datalabels:{ display: ctx=>ctx.dataIndex===s.rates.length-1, align:'right', color,
-        font:{weight: s.g?'bold':'normal', size:11}, formatter:v=>v==null?'':v+'%' } };
+      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.rates.length-1, align:'right', clamp:true,
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':v+'%' } };
   });
   new Chart(c_comp_rate, { type:'line',
     data:{ labels: COMP.labels, datasets: ds },
