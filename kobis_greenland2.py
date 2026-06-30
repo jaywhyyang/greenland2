@@ -76,11 +76,17 @@ def main():
     row = [now] + cells
     header = ["수집시각"] + COLUMNS
 
-    new_file = not os.path.exists(OUT_CSV)
-    with open(OUT_CSV, "a", newline="", encoding="utf-8-sig") as f:
+    # 같은 '시(時)'에 이미 행이 있으면 교체 → 한 시간에 한 줄만 유지(수동 재실행 오염 방지)
+    hour_key = now[:13]  # "YYYY-MM-DD HH"
+    existing = []
+    if os.path.exists(OUT_CSV):
+        with open(OUT_CSV, encoding="utf-8-sig", newline="") as f:
+            rd = list(csv.reader(f))
+        existing = [r for r in rd[1:] if r and r[0][:13] != hour_key]
+    with open(OUT_CSV, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        if new_file:
-            w.writerow(header)
+        w.writerow(header)
+        w.writerows(existing)
         w.writerow(row)
 
     print("OK:", now, "| 예매율:", cells[3], "| 예매관객수:", cells[6], "| 누적관객수:", cells[7])

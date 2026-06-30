@@ -78,10 +78,12 @@ def build_series(rows):
         gap = False
         if book is not None and prev is not None and dt and prev_dt:
             elapsed = (dt - prev_dt).total_seconds() / 3600
-            if elapsed <= GAP_HOURS:
-                inc = book - prev
+            if elapsed > GAP_HOURS:
+                gap = True       # 수집 중단(너무 김) → 증가분 제외
+            elif elapsed < 0.5:
+                inc = None       # 분 단위(너무 짧음) → 시간당 아님, 제외
             else:
-                gap = True  # 수집 중단 구간 → 증가분 제외
+                inc = book - prev
         pts.append({
             "time": t,
             "label": t[5:16] if len(t) >= 16 else t,  # MM-DD HH:MM
