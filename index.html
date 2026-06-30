@@ -59,7 +59,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 10:00</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 10:25</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
@@ -78,7 +78,8 @@
   <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
   <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
-  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas></div>
+  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas>
+    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 수집이 1시간 넘게 끊긴 구간(PC 꺼짐/절전 등)은 1시간치가 아니므로 증가분에서 제외합니다. (누적 그래프엔 그대로 반영)</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 실적 —</div>
 <div class="panel" style="text-align:center;color:#9aa0ab;padding:42px 18px"><div style="font-size:15px;color:#c7ccd6;margin-bottom:10px">🎟️ 개봉 후 실적 (박스오피스)</div>개봉일(2026-07-01)부터 <b>일일 관객수 · 누적관객수 · 좌석점유율 · 스크린수/상영횟수</b>가<br>이 자리에 자동으로 채워집니다.<br><span style="font-size:12px">매일 오전 9시 전날 확정치 수집 · 현재는 개봉 전</span></div>
@@ -88,7 +89,7 @@
       <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
       <tbody>
 <tr><td>2026-06-29</td><td>5</td><td>7,756</td><td>9,030</td><td class='gain'>+1,274</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.9%</td></tr>
-<tr><td>2026-06-30</td><td>3</td><td>9,240</td><td>9,242</td><td class='gain'>+2</td><td>210 <span class='muted'>(06-30 09:53)</span></td><td>5.7%</td></tr>
+<tr><td>2026-06-30</td><td>3</td><td>9,240</td><td>9,242</td><td class='gain'>+2</td><td>2 <span class='muted'>(06-30 10:00)</span></td><td>5.7%</td></tr>
 
       </tbody>
     </table>
@@ -98,7 +99,7 @@
 </div>
 
 <script>
-const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 210, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 296.8, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 247.3, "spike": false, "rank": 5}];
+const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": null, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 254.8, "spike": false, "rank": 5}];
 Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };

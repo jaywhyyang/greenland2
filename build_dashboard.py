@@ -52,18 +52,34 @@ def load_rows(csv_path):
     return rows
 
 
+GAP_HOURS = 1.5  # 이 간격을 넘으면 '수집 중단'으로 보고 시간당 증가분에서 제외
+
+
 def build_series(rows):
-    """시간순 시계열 + 시간당 증가분/이동평균/스파이크 플래그 계산."""
+    """시간순 시계열 + 시간당 증가분/이동평균/스파이크 플래그 계산.
+    수집이 끊긴(>GAP_HOURS) 구간의 증가분은 1시간치가 아니므로 None 처리(왜곡 방지)."""
     pts = []
     movie = "그린랜드 2: 마이그레이션"
     prev = None
+    prev_dt = None
     for d in rows:
         name = d.get("영화명") or ""
         if name:
             movie = name
         t = d.get("수집시각", "")
         book = _num(d.get("예매관객수"))
-        inc = (book - prev) if (book is not None and prev is not None) else None
+        try:
+            dt = datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            dt = None
+        inc = None
+        gap = False
+        if book is not None and prev is not None and dt and prev_dt:
+            elapsed = (dt - prev_dt).total_seconds() / 3600
+            if elapsed <= GAP_HOURS:
+                inc = book - prev
+            else:
+                gap = True  # 수집 중단 구간 → 증가분 제외
         pts.append({
             "time": t,
             "label": t[5:16] if len(t) >= 16 else t,  # MM-DD HH:MM
@@ -74,9 +90,11 @@ def build_series(rows):
             "rank": d.get("순위", ""),
             "open": d.get("개봉일", ""),
             "inc": inc,
+            "gap": gap,
         })
         if book is not None:
             prev = book
+            prev_dt = dt
 
     incs = [p["inc"] for p in pts]
     for i, p in enumerate(pts):
@@ -271,7 +289,8 @@ __CARDS__
   <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
   <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
-  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas></div>
+  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas>
+    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 수집이 1시간 넘게 끊긴 구간(PC 꺼짐/절전 등)은 1시간치가 아니므로 증가분에서 제외합니다. (누적 그래프엔 그대로 반영)</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 실적 —</div>
 __BOX_SECTION__
