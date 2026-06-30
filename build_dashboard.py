@@ -80,10 +80,10 @@ def build_series(rows):
             elapsed = (dt - prev_dt).total_seconds() / 3600
             if elapsed > GAP_HOURS:
                 gap = True       # 수집 중단(너무 김) → 증가분 제외
-            elif elapsed < 0.5:
-                inc = None       # 분 단위(너무 짧음) → 시간당 아님, 제외
+            elif elapsed < 0.25:
+                inc = None       # 거의 중복(너무 짧음) → 제외
             else:
-                inc = book - prev
+                inc = round((book - prev) / elapsed)  # 시간당 환산(30분 간격도 1시간 기준으로)
         pts.append({
             "time": t,
             "label": t[5:16] if len(t) >= 16 else t,  # MM-DD HH:MM
@@ -283,9 +283,9 @@ def build_comp(rows):
             d = dts[i]
             if bk is not None and prev is not None and d and prevd:
                 gh = (d - prevd).total_seconds() / 3600
-                if 0.5 <= gh <= 1.5:
-                    out[i] = bk - prev
-                    last = bk - prev
+                if 0.25 <= gh <= 1.5:
+                    out[i] = round((bk - prev) / gh)  # 시간당 환산
+                    last = out[i]
             if bk is not None:
                 prev, prevd = bk, d
         return out, last

@@ -25,6 +25,12 @@ TOP_N = 25  # 매시간 상위 N편 수집(개봉일 필터 후 동일 개봉작
 COLUMNS = ["순위", "영화명", "개봉일", "예매율", "예매매출액", "누적매출액", "예매관객수", "누적관객수"]
 
 
+def _slot(ts):
+    """30분 슬롯 키('YYYY-MM-DD HH:0'/':3'). 같은 30분대 재실행은 교체(한 슬롯 1줄)."""
+    mm = ts[14:16]
+    return ts[:14] + ("0" if mm.isdigit() and int(mm) < 30 else "3")
+
+
 def fetch_html():
     data = urllib.parse.urlencode({
         "loadEnd": "0",
@@ -76,13 +82,13 @@ def main():
     row = [now] + cells
     header = ["수집시각"] + COLUMNS
 
-    # 같은 '시(時)'에 이미 행이 있으면 교체 → 한 시간에 한 줄만 유지(수동 재실행 오염 방지)
-    hour_key = now[:13]  # "YYYY-MM-DD HH"
+    # 같은 30분 슬롯에 이미 행이 있으면 교체 → 슬롯당 한 줄(수동 재실행 오염 방지)
+    slot_key = _slot(now)
     existing = []
     if os.path.exists(OUT_CSV):
         with open(OUT_CSV, encoding="utf-8-sig", newline="") as f:
             rd = list(csv.reader(f))
-        existing = [r for r in rd[1:] if r and r[0][:13] != hour_key]
+        existing = [r for r in rd[1:] if r and _slot(r[0]) != slot_key]
     with open(OUT_CSV, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(header)
@@ -131,13 +137,13 @@ def save_competitors(html, now):
         if len(newrows) >= TOP_N:
             break
 
-    # 같은 '시(時)' 행은 교체 → 한 시간에 TOP-N 한 세트만 유지
-    hour_key = now[:13]
+    # 같은 30분 슬롯 행은 교체 → 슬롯당 TOP-N 한 세트만 유지
+    slot_key = _slot(now)
     existing = []
     if os.path.exists(COMP_CSV):
         with open(COMP_CSV, encoding="utf-8-sig", newline="") as f:
             rd = list(csv.reader(f))
-        existing = [r for r in rd[1:] if r and r[0][:13] != hour_key]
+        existing = [r for r in rd[1:] if r and _slot(r[0]) != slot_key]
     with open(COMP_CSV, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(header)
