@@ -215,10 +215,10 @@ def box_section(has_data):
                 '이 자리에 자동으로 채워집니다.<br>'
                 '<span style="font-size:12px">매일 오전 9시 전날 확정치 수집 · 현재는 개봉 전</span></div>')
     return (
-        '  <div class="panel"><h2>🎟️ 일일 관객수</h2><canvas id="c_box_audi" height="100"></canvas></div>\n'
-        '  <div class="panel"><h2>누적 관객수</h2><canvas id="c_box_cum" height="100"></canvas></div>\n'
-        '  <div class="panel"><h2>좌석점유율 / 좌석판매율 (%)</h2><canvas id="c_box_seat" height="100"></canvas></div>\n'
-        '  <div class="panel"><h2>스크린수 / 상영횟수</h2><canvas id="c_box_supply" height="100"></canvas></div>')
+        '  <div class="panel"><h2>🎟️ 일일 관객수</h2><div class="cbox"><canvas id="c_box_audi"></canvas></div></div>\n'
+        '  <div class="panel"><h2>누적 관객수</h2><div class="cbox"><canvas id="c_box_cum"></canvas></div></div>\n'
+        '  <div class="panel"><h2>좌석점유율 / 좌석판매율 (%)</h2><div class="cbox"><canvas id="c_box_seat"></canvas></div></div>\n'
+        '  <div class="panel"><h2>스크린수 / 상영횟수</h2><div class="cbox"><canvas id="c_box_supply"></canvas></div></div>')
 
 
 def load_competitors():
@@ -298,9 +298,9 @@ def comp_section(has_data, open_date=""):
                 '🥊 경쟁작 비교 — 매시간 동일 개봉작을 함께 수집합니다. 곧 표시됩니다.</div>')
     d = open_date or "동일 개봉일"
     return (
-        f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 · 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>\n'
-        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>\n'
-        '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><canvas id="c_comp_inc" height="110"></canvas>\n'
+        f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
+        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>\n'
+        '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><div class="cbox"><canvas id="c_comp_inc"></canvas></div>\n'
         '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선. (수집 2시간 이상 쌓이면 표시)</p></div>')
 
 
@@ -343,7 +343,10 @@ HTML = r"""<!DOCTYPE html>
   .card .v { font-size:22px; font-weight:700; margin-top:6px; }
   .panel { background:#1a1d27; border:1px solid #262a36; border-radius:12px; padding:18px; margin-bottom:20px; }
   .panel h2 { font-size:15px; margin:0 0 14px; color:#c7ccd6; }
-  canvas { width:100% !important; }
+  .cbox { position:relative; width:100%; height:380px; margin-top:8px; }
+  .cbox.short { height:300px; }
+  .cbox.tall { height:460px; }
+  @media (max-width:560px){ .cbox{height:300px} .cbox.tall{height:380px} }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th,td { padding:9px 10px; text-align:right; border-bottom:1px solid #262a36; white-space:nowrap; }
   th:first-child,td:first-child { text-align:left; }
@@ -375,12 +378,12 @@ __CARDS__
 __COMP_SECTION__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
-  <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
-  <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
-  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
+  <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div></div>
+  <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div></div>
+  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
-  <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><canvas id="c_cumul" height="100"></canvas></div>
-  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><canvas id="c_hourly" height="120"></canvas>
+  <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><div class="cbox"><canvas id="c_cumul"></canvas></div></div>
+  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><div class="cbox"><canvas id="c_hourly"></canvas></div>
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 수집이 1시간 넘게 끊긴 구간(PC 꺼짐/절전 등)은 1시간치가 아니므로 증가분에서 제외합니다. (누적 그래프엔 그대로 반영)</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 실적 —</div>
@@ -408,7 +411,8 @@ const lastIdx = key => { for(let i=PTS.length-1;i>=0;i--){ if(PTS[i][key]!=null)
 const showAllBars = PTS.length <= 36;   // 점이 너무 많으면 라벨 생략(가독성)
 
 const base = () => ({
-  responsive:true, interaction:{ mode:'index', intersect:false },
+  responsive:true, maintainAspectRatio:false,
+  interaction:{ mode:'index', intersect:false },
   layout:{ padding:{ top:22 } },
   plugins:{ legend:{ labels:{ color:'#c7ccd6' } }, datalabels:{ display:false } },
   scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick } }
@@ -430,7 +434,7 @@ if (COMP.latest && COMP.latest.length) {
         backgroundColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#3b4252'),
         borderColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#4c566a'), borderWidth:1,
         datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
-    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:46}},
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:46}},
       plugins:{ legend:{display:false}, datalabels:{} },
       scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6' } } } } });
 
