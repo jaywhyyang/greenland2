@@ -313,7 +313,10 @@ def comp_section(comp):
         star = "★ " if m["g"] else ""
         cls = ' style="color:#4ade80;font-weight:700"' if m["g"] else ""
         inc = m.get("inc")
-        inc_s = f"+{inc:,}" if isinstance(inc, (int, float)) else "-"
+        if isinstance(inc, (int, float)):
+            inc_s = f"+{inc:,}" if inc >= 0 else f"{inc:,}"
+        else:
+            inc_s = "-"
         rate = f'{m["rate"]}%' if m.get("rate") is not None else "-"
         trs += (f"<tr{cls}><td>{star}{m['name']}</td><td>{fmt(m['book'])}</td>"
                 f"<td class='gain'>{inc_s}</td><td>{rate}</td></tr>")
@@ -494,7 +497,7 @@ if (COMP.latest && COMP.latest.length) {
       borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
       borderWidth: s.g?3:1.5, pointRadius: s.g?3:2,
       datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incs.length-1, align:'top', clamp:true,
-        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':'+'+won(v) } };
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':(v>=0?'+':'')+won(v) } };
   });
   new Chart(c_comp_inc, { type:'line',
     data:{ labels: COMP.labels, datasets: dsi },
