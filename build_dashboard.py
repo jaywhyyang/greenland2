@@ -431,7 +431,8 @@ def comp_section(comp):
     table = (f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 비교</h2>'
              '<table><thead><tr><th>영화</th><th>예매관객수</th><th>직전 1시간 ↑</th><th>시간당 평균(09~22)</th><th>예매율</th></tr></thead>'
              f'<tbody>{trs}</tbody></table>'
-             '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">“직전 1시간 ↑”는 수집 2시간 이상 쌓여야 채워집니다.</p></div>')
+             '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">“직전 1시간 ↑”는 수집 2시간 이상 쌓여야 채워집니다. · '
+             '“시간당 평균”은 경쟁작 공통 수집구간(오늘 시작분~) 기준이라, 위 그린랜드2 카드(자체 10시~ 집계)와 값이 다를 수 있어요.</p></div>')
     charts = (
         f'  <div class="panel"><h2>동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
         '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>\n'
