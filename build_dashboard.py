@@ -124,24 +124,41 @@ def latest(pts):
     return {}
 
 
+ACTIVE_H0, ACTIVE_H1 = 9, 22  # 시간당 평균을 낼 활동시간대(09~22시)
+
+
+def _win_avg(pairs):
+    """(datetime, book) 목록에서 09~22시 구간만 골라 시간당 평균 증가 = (끝-시작)/경과시간."""
+    w = [(dt, b) for dt, b in pairs
+         if dt is not None and b is not None
+         and ACTIVE_H0 <= dt.hour + dt.minute / 60.0 <= ACTIVE_H1]
+    if len(w) < 2:
+        return None
+    h = (w[-1][0] - w[0][0]).total_seconds() / 3600
+    return round((w[-1][1] - w[0][1]) / h) if h > 0 else None
+
+
+def _pairs_of_day(pts, day):
+    out = []
+    for p in pts:
+        if p.get("date") != day or p["book"] is None:
+            continue
+        try:
+            out.append((datetime.datetime.strptime(p["time"], "%Y-%m-%d %H:%M:%S"), p["book"]))
+        except ValueError:
+            pass
+    return out
+
+
 def build_cards(pts):
     last = latest(pts)
     incs = [p["inc"] for p in pts if p["inc"] is not None]
     avg_hr = round(sum(incs) / len(incs)) if incs else None
-    # 오늘 증가분 + 오늘 시간당 평균(= 오늘 증가 ÷ 경과시간)
+    # 오늘 증가분 + 시간당 평균(09~22시 활동시간 기준)
     today = last.get("date")
     today_pts = [p for p in pts if p.get("date") == today and p["book"] is not None]
-    today_gain = today_avg = None
-    if len(today_pts) >= 2:
-        today_gain = today_pts[-1]["book"] - today_pts[0]["book"]
-        try:
-            t0 = datetime.datetime.strptime(today_pts[0]["time"], "%Y-%m-%d %H:%M:%S")
-            t1 = datetime.datetime.strptime(today_pts[-1]["time"], "%Y-%m-%d %H:%M:%S")
-            hrs = (t1 - t0).total_seconds() / 3600
-            if hrs > 0:
-                today_avg = round(today_gain / hrs)
-        except ValueError:
-            pass
+    today_gain = (today_pts[-1]["book"] - today_pts[0]["book"]) if len(today_pts) >= 2 else None
+    today_avg = _win_avg(_pairs_of_day(pts, today))
     # 최고 증가 시점
     peak = max((p for p in pts if p["inc"] is not None), key=lambda x: x["inc"], default=None)
 
@@ -153,7 +170,7 @@ def build_cards(pts):
         ("순수 예매 (프로모션 제외)", fmt(organic)),
         ("직전 1시간 증가", fmt(last.get("inc"))),
         ("오늘 증가", fmt(today_gain)),
-        ("오늘 시간당 평균", f'{fmt(today_avg)}/h' if today_avg is not None else "-"),
+        ("시간당 평균 (09~22시)", f'{fmt(today_avg)}/h' if today_avg is not None else "-"),
         ("최고 증가", f'{fmt(peak["inc"])} ({peak["label"]})' if peak else "-"),
     ]
     html = ""
@@ -366,13 +383,8 @@ def build_comp(rows):
         series.append({"name": nm, "g": GKEY in nm,
                        "rates": [rate_by.get((nm, t)) for t in times], "incs": incs})
     # 비교 표용: '가장 최근 1시간 증가' + '오늘 시간당 평균'(오늘 증가 ÷ 경과시간) 부착
-    def avg_today(nm):
-        bks = [(dts[i], book_by.get((nm, t))) for i, t in enumerate(times)
-               if book_by.get((nm, t)) is not None and dts[i] is not None]
-        if len(bks) < 2:
-            return None
-        h = (bks[-1][0] - bks[0][0]).total_seconds() / 3600
-        return round((bks[-1][1] - bks[0][1]) / h) if h > 0 else None
+    def avg_today(nm):  # 09~22시 활동시간 시간당 평균
+        return _win_avg([(dts[i], book_by.get((nm, t))) for i, t in enumerate(times)])
     for m in latest:
         incs_m, _ = inc_series(m["name"])
         m["inc"] = incs_m[-1] if incs_m else None
@@ -417,7 +429,7 @@ def comp_section(comp):
         trs += (f"<tr{cls}><td>{star}{m['name']}</td><td>{fmt(m['book'])}</td>"
                 f"<td class='gain'>{inc_s}</td><td>{avg_s}</td><td>{rate}</td></tr>")
     table = (f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 비교</h2>'
-             '<table><thead><tr><th>영화</th><th>예매관객수</th><th>직전 1시간 ↑</th><th>오늘 시간당 평균</th><th>예매율</th></tr></thead>'
+             '<table><thead><tr><th>영화</th><th>예매관객수</th><th>직전 1시간 ↑</th><th>시간당 평균(09~22)</th><th>예매율</th></tr></thead>'
              f'<tbody>{trs}</tbody></table>'
              '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">“직전 1시간 ↑”는 수집 2시간 이상 쌓여야 채워집니다.</p></div>')
     charts = (
