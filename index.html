@@ -62,7 +62,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 15:00</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 15:13</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">6위</div></div>
@@ -82,6 +82,8 @@
   <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>
   <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><div class="cbox"><canvas id="c_comp_inc"></canvas></div>
     <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선.</p></div>
+  <div class="panel"><h2>시간당 증가 순위 추이 (위=1위, 그 시간 가장 많이 증가)</h2><div class="cbox"><canvas id="c_comp_incrank"></canvas></div>
+    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">매시간 증가량 기준 순위. 그린랜드2가 몇 위로 오르내리는지 한눈에. (굵은 초록선)</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div></div>
@@ -133,7 +135,7 @@ const lastOnly = (key, color, suffix='') => ({
 });
 
 // ===== 경쟁작 비교 =====
-const COMP = {"latest": [{"name": "마티 슈프림", "book": 28942, "rate": 16.8, "g": false, "inc": 242}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 10010, "rate": 5.8, "g": false, "inc": 52}, {"name": "그린랜드 2: 마이그레이션", "book": 9496, "rate": 5.5, "g": true, "inc": 71}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4592, "rate": 2.7, "g": false, "inc": 19}, {"name": "극장판 암살교실 모두의 시간", "book": 3446, "rate": 2.0, "g": false, "inc": 66}, {"name": "그림자 아이", "book": 2932, "rate": 1.7, "g": false, "inc": 28}, {"name": "에픽: 엘비스 프레슬리 콘서트", "book": 1015, "rate": 0.6, "g": false, "inc": 0}], "labels": ["06-30 12:55", "06-30 13:08", "06-30 14:00", "06-30 15:00"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.8, 16.9, 16.9, 16.8], "incs": [null, null, 168, 242]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9, 5.9, 5.9, 5.8], "incs": [null, null, 28, 52]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5, 5.6, 5.6, 5.5], "incs": [null, null, 45, 71]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7, 2.7, 2.7, 2.7], "incs": [null, null, 22, 19]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9, 2.0, 2.0, 2.0], "incs": [null, null, 76, 66]}, {"name": "그림자 아이", "g": false, "rates": [1.7, 1.7, 1.7, 1.7], "incs": [null, null, -21, 28]}], "open": "2026-07-01"};
+const COMP = {"latest": [{"name": "마티 슈프림", "book": 28942, "rate": 16.8, "g": false, "inc": 242}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 10010, "rate": 5.8, "g": false, "inc": 52}, {"name": "그린랜드 2: 마이그레이션", "book": 9496, "rate": 5.5, "g": true, "inc": 71}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4592, "rate": 2.7, "g": false, "inc": 19}, {"name": "극장판 암살교실 모두의 시간", "book": 3446, "rate": 2.0, "g": false, "inc": 66}, {"name": "그림자 아이", "book": 2932, "rate": 1.7, "g": false, "inc": 28}, {"name": "에픽: 엘비스 프레슬리 콘서트", "book": 1015, "rate": 0.6, "g": false, "inc": 0}], "labels": ["06-30 12:55", "06-30 13:08", "06-30 14:00", "06-30 15:00"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.8, 16.9, 16.9, 16.8], "incs": [null, null, 168, 242], "incRank": [null, null, 1, 1]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9, 5.9, 5.9, 5.8], "incs": [null, null, 28, 52], "incRank": [null, null, 4, 4]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5, 5.6, 5.6, 5.5], "incs": [null, null, 45, 71], "incRank": [null, null, 3, 2]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7, 2.7, 2.7, 2.7], "incs": [null, null, 22, 19], "incRank": [null, null, 5, 6]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9, 2.0, 2.0, 2.0], "incs": [null, null, 76, 66], "incRank": [null, null, 2, 3]}, {"name": "그림자 아이", "g": false, "rates": [1.7, 1.7, 1.7, 1.7], "incs": [null, null, -21, 28], "incRank": [null, null, 6, 5]}], "open": "2026-07-01"};
 if (COMP.latest && COMP.latest.length) {
   // 현재 예매관객수 가로 막대 (그린랜드2 강조)
   new Chart(c_comp_bar, { type:'bar',
@@ -183,6 +185,24 @@ if (COMP.latest && COMP.latest.length) {
     data:{ labels: COMP.labels, datasets: dsi },
     options:{ ...base(), layout:{padding:{right:50, top:22}},
       plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+
+  // 시간당 증가 '순위' 추이 (1위=그 시간 가장 많이 증가, 위로 갈수록 상위)
+  let ci3 = 0;
+  const dsr = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci3++)%palette.length];
+    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
+    return { label: (s.g?'★ ':'') + nm, data: s.incRank,
+      borderColor: color, backgroundColor: color, spanGaps:true, stepped:false, tension:0,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?4:2,
+      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incRank.length-1, align:'right', clamp:true,
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':v+'위' } };
+  });
+  new Chart(c_comp_incrank, { type:'line',
+    data:{ labels: COMP.labels, datasets: dsr },
+    options:{ ...base(), layout:{padding:{right:50, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} },
+      scales:{ x:{ grid, ticks:tick },
+        y:{ reverse:true, min:1, grid, ticks:{ color:'#9aa0ab', stepSize:1, precision:0 } } } } });
 }
 
 // 개봉 D-day 뱃지

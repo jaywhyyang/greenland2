@@ -295,9 +295,22 @@ def build_comp(rows):
         incs, _ = inc_series(nm)
         series.append({"name": nm, "g": GKEY in nm,
                        "rates": [rate_by.get((nm, t)) for t in times], "incs": incs})
-    # 비교 표용: 각 영화의 '직전 1시간 증가' 부착
+    # 비교 표용: 각 영화의 '가장 최근 1시간 증가' 부착 (순위차트와 동일 기준)
     for m in latest:
-        _, m["inc"] = inc_series(m["name"])
+        incs_m, _ = inc_series(m["name"])
+        m["inc"] = incs_m[-1] if incs_m else None
+
+    # 시간별 '증가량 순위' 계산 (그 시각 증가분이 큰 순 = 1위), 플롯 대상(series) 내에서
+    n_t = len(times)
+    for s in series:
+        s["incRank"] = [None] * n_t
+    for i in range(n_t):
+        vals = [(j, series[j]["incs"][i]) for j in range(len(series))
+                if series[j]["incs"][i] is not None]
+        vals.sort(key=lambda x: x[1], reverse=True)
+        for rank, (j, _) in enumerate(vals, start=1):
+            series[j]["incRank"][i] = rank
+
     short = [t[5:16] for t in times]
     return {"latest": latest, "labels": short, "series": series, "open": target}
 
@@ -331,7 +344,9 @@ def comp_section(comp):
         f'  <div class="panel"><h2>동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
         '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>\n'
         '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><div class="cbox"><canvas id="c_comp_inc"></canvas></div>\n'
-        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선.</p></div>')
+        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선.</p></div>\n'
+        '  <div class="panel"><h2>시간당 증가 순위 추이 (위=1위, 그 시간 가장 많이 증가)</h2><div class="cbox"><canvas id="c_comp_incrank"></canvas></div>\n'
+        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">매시간 증가량 기준 순위. 그린랜드2가 몇 위로 오르내리는지 한눈에. (굵은 초록선)</p></div>')
     return table + "\n" + charts
 
 
@@ -506,6 +521,24 @@ if (COMP.latest && COMP.latest.length) {
     data:{ labels: COMP.labels, datasets: dsi },
     options:{ ...base(), layout:{padding:{right:50, top:22}},
       plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+
+  // 시간당 증가 '순위' 추이 (1위=그 시간 가장 많이 증가, 위로 갈수록 상위)
+  let ci3 = 0;
+  const dsr = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci3++)%palette.length];
+    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
+    return { label: (s.g?'★ ':'') + nm, data: s.incRank,
+      borderColor: color, backgroundColor: color, spanGaps:true, stepped:false, tension:0,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?4:2,
+      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incRank.length-1, align:'right', clamp:true,
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':v+'위' } };
+  });
+  new Chart(c_comp_incrank, { type:'line',
+    data:{ labels: COMP.labels, datasets: dsr },
+    options:{ ...base(), layout:{padding:{right:50, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} },
+      scales:{ x:{ grid, ticks:tick },
+        y:{ reverse:true, min:1, grid, ticks:{ color:'#9aa0ab', stepSize:1, precision:0 } } } } });
 }
 
 // 개봉 D-day 뱃지
