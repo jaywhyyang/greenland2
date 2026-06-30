@@ -27,6 +27,11 @@
   .dday { display:inline-block; background:#ef4444; color:#fff; font-size:12px; font-weight:700;
           padding:4px 11px; border-radius:999px; }
   .sub { color:#9aa0ab; font-size:13px; margin-bottom:22px; }
+  .forecast { background:linear-gradient(135deg,#1e3a2a 0%,#1a1d27 70%); border:1px solid #2f5a42;
+              border-radius:14px; padding:16px 20px; margin-bottom:16px; }
+  .forecast .lbl { font-size:12px; color:#9aa0ab; }
+  .forecast .big { font-size:27px; font-weight:800; color:#4ade80; margin-top:4px; }
+  .forecast .sub2 { font-size:12px; color:#c7ccd6; margin-top:6px; }
   .status { display:inline-block; font-size:12px; padding:6px 12px; border-radius:999px; }
   @media (max-width:560px){ .hero{ flex-direction:column; align-items:center; text-align:center; } }
   .status.ok { background:#13241a; color:#4ade80; border:1px solid #1f3a2a; }
@@ -52,6 +57,7 @@
 </head>
 <body>
 <div class="wrap">
+<div class="forecast"><div class="lbl">🔮 오늘 자정(23:59) 예상 예매관객수 · 30분마다 자동 갱신</div><div class="big">약 10,300명 <span style="font-size:15px;color:#c7ccd6">(순수 ~2,550)</span></div><div class="sub2">현재 9,539 · 최근 +64/h · 예상범위 10,200~10,500</div></div>
   <div class="hero">
     <img class="poster" src="poster.jpg" alt="그린랜드 2: 마이그레이션 포스터" onerror="this.style.display='none'">
     <div class="hero-body">
@@ -62,7 +68,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 15:30</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 15:38</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">6위</div></div>

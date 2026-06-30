@@ -179,6 +179,66 @@ def build_daily_table(pts):
     return rows_html
 
 
+# 시간대별 예매 강도(상대 가중치): 낮 저조, 저녁(18~21) 피크
+HOUR_PROFILE = {0:0.10,1:0.05,2:0.03,3:0.03,4:0.03,5:0.05,6:0.10,7:0.20,8:0.35,
+                9:0.45,10:0.55,11:0.65,12:0.70,13:0.70,14:0.80,15:0.95,16:1.10,
+                17:1.30,18:1.70,19:2.00,20:2.00,21:1.60,22:1.10,23:0.60}
+
+
+def forecast_eod(pts):
+    """현재 페이스 + 시간대 프로파일로 오늘 23:59 예매관객수 추정."""
+    import math
+    valid = [p for p in pts if p["book"] is not None]
+    incs = [p["inc"] for p in pts if p["inc"] is not None]
+    if not valid or not incs:
+        return None
+    last = valid[-1]
+    try:
+        cur_dt = datetime.datetime.strptime(last["time"], "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return None
+    cur = last["book"]
+    r = sum(incs[-2:]) / len(incs[-2:])      # 최근 시간당 환산 페이스(최근 2개 평균)
+    if r <= 0:
+        r = max(incs[-1], 1)
+    cur_h = cur_dt.hour + cur_dt.minute / 60.0
+    if cur_h >= 23.98:
+        return {"cur": cur, "pred": cur, "low": cur, "high": cur, "r": round(r), "done": True}
+    pintens = HOUR_PROFILE.get(cur_dt.hour, 0.5) or 0.5
+    unit = r / pintens                        # 프로파일을 현재 관측 페이스에 맞춤
+    total = 0.0
+    h = cur_h
+    while h < 24:
+        nxt = math.floor(h) + 1
+        frac = min(nxt, 24) - h
+        total += HOUR_PROFILE.get(int(h) % 24, 0.4) * frac
+        h = nxt
+    add = unit * total
+    return {"cur": cur, "pred": round(cur + add),
+            "low": round(cur + add * 0.8), "high": round(cur + add * 1.2),
+            "r": round(r), "done": False}
+
+
+def forecast_banner(fc):
+    if not fc:
+        return ('<div class="forecast"><div class="lbl">🔮 오늘 자정(23:59) 예상 예매관객수</div>'
+                '<div class="sub2">데이터 수집 중 — 곧 예측이 표시됩니다.</div></div>')
+
+    def r100(n):
+        return int(round(n / 100.0) * 100)
+    pred = r100(fc["pred"]); pure = pred - PROMO_TICKETS
+    if fc.get("done"):
+        head = f'마감 근접 · 현재 {fc["cur"]:,}명'
+        rng = ""
+    else:
+        head = f'약 {pred:,}명 <span style="font-size:15px;color:#c7ccd6">(순수 ~{pure:,})</span>'
+        rng = f'현재 {fc["cur"]:,} · 최근 +{fc["r"]:,}/h · 예상범위 {r100(fc["low"]):,}~{r100(fc["high"]):,}'
+    return ('<div class="forecast">'
+            '<div class="lbl">🔮 오늘 자정(23:59) 예상 예매관객수 · 30분마다 자동 갱신</div>'
+            f'<div class="big">{head}</div>'
+            f'<div class="sub2">{rng}</div></div>')
+
+
 def load_box():
     rows = []
     if not os.path.exists(BOX_CSV):
@@ -379,6 +439,11 @@ HTML = r"""<!DOCTYPE html>
   .dday { display:inline-block; background:#ef4444; color:#fff; font-size:12px; font-weight:700;
           padding:4px 11px; border-radius:999px; }
   .sub { color:#9aa0ab; font-size:13px; margin-bottom:22px; }
+  .forecast { background:linear-gradient(135deg,#1e3a2a 0%,#1a1d27 70%); border:1px solid #2f5a42;
+              border-radius:14px; padding:16px 20px; margin-bottom:16px; }
+  .forecast .lbl { font-size:12px; color:#9aa0ab; }
+  .forecast .big { font-size:27px; font-weight:800; color:#4ade80; margin-top:4px; }
+  .forecast .sub2 { font-size:12px; color:#c7ccd6; margin-top:6px; }
   .status { display:inline-block; font-size:12px; padding:6px 12px; border-radius:999px; }
   @media (max-width:560px){ .hero{ flex-direction:column; align-items:center; text-align:center; } }
   .status.ok { background:#13241a; color:#4ade80; border:1px solid #1f3a2a; }
@@ -404,6 +469,7 @@ HTML = r"""<!DOCTYPE html>
 </head>
 <body>
 <div class="wrap">
+__FORECAST__
   <div class="hero">
     <img class="poster" src="__POSTER__" alt="__MOVIE__ 포스터" onerror="this.style.display='none'">
     <div class="hero-body">
@@ -663,6 +729,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     box_json = json.dumps(box, ensure_ascii=False)
     comp = build_comp(load_competitors())
     comp_json = json.dumps(comp, ensure_ascii=False)
+    fc_html = forecast_banner(forecast_eod(pts))
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
@@ -672,6 +739,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO__", str(PROMO_TICKETS))
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
+            .replace("__FORECAST__", fc_html)
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
