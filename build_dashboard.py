@@ -273,35 +273,60 @@ def build_comp(rows):
         except ValueError:
             dts.append(None)
 
-    series = []
-    for nm in top_names:
-        rates = [rate_by.get((nm, t)) for t in times]
-        incs = [None] * len(times)
+    def inc_series(nm):
+        """movie의 시간별 예매관객 증가분(시간당) 리스트 + 가장 최근 증가분 반환."""
+        out = [None] * len(times)
         prev = prevd = None
+        last = None
         for i, t in enumerate(times):
             bk = book_by.get((nm, t))
             d = dts[i]
             if bk is not None and prev is not None and d and prevd:
                 gh = (d - prevd).total_seconds() / 3600
                 if 0.5 <= gh <= 1.5:
-                    incs[i] = bk - prev
+                    out[i] = bk - prev
+                    last = bk - prev
             if bk is not None:
                 prev, prevd = bk, d
-        series.append({"name": nm, "g": GKEY in nm, "rates": rates, "incs": incs})
+        return out, last
+
+    series = []
+    for nm in top_names:
+        incs, _ = inc_series(nm)
+        series.append({"name": nm, "g": GKEY in nm,
+                       "rates": [rate_by.get((nm, t)) for t in times], "incs": incs})
+    # 비교 표용: 각 영화의 '직전 1시간 증가' 부착
+    for m in latest:
+        _, m["inc"] = inc_series(m["name"])
     short = [t[5:16] for t in times]
     return {"latest": latest, "labels": short, "series": series, "open": target}
 
 
-def comp_section(has_data, open_date=""):
-    if not has_data:
+def comp_section(comp):
+    if not comp["latest"]:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
                 '🥊 경쟁작 비교 — 매시간 동일 개봉작을 함께 수집합니다. 곧 표시됩니다.</div>')
-    d = open_date or "동일 개봉일"
-    return (
-        f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
+    d = comp["open"] or "동일 개봉일"
+    # 비교 표: 영화 / 예매관객수 / 직전 1시간 증가 / 예매율
+    trs = ""
+    for m in comp["latest"]:
+        star = "★ " if m["g"] else ""
+        cls = ' style="color:#4ade80;font-weight:700"' if m["g"] else ""
+        inc = m.get("inc")
+        inc_s = f"+{inc:,}" if isinstance(inc, (int, float)) else "-"
+        rate = f'{m["rate"]}%' if m.get("rate") is not None else "-"
+        trs += (f"<tr{cls}><td>{star}{m['name']}</td><td>{fmt(m['book'])}</td>"
+                f"<td class='gain'>{inc_s}</td><td>{rate}</td></tr>")
+    table = (f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 비교</h2>'
+             '<table><thead><tr><th>영화</th><th>예매관객수</th><th>직전 1시간 ↑</th><th>예매율</th></tr></thead>'
+             f'<tbody>{trs}</tbody></table>'
+             '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">“직전 1시간 ↑”는 수집 2시간 이상 쌓여야 채워집니다.</p></div>')
+    charts = (
+        f'  <div class="panel"><h2>동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
         '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>\n'
         '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><div class="cbox"><canvas id="c_comp_inc"></canvas></div>\n'
-        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선. (수집 2시간 이상 쌓이면 표시)</p></div>')
+        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선.</p></div>')
+    return table + "\n" + charts
 
 
 HTML = r"""<!DOCTYPE html>
@@ -613,7 +638,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__N__", str(len(pts)))
             .replace("__BOX_SECTION__", box_section(bool(box)))
             .replace("__BOX_JSON__", box_json)
-            .replace("__COMP_SECTION__", comp_section(bool(comp["latest"]), comp.get("open", "")))
+            .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:
