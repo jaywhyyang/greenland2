@@ -307,9 +307,12 @@ def comp_section(comp):
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
                 '🥊 경쟁작 비교 — 매시간 동일 개봉작을 함께 수집합니다. 곧 표시됩니다.</div>')
     d = comp["open"] or "동일 개봉일"
-    # 비교 표: 영화 / 예매관객수 / 직전 1시간 증가 / 예매율
+    # 비교 표: 직전 1시간 증가량 내림차순 (증가분 없는 영화는 뒤로)
+    def _ik(m):
+        v = m.get("inc")
+        return v if isinstance(v, (int, float)) else float("-inf")
     trs = ""
-    for m in comp["latest"]:
+    for m in sorted(comp["latest"], key=_ik, reverse=True):
         star = "★ " if m["g"] else ""
         cls = ' style="color:#4ade80;font-weight:700"' if m["g"] else ""
         inc = m.get("inc")
