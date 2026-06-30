@@ -259,12 +259,35 @@ def build_comp(rows):
                "rate": _num(r.get("예매율")), "g": GKEY in r["영화명"]}
               for r in snap[:8]]
     top_names = [x["name"] for x in latest[:6]]
-    by = {}  # (name, time) -> rate, 같은 개봉일만
+
+    rate_by, book_by = {}, {}  # (name, time) -> 예매율 / 예매관객수 (같은 개봉일만)
     for r in rows:
         if same(r):
-            by[(r["영화명"], r["수집시각"])] = _num(r.get("예매율"))
-    series = [{"name": nm, "g": GKEY in nm,
-               "rates": [by.get((nm, t)) for t in times]} for nm in top_names]
+            rate_by[(r["영화명"], r["수집시각"])] = _num(r.get("예매율"))
+            book_by[(r["영화명"], r["수집시각"])] = _num(r.get("예매관객수"))
+
+    dts = []
+    for t in times:
+        try:
+            dts.append(datetime.datetime.strptime(t, "%Y-%m-%d %H:%M:%S"))
+        except ValueError:
+            dts.append(None)
+
+    series = []
+    for nm in top_names:
+        rates = [rate_by.get((nm, t)) for t in times]
+        incs = [None] * len(times)
+        prev = prevd = None
+        for i, t in enumerate(times):
+            bk = book_by.get((nm, t))
+            d = dts[i]
+            if bk is not None and prev is not None and d and prevd:
+                gh = (d - prevd).total_seconds() / 3600
+                if 0.5 <= gh <= 1.5:
+                    incs[i] = bk - prev
+            if bk is not None:
+                prev, prevd = bk, d
+        series.append({"name": nm, "g": GKEY in nm, "rates": rates, "incs": incs})
     short = [t[5:16] for t in times]
     return {"latest": latest, "labels": short, "series": series, "open": target}
 
@@ -276,7 +299,9 @@ def comp_section(has_data, open_date=""):
     d = open_date or "동일 개봉일"
     return (
         f'  <div class="panel"><h2>🥊 {d} 동시 개봉작 · 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>\n'
-        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>')
+        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>\n'
+        '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><canvas id="c_comp_inc" height="110"></canvas>\n'
+        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선. (수집 2시간 이상 쌓이면 표시)</p></div>')
 
 
 HTML = r"""<!DOCTYPE html>
@@ -429,6 +454,22 @@ if (COMP.latest && COMP.latest.length) {
   new Chart(c_comp_rate, { type:'line',
     data:{ labels: COMP.labels, datasets: ds },
     options:{ ...base(), layout:{padding:{right:60, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+
+  // 시간당 예매 증가 비교 (동시 개봉작별)
+  let ci2 = 0;
+  const dsi = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci2++)%palette.length];
+    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
+    return { label: (s.g?'★ ':'') + nm, data: s.incs,
+      borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?3:2,
+      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incs.length-1, align:'top', clamp:true,
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':'+'+won(v) } };
+  });
+  new Chart(c_comp_inc, { type:'line',
+    data:{ labels: COMP.labels, datasets: dsi },
+    options:{ ...base(), layout:{padding:{right:50, top:22}},
       plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
 }
 

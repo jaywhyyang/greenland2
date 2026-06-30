@@ -121,22 +121,29 @@ def save_competitors(html, now):
     if not m:
         return
     header = ["수집시각", "순위", "영화명", "개봉일", "예매율", "예매관객수", "누적관객수"]
-    new_file = not os.path.exists(COMP_CSV)
-    cnt = 0
-    with open(COMP_CSV, "a", newline="", encoding="utf-8-sig") as f:
+    newrows = []
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", m.group(1), re.S):
+        tds = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", t)).strip()
+               for t in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+        tds = [t for t in tds if t != ""]
+        if len(tds) >= 8:
+            newrows.append([now, tds[0], tds[1], tds[2], tds[3], tds[6], tds[7]])
+        if len(newrows) >= TOP_N:
+            break
+
+    # 같은 '시(時)' 행은 교체 → 한 시간에 TOP-N 한 세트만 유지
+    hour_key = now[:13]
+    existing = []
+    if os.path.exists(COMP_CSV):
+        with open(COMP_CSV, encoding="utf-8-sig", newline="") as f:
+            rd = list(csv.reader(f))
+        existing = [r for r in rd[1:] if r and r[0][:13] != hour_key]
+    with open(COMP_CSV, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
-        if new_file:
-            w.writerow(header)
-        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", m.group(1), re.S):
-            tds = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", t)).strip()
-                   for t in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
-            tds = [t for t in tds if t != ""]
-            if len(tds) >= 8:
-                w.writerow([now, tds[0], tds[1], tds[2], tds[3], tds[6], tds[7]])
-                cnt += 1
-            if cnt >= TOP_N:
-                break
-    print(f"경쟁작 {cnt}편 저장:", COMP_CSV)
+        w.writerow(header)
+        w.writerows(existing)
+        w.writerows(newrows)
+    print(f"경쟁작 {len(newrows)}편 저장(시간당 갱신):", COMP_CSV)
 
 
 def publish_to_github(now):

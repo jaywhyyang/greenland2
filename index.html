@@ -59,7 +59,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 12:55</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 12:57</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
@@ -76,6 +76,8 @@
   <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
   <div class="panel"><h2>🥊 2026-07-01 동시 개봉작 · 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>
   <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>
+  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><canvas id="c_comp_inc" height="110"></canvas>
+    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선. (수집 2시간 이상 쌓이면 표시)</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
@@ -126,7 +128,7 @@ const lastOnly = (key, color, suffix='') => ({
 });
 
 // ===== 경쟁작 비교 =====
-const COMP = {"latest": [{"name": "마티 슈프림", "book": 28507, "rate": 16.8, "g": false}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 9913, "rate": 5.9, "g": false}, {"name": "그린랜드 2: 마이그레이션", "book": 9366, "rate": 5.5, "g": true}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4549, "rate": 2.7, "g": false}, {"name": "극장판 암살교실 모두의 시간", "book": 3295, "rate": 1.9, "g": false}, {"name": "그림자 아이", "book": 2924, "rate": 1.7, "g": false}, {"name": "에픽: 엘비스 프레슬리 콘서트", "book": 1006, "rate": 0.6, "g": false}], "labels": ["06-30 12:43", "06-30 12:44", "06-30 12:55"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.9, 16.9, 16.8]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9, 5.9, 5.9]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5, 5.5, 5.5]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7, 2.7, 2.7]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9, 1.9, 1.9]}, {"name": "그림자 아이", "g": false, "rates": [null, 1.7, 1.7]}], "open": "2026-07-01"};
+const COMP = {"latest": [{"name": "마티 슈프림", "book": 28507, "rate": 16.8, "g": false}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 9913, "rate": 5.9, "g": false}, {"name": "그린랜드 2: 마이그레이션", "book": 9366, "rate": 5.5, "g": true}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4549, "rate": 2.7, "g": false}, {"name": "극장판 암살교실 모두의 시간", "book": 3295, "rate": 1.9, "g": false}, {"name": "그림자 아이", "book": 2924, "rate": 1.7, "g": false}, {"name": "에픽: 엘비스 프레슬리 콘서트", "book": 1006, "rate": 0.6, "g": false}], "labels": ["06-30 12:55"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.8], "incs": [null]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9], "incs": [null]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5], "incs": [null]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7], "incs": [null]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9], "incs": [null]}, {"name": "그림자 아이", "g": false, "rates": [1.7], "incs": [null]}], "open": "2026-07-01"};
 if (COMP.latest && COMP.latest.length) {
   // 현재 예매관객수 가로 막대 (그린랜드2 강조)
   new Chart(c_comp_bar, { type:'bar',
@@ -159,6 +161,22 @@ if (COMP.latest && COMP.latest.length) {
   new Chart(c_comp_rate, { type:'line',
     data:{ labels: COMP.labels, datasets: ds },
     options:{ ...base(), layout:{padding:{right:60, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+
+  // 시간당 예매 증가 비교 (동시 개봉작별)
+  let ci2 = 0;
+  const dsi = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci2++)%palette.length];
+    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
+    return { label: (s.g?'★ ':'') + nm, data: s.incs,
+      borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?3:2,
+      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incs.length-1, align:'top', clamp:true,
+        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':'+'+won(v) } };
+  });
+  new Chart(c_comp_inc, { type:'line',
+    data:{ labels: COMP.labels, datasets: dsi },
+    options:{ ...base(), layout:{padding:{right:50, top:22}},
       plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
 }
 
