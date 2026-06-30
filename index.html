@@ -59,23 +59,23 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 12:43</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-06-30 12:44</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">5위</div></div>
 <div class="card"><div class="k">예매율</div><div class="v">5.5%</div></div>
-<div class="card"><div class="k">예매관객수</div><div class="v">9,352</div></div>
-<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,602</div></div>
+<div class="card"><div class="k">예매관객수</div><div class="v">9,356</div></div>
+<div class="card"><div class="k">순수 예매 (프로모션 제외)</div><div class="v">1,606</div></div>
 <div class="card"><div class="k">누적관객수</div><div class="v">418</div></div>
-<div class="card"><div class="k">직전 1시간 증가</div><div class="v">46</div></div>
-<div class="card"><div class="k">오늘 증가</div><div class="v">112</div></div>
+<div class="card"><div class="k">직전 1시간 증가</div><div class="v">4</div></div>
+<div class="card"><div class="k">오늘 증가</div><div class="v">116</div></div>
 <div class="card"><div class="k">최고 증가</div><div class="v">575 (06-29 19:00)</div></div>
 
   </div>
 
   <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
-  <div class="panel"><h2>🥊 경쟁작 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>
-  <div class="panel"><h2>예매율 추이 비교 (상위 영화, %)</h2><canvas id="c_comp_rate" height="110"></canvas></div>
+  <div class="panel"><h2>🥊 2026-07-01 동시 개봉작 · 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>
+  <div class="panel"><h2>예매율 추이 비교 (%)</h2><canvas id="c_comp_rate" height="110"></canvas></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
@@ -94,17 +94,17 @@
       <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
       <tbody>
 <tr><td>2026-06-29</td><td>5</td><td>7,756</td><td>9,030</td><td class='gain'>+1,274</td><td>575 <span class='muted'>(06-29 19:00)</span></td><td>5.9%</td></tr>
-<tr><td>2026-06-30</td><td>7</td><td>9,240</td><td>9,352</td><td class='gain'>+112</td><td>46 <span class='muted'>(06-30 12:43)</span></td><td>5.7%</td></tr>
+<tr><td>2026-06-30</td><td>8</td><td>9,240</td><td>9,356</td><td class='gain'>+116</td><td>46 <span class='muted'>(06-30 12:43)</span></td><td>5.6%</td></tr>
 
       </tbody>
     </table>
   </div>
 
-  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 12개 시점</div>
+  <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 13개 시점</div>
 </div>
 
 <script>
-const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": null, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 254.8, "spike": false, "rank": 5}, {"label": "06-30 11:00", "rate": 5.7, "book": 9273, "cumul": 418, "inc": 31, "ma": 140.2, "spike": false, "rank": 5}, {"label": "06-30 11:22", "rate": 5.7, "book": 9290, "cumul": 418, "inc": 17, "ma": 56.0, "spike": false, "rank": 5}, {"label": "06-30 12:00", "rate": 5.6, "book": 9306, "cumul": 418, "inc": 16, "ma": 32.2, "spike": false, "rank": 5}, {"label": "06-30 12:43", "rate": 5.5, "book": 9352, "cumul": 418, "inc": 46, "ma": 13.2, "spike": false, "rank": 5}];
+const PTS = [{"label": "06-29 18:00", "rate": 5.4, "book": 7756, "cumul": 418, "inc": null, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 19:00", "rate": 5.8, "book": 8331, "cumul": 418, "inc": 575, "ma": null, "spike": false, "rank": 5}, {"label": "06-29 20:00", "rate": 6.1, "book": 8783, "cumul": 418, "inc": 452, "ma": 575.0, "spike": false, "rank": 5}, {"label": "06-29 21:00", "rate": 6.1, "book": 8919, "cumul": 418, "inc": 136, "ma": 513.5, "spike": false, "rank": 5}, {"label": "06-29 22:00", "rate": 6.0, "book": 9030, "cumul": 418, "inc": 111, "ma": 387.7, "spike": false, "rank": 5}, {"label": "06-30 09:53", "rate": 5.7, "book": 9240, "cumul": 418, "inc": null, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 09:54", "rate": 5.7, "book": 9240, "cumul": 418, "inc": 0, "ma": 318.5, "spike": false, "rank": 5}, {"label": "06-30 10:00", "rate": 5.7, "book": 9242, "cumul": 418, "inc": 2, "ma": 254.8, "spike": false, "rank": 5}, {"label": "06-30 11:00", "rate": 5.7, "book": 9273, "cumul": 418, "inc": 31, "ma": 140.2, "spike": false, "rank": 5}, {"label": "06-30 11:22", "rate": 5.7, "book": 9290, "cumul": 418, "inc": 17, "ma": 56.0, "spike": false, "rank": 5}, {"label": "06-30 12:00", "rate": 5.6, "book": 9306, "cumul": 418, "inc": 16, "ma": 32.2, "spike": false, "rank": 5}, {"label": "06-30 12:43", "rate": 5.5, "book": 9352, "cumul": 418, "inc": 46, "ma": 13.2, "spike": false, "rank": 5}, {"label": "06-30 12:44", "rate": 5.5, "book": 9356, "cumul": 418, "inc": 4, "ma": 18.7, "spike": false, "rank": 5}];
 Chart.register(ChartDataLabels);
 const labels = PTS.map(p => p.label);
 const grid = { color:'#262a36' }, tick = { color:'#9aa0ab' };
@@ -126,7 +126,7 @@ const lastOnly = (key, color, suffix='') => ({
 });
 
 // ===== 경쟁작 비교 =====
-const COMP = {"latest": [{"name": "토이 스토리 5", "book": 34979, "rate": 20.7, "g": false}, {"name": "마티 슈프림", "book": 28481, "rate": 16.9, "g": false}, {"name": "눈동자", "book": 20876, "rate": 12.4, "g": false}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 9903, "rate": 5.9, "g": false}, {"name": "그린랜드 2: 마이그레이션", "book": 9352, "rate": 5.5, "g": true}, {"name": "군체", "book": 7071, "rate": 4.2, "g": false}, {"name": "짝사랑 세계", "book": 4947, "rate": 2.9, "g": false}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4543, "rate": 2.7, "g": false}], "labels": ["06-30 12:43"], "series": [{"name": "토이 스토리 5", "g": false, "rates": [20.7]}, {"name": "마티 슈프림", "g": false, "rates": [16.9]}, {"name": "눈동자", "g": false, "rates": [12.4]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5]}, {"name": "군체", "g": false, "rates": [4.2]}]};
+const COMP = {"latest": [{"name": "마티 슈프림", "book": 28482, "rate": 16.9, "g": false}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 9903, "rate": 5.9, "g": false}, {"name": "그린랜드 2: 마이그레이션", "book": 9356, "rate": 5.5, "g": true}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 4539, "rate": 2.7, "g": false}, {"name": "극장판 암살교실 모두의 시간", "book": 3279, "rate": 1.9, "g": false}, {"name": "그림자 아이", "book": 2921, "rate": 1.7, "g": false}, {"name": "에픽: 엘비스 프레슬리 콘서트", "book": 1002, "rate": 0.6, "g": false}], "labels": ["06-30 12:43", "06-30 12:44"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.9, 16.9]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9, 5.9]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5, 5.5]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7, 2.7]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9, 1.9]}, {"name": "그림자 아이", "g": false, "rates": [null, 1.7]}], "open": "2026-07-01"};
 if (COMP.latest && COMP.latest.length) {
   // 현재 예매관객수 가로 막대 (그린랜드2 강조)
   new Chart(c_comp_bar, { type:'bar',
@@ -167,7 +167,7 @@ if (COMP.latest && COMP.latest.length) {
 })();
 
 // 수집 상태: 마지막 수집 시각 기준 신선도 표시 (75분 넘으면 경고)
-const LAST = "2026-06-30 12:43:24";
+const LAST = "2026-06-30 12:44:58";
 (function(){
   const el = document.getElementById('status');
   if(!el) return;
