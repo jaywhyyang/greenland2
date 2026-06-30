@@ -17,7 +17,10 @@ URL = "https://www.kobis.or.kr/kobis/business/stat/boxs/findRealTicketList.do"
 # 영화명에 이 문자열이 포함된 행을 찾는다
 MOVIE_KEYWORD = "그린랜드 2"
 # CSV 저장 위치 (스크립트와 같은 폴더)
-OUT_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)), "greenland2_hourly.csv")
+_DIR = os.path.dirname(os.path.abspath(__file__))
+OUT_CSV = os.path.join(_DIR, "greenland2_hourly.csv")
+COMP_CSV = os.path.join(_DIR, "competitors_hourly.csv")  # 경쟁작 비교용 TOP-N 스냅샷
+TOP_N = 10  # 매시간 상위 N편 같이 수집
 
 COLUMNS = ["순위", "영화명", "개봉일", "예매율", "예매매출액", "누적매출액", "예매관객수", "누적관객수"]
 
@@ -83,6 +86,12 @@ def main():
     print("OK:", now, "| 예매율:", cells[3], "| 예매관객수:", cells[6], "| 누적관객수:", cells[7])
     print("저장:", OUT_CSV)
 
+    # 경쟁작 TOP-N 스냅샷 같이 저장 (실패해도 본 수집은 성공)
+    try:
+        save_competitors(html, now)
+    except Exception as e:
+        print("경쟁작 수집 건너뜀:", e)
+
     # 대시보드 HTML 갱신 (실패해도 수집 자체는 성공으로 둠)
     try:
         import build_dashboard
@@ -100,6 +109,30 @@ def main():
     return 0
 
 
+def save_competitors(html, now):
+    """실시간 표 상위 TOP_N편을 competitors_hourly.csv 에 한 줄씩 추가."""
+    m = re.search(r"<tbody>(.*?)</tbody>", html, re.S)
+    if not m:
+        return
+    header = ["수집시각", "순위", "영화명", "예매율", "예매관객수", "누적관객수"]
+    new_file = not os.path.exists(COMP_CSV)
+    cnt = 0
+    with open(COMP_CSV, "a", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        if new_file:
+            w.writerow(header)
+        for row in re.findall(r"<tr[^>]*>(.*?)</tr>", m.group(1), re.S):
+            tds = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", t)).strip()
+                   for t in re.findall(r"<td[^>]*>(.*?)</td>", row, re.S)]
+            tds = [t for t in tds if t != ""]
+            if len(tds) >= 8:
+                w.writerow([now, tds[0], tds[1], tds[3], tds[6], tds[7]])
+                cnt += 1
+            if cnt >= TOP_N:
+                break
+    print(f"경쟁작 {cnt}편 저장:", COMP_CSV)
+
+
 def publish_to_github(now):
     import subprocess
     repo = os.path.dirname(os.path.abspath(__file__))
@@ -114,7 +147,9 @@ def publish_to_github(now):
         print("publish 건너뜀: GitHub 원격(origin) 미연결")
         return
 
-    git("add", "index.html", "greenland2_hourly.csv")
+    for fn in ("index.html", "greenland2_hourly.csv", "competitors_hourly.csv", "greenland2_boxoffice.csv"):
+        if os.path.exists(os.path.join(repo, fn)):
+            git("add", fn)
     # 변경사항 없으면 커밋 스킵
     diff = subprocess.run(["git", "-C", repo, "diff", "--cached", "--quiet"])
     if diff.returncode != 0:

@@ -12,6 +12,8 @@ import datetime
 BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, "greenland2_hourly.csv")
 BOX_CSV = os.path.join(BASE, "greenland2_boxoffice.csv")  # 개봉 후 일별 박스오피스
+COMP_CSV = os.path.join(BASE, "competitors_hourly.csv")   # 경쟁작 비교(TOP-N 스냅샷)
+GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
 MA_WINDOW = 6          # 이동평균 윈도우(시간)
@@ -217,6 +219,55 @@ def box_section(has_data):
         '  <div class="panel"><h2>스크린수 / 상영횟수</h2><canvas id="c_box_supply" height="100"></canvas></div>')
 
 
+def load_competitors():
+    rows = []
+    if not os.path.exists(COMP_CSV):
+        return rows
+    with open(COMP_CSV, encoding="utf-8-sig", newline="") as f:
+        for d in csv.DictReader(f):
+            if d.get("수집시각") and d.get("영화명"):
+                rows.append(d)
+    return rows
+
+
+def build_comp(rows):
+    """경쟁작: 최신 스냅샷(예매관객수 정렬 top8) + 상위 6편 예매율 시계열."""
+    if not rows:
+        return {"latest": [], "labels": [], "series": []}
+    times = sorted({r["수집시각"] for r in rows})
+    last = times[-1]
+    snap = [r for r in rows if r["수집시각"] == last]
+    snap.sort(key=lambda r: _num(r.get("예매관객수")) or 0, reverse=True)
+    latest = [{"name": r["영화명"], "book": _num(r.get("예매관객수")),
+               "rate": _num(r.get("예매율")), "g": GKEY in r["영화명"]}
+              for r in snap[:8]]
+    # 상위 6편 예매율 시계열 (그린랜드2 항상 포함)
+    top_names = [x["name"] for x in latest[:6]]
+    if not any(GKEY in n for n in top_names):
+        for r in snap:
+            if GKEY in r["영화명"]:
+                top_names = top_names[:5] + [r["영화명"]]
+                break
+    by = {}  # (name, time) -> rate
+    for r in rows:
+        by[(r["영화명"], r["수집시각"])] = _num(r.get("예매율"))
+    series = []
+    for nm in top_names:
+        series.append({"name": nm, "g": GKEY in nm,
+                       "rates": [by.get((nm, t)) for t in times]})
+    short = [t[5:16] for t in times]
+    return {"latest": latest, "labels": short, "series": series}
+
+
+def comp_section(has_data):
+    if not has_data:
+        return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
+                '🥊 경쟁작 비교 — 매시간 TOP10을 함께 수집합니다. 곧 표시됩니다.</div>')
+    return (
+        '  <div class="panel"><h2>🥊 경쟁작 예매관객수 (현재)</h2><canvas id="c_comp_bar" height="120"></canvas></div>\n'
+        '  <div class="panel"><h2>예매율 추이 비교 (상위 영화, %)</h2><canvas id="c_comp_rate" height="110"></canvas></div>')
+
+
 HTML = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -284,6 +335,10 @@ HTML = r"""<!DOCTYPE html>
 __CARDS__
   </div>
 
+  <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
+__COMP_SECTION__
+
+  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
   <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><canvas id="c_rank" height="90"></canvas></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><canvas id="c_rate" height="100"></canvas></div>
   <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><canvas id="c_book" height="100"></canvas>
@@ -328,6 +383,37 @@ const lastOnly = (key, color, suffix='') => ({
   align:'top', color, font:{ weight:'bold', size:13 },
   formatter: v => v==null ? '' : won(v)+suffix
 });
+
+// ===== 경쟁작 비교 =====
+const COMP = __COMP_JSON__;
+if (COMP.latest && COMP.latest.length) {
+  // 현재 예매관객수 가로 막대 (그린랜드2 강조)
+  new Chart(c_comp_bar, { type:'bar',
+    data:{ labels: COMP.latest.map(m=>m.name.length>16?m.name.slice(0,15)+'…':m.name),
+      datasets:[{ label:'예매관객수', data:COMP.latest.map(m=>m.book),
+        backgroundColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#3b4252'),
+        borderColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#4c566a'), borderWidth:1,
+        datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
+    options:{ indexAxis:'y', responsive:true, layout:{padding:{right:46}},
+      plugins:{ legend:{display:false}, datalabels:{} },
+      scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6' } } } } });
+
+  // 예매율 추이 멀티라인 (그린랜드2 굵게)
+  const palette = ['#f59e0b','#60a5fa','#f472b6','#a78bfa','#22d3ee','#fb7185'];
+  let ci=0;
+  const ds = COMP.series.map(s => {
+    const color = s.g ? '#4ade80' : palette[(ci++)%palette.length];
+    return { label: s.name.length>14?s.name.slice(0,13)+'…':s.name, data: s.rates,
+      borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
+      borderWidth: s.g?3:1.5, pointRadius: s.g?3:0,
+      datalabels:{ display: ctx=>ctx.dataIndex===s.rates.length-1, align:'right', color,
+        font:{weight: s.g?'bold':'normal', size:11}, formatter:v=>v==null?'':v+'%' } };
+  });
+  new Chart(c_comp_rate, { type:'line',
+    data:{ labels: COMP.labels, datasets: ds },
+    options:{ ...base(), layout:{padding:{right:60, top:22}},
+      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
+}
 
 // 개봉 D-day 뱃지
 (function(){
@@ -449,6 +535,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     )
     box = build_box(load_box())
     box_json = json.dumps(box, ensure_ascii=False)
+    comp = build_comp(load_competitors())
+    comp_json = json.dumps(comp, ensure_ascii=False)
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
@@ -463,6 +551,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__N__", str(len(pts)))
             .replace("__BOX_SECTION__", box_section(bool(box)))
             .replace("__BOX_JSON__", box_json)
+            .replace("__COMP_SECTION__", comp_section(bool(comp["latest"])))
+            .replace("__COMP_JSON__", comp_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
