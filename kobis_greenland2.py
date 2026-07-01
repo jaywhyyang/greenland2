@@ -104,6 +104,14 @@ def main():
     except Exception as e:
         print("경쟁작 수집 건너뜀:", e)
 
+    # 다운로드 폴더에 최신 회원통계 엑셀이 있으면 반영 (있을 때만)
+    try:
+        import member_ingest
+        if member_ingest._latest("KOBIS_회원용통계보기_*.xls"):
+            member_ingest.main()
+    except Exception as e:
+        print("회원통계 반영 건너뜀:", e)
+
     # 대시보드 HTML 갱신 (실패해도 수집 자체는 성공으로 둠)
     try:
         import build_dashboard
