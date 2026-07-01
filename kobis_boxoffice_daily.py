@@ -20,6 +20,7 @@ import http.cookiejar
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 OUT_CSV = os.path.join(BASE, "greenland2_boxoffice.csv")
+COMP_CSV = os.path.join(BASE, "boxoffice_competitors.csv")  # 동시개봉작 경쟁력 리더보드용
 MOVIE_KEYWORD = "그린랜드 2"
 
 BOX_URL = "https://www.kobis.or.kr/kobis/business/stat/boxs/findDailyBoxOfficeList.do"
@@ -35,6 +36,11 @@ def _clean(html_cell):
     t = re.sub(r"<[^>]+>", "", html_cell)
     t = t.replace("&nbsp;", " ")
     return re.sub(r"\s+", " ", t).strip()
+
+
+def _movie_name(raw):
+    """박스오피스 영화명 끝에 붙는 순위변동 표시(동일/상승/하락/신규+숫자) 제거."""
+    return re.sub(r"\s*(신규|상승|하락|동일)\s*\d*\s*$", "", raw).strip()
 
 
 def fetch_rows(url, date_str):
@@ -73,16 +79,12 @@ def find_movie(rows, keyword):
     return None
 
 
-def collect(date_str, keyword=MOVIE_KEYWORD):
-    box = find_movie(fetch_rows(BOX_URL, date_str), keyword)
-    seat = find_movie(fetch_rows(SEAT_URL, date_str), keyword)
-    if not box and not seat:
-        return None
+def _build_rec(box, seat, date_str):
     rec = {h: "" for h in HEADER}
     rec["날짜"] = date_str
     # 박스오피스: [순위,영화명,개봉일,매출액,매출점유율,매출증감,누적매출액,관객수,관객증감,누적관객수,스크린수,상영횟수]
     if box and len(box) >= 12:
-        rec.update({"순위": box[0], "영화명": box[1], "개봉일": box[2],
+        rec.update({"순위": box[0], "영화명": _movie_name(box[1]), "개봉일": box[2],
                     "매출액": box[3], "매출점유율": box[4], "매출액증감": box[5],
                     "누적매출액": box[6], "관객수": box[7], "관객수증감": box[8],
                     "누적관객수": box[9], "스크린수": box[10], "상영횟수": box[11]})
@@ -92,6 +94,28 @@ def collect(date_str, keyword=MOVIE_KEYWORD):
         rec["개봉일"] = rec["개봉일"] or seat[2]
         rec.update({"좌석판매율": seat[3], "좌석점유율": seat[4], "좌석수": seat[5]})
     return rec
+
+
+def collect(date_str, keyword=MOVIE_KEYWORD):
+    box = find_movie(fetch_rows(BOX_URL, date_str), keyword)
+    seat = find_movie(fetch_rows(SEAT_URL, date_str), keyword)
+    if not box and not seat:
+        return None
+    return _build_rec(box, seat, date_str)
+
+
+def collect_all(date_str, top_n=25):
+    """상위 top_n편 전부를 박스오피스+좌석 병합해서 리스트로 반환."""
+    def key(name):
+        return re.sub(r"\W", "", _movie_name(name))  # 순위표시 제거 + 단어문자만
+    box_rows = fetch_rows(BOX_URL, date_str)
+    seat_rows = fetch_rows(SEAT_URL, date_str)
+    seat_by = {key(c[1]): c for c in seat_rows if len(c) >= 6}
+    recs = []
+    for c in box_rows[:top_n]:
+        if len(c) >= 12:
+            recs.append(_build_rec(c, seat_by.get(key(c[1])), date_str))
+    return recs
 
 
 def upsert(rec):
@@ -108,6 +132,20 @@ def upsert(rec):
         w.writerows(rows)
 
 
+def upsert_competitors(recs, date_str):
+    rows = []
+    if os.path.exists(COMP_CSV):
+        with open(COMP_CSV, encoding="utf-8-sig", newline="") as f:
+            rows = [r for r in csv.DictReader(f)]
+    rows = [r for r in rows if r.get("날짜") != date_str]  # 같은 날짜 제거(갱신)
+    rows.extend(recs)
+    rows.sort(key=lambda r: (r.get("날짜", ""), r.get("영화명", "")))
+    with open(COMP_CSV, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=HEADER)
+        w.writeheader()
+        w.writerows(rows)
+
+
 def main():
     # 인자로 날짜(YYYY-MM-DD) 받으면 그 날, 없으면 어제
     if len(sys.argv) > 1:
@@ -116,18 +154,28 @@ def main():
         date_str = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
     try:
-        rec = collect(date_str)
+        recs = collect_all(date_str)
     except Exception as e:
         print("ERROR:", e)
         return 1
 
-    if not rec:
-        print(f"{date_str}: '{MOVIE_KEYWORD}' 박스오피스 데이터 없음 (개봉 전/미집계일 수 있음)")
+    if not recs:
+        print(f"{date_str}: 박스오피스 데이터 없음 (개봉 전/미집계일 수 있음)")
         return 0
 
-    upsert(rec)
-    print(f"OK {date_str} | 관객 {rec['관객수']} | 누적 {rec['누적관객수']} "
-          f"| 좌석수 {rec['좌석수']} | 스크린 {rec['스크린수']} | 상영 {rec['상영횟수']}")
+    # 동시개봉작 전부 저장
+    upsert_competitors(recs, date_str)
+    print(f"동시개봉작 {len(recs)}편 저장: {COMP_CSV}")
+
+    # 그린랜드2 단독 파일도 유지(기존 차트용)
+    rec = next((r for r in recs if MOVIE_KEYWORD in r.get("영화명", "")), None)
+    if not rec:
+        print(f"{date_str}: '{MOVIE_KEYWORD}' 미집계 (개봉 전일 수 있음) — 경쟁작만 저장")
+        rec = {"관객수": "-", "누적관객수": "-", "좌석수": "-", "스크린수": "-", "상영횟수": "-"}
+    else:
+        upsert(rec)
+        print(f"OK {date_str} | 관객 {rec['관객수']} | 누적 {rec['누적관객수']} "
+              f"| 좌석수 {rec['좌석수']} | 스크린 {rec['스크린수']} | 상영 {rec['상영횟수']}")
     print("저장:", OUT_CSV)
 
     # 대시보드 갱신 + GitHub push (실패해도 수집은 성공)

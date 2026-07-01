@@ -12,6 +12,7 @@ import datetime
 BASE = os.path.dirname(os.path.abspath(__file__))
 CSV_PATH = os.path.join(BASE, "greenland2_hourly.csv")
 BOX_CSV = os.path.join(BASE, "greenland2_boxoffice.csv")  # 개봉 후 일별 박스오피스
+BOXC_CSV = os.path.join(BASE, "boxoffice_competitors.csv")  # 동시개봉작 경쟁력 리더보드
 COMP_CSV = os.path.join(BASE, "competitors_hourly.csv")   # 경쟁작 비교(TOP-N 스냅샷)
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
@@ -292,6 +293,38 @@ def build_box(rows):
             "sales": _num(d.get("매출액")),
         })
     return out
+
+
+def box_leaderboard(open_date):
+    """동시개봉작(같은 개봉일) 최신일 좌석점유율·회당관객 리더보드."""
+    if not os.path.exists(BOXC_CSV):
+        return ""
+    with open(BOXC_CSV, encoding="utf-8-sig", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r.get("날짜")]
+    if not rows:
+        return ""
+    last = max(r["날짜"] for r in rows)
+    day = [r for r in rows if r["날짜"] == last]
+    # 그린랜드2와 같은 개봉일만 (없으면 전체)
+    same = [r for r in day if (r.get("개봉일") or "").strip() == open_date] or day
+    def occ(r):
+        return _num(r.get("좌석점유율")) or -1
+    same.sort(key=occ, reverse=True)
+    trs = ""
+    for r in same[:10]:
+        g = GKEY in (r.get("영화명") or "")
+        cls = ' style="color:#4ade80;font-weight:700"' if g else ""
+        aud = _num(r.get("관객수")); shows = _num(r.get("상영횟수"))
+        per = round(aud / shows) if aud and shows else None
+        trs += (f"<tr{cls}><td>{'★ ' if g else ''}{r.get('영화명','')}</td>"
+                f"<td>{r.get('좌석점유율') or '-'}</td><td>{fmt(per)}</td>"
+                f"<td>{fmt(aud)}</td><td>{fmt(_num(r.get('스크린수')))}</td>"
+                f"<td>{fmt(_num(r.get('누적관객수')))}</td></tr>")
+    return (f'  <div class="panel"><h2>🏆 {last} 동시개봉작 경쟁력 (좌석점유율 순)</h2>'
+            '<table><thead><tr><th>영화</th><th>좌석점유율</th><th>회당관객</th>'
+            '<th>관객수</th><th>스크린</th><th>누적관객</th></tr></thead>'
+            f'<tbody>{trs}</tbody></table>'
+            '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">좌석점유율=관객÷좌석(공급량 무관 순수 수요강도), 회당관객=관객÷상영횟수. 개봉 후 경쟁력의 핵심 지표.</p></div>')
 
 
 def box_section(has_data):
@@ -776,7 +809,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
-            .replace("__BOX_SECTION__", box_section(bool(box)))
+            .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")) + "\n" + box_section(bool(box)))
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
