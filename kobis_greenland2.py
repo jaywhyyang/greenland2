@@ -104,13 +104,7 @@ def main():
     except Exception as e:
         print("경쟁작 수집 건너뜀:", e)
 
-    # 다운로드 폴더에 최신 회원통계 엑셀이 있으면 반영 (있을 때만)
-    try:
-        import member_ingest
-        if member_ingest._latest("KOBIS_회원용통계보기_*.xls"):
-            member_ingest.main()
-    except Exception as e:
-        print("회원통계 반영 건너뜀:", e)
+    # (회원통계는 member_auto.py 30분 작업이 전담 — 여기선 호출 안 함)
 
     # 배급 시간표(편성) 있으면 오늘 날짜 시트 반영
     try:

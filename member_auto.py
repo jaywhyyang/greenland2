@@ -97,18 +97,21 @@ def main():
     except Exception as e:
         print("요약 수집 실패:", e)
 
-    # 상세 (웹 rowspan 파싱은 아직 불안정 → 정합성 통과할 때만 저장, 아니면 기존 유지)
+    # 상세: 엑셀(SpreadsheetML) 엔드포인트 → rowspan 없이 기존 파서로 집계
     try:
-        d_html = _post(op, "/kobis/business/mast/thea/findCompanyStatDetail.do", {"movieCd": MOVIE_CD}, date_str)
-        detail = MI.aggregate_detail(_detail_cellrows(d_html))
-        sane = (detail.get("total") and len(detail.get("theaters", [])) >= 30
-                and detail["total"] < 30000)  # 극장 여러 곳 + 관객 합 합리적
-        if sane:
+        d_xml = _post(op, "/kobis/business/mast/thea/findCompanyStatDetailXls.do", {"movieCd": MOVIE_CD}, date_str)
+        cellrows = [[re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<Data[^>]*>(.*?)</Data>", r, re.S)]
+                    for r in re.findall(r"<Row[^>]*>(.*?)</Row>", d_xml, re.S)]
+        detail = MI.aggregate_detail(cellrows)
+        if detail.get("total") and len(detail.get("theaters", [])) >= 20:
             detail["updated"] = ts
+            detail["date"] = date_str
             json.dump(detail, open(MI.DETAIL_JSON, "w", encoding="utf-8"), ensure_ascii=False)
-            print(f"상세 저장 | 총관객 {detail['total']:,} | 극장 {len(detail['theaters'])}")
+            # 날짜별 이력 저장(날짜 선택용)
+            MI.save_detail_history(detail, date_str)
+            print(f"상세 저장 {date_str} | 총관객 {detail['total']:,} | 극장 {len(detail['theaters'])}")
         else:
-            print(f"상세 스킵(정합성 미달, 기존 유지): 총 {detail.get('total')} / 극장 {len(detail.get('theaters', []))}")
+            print(f"상세 스킵(정합성 미달): 총 {detail.get('total')} / 극장 {len(detail.get('theaters', []))}")
     except Exception as e:
         print("상세 수집 실패:", e)
 

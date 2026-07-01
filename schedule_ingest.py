@@ -83,7 +83,11 @@ def parse(path, date_str=None):
             "total_seats": total_seats, "bands": bands, "chains": chains}
 
 
+HIST_JSON = os.path.join(BASE, "schedule_history.json")
+
+
 def main():
+    import openpyxl
     f = _find_file()
     if not f:
         print("시간표 파일 못 찾음")
@@ -91,7 +95,26 @@ def main():
     data = parse(f)
     with open(OUT_JSON, "w", encoding="utf-8") as fp:
         json.dump(data, fp, ensure_ascii=False)
-    print("시간표 파싱:", data)
+    # 날짜별 이력(모든 날짜 시트) 저장 → 대시보드 날짜 선택용
+    hist = {}
+    if os.path.exists(HIST_JSON):
+        try:
+            hist = json.load(open(HIST_JSON, encoding="utf-8"))
+        except Exception:
+            hist = {}
+    year = datetime.date.today().strftime("%Y")
+    for s in openpyxl.load_workbook(f, read_only=True).sheetnames:
+        if re.fullmatch(r"\d{4}", s):
+            ds = f"{year}-{s[:2]}-{s[2:]}"
+            try:
+                d = parse(f, ds)
+                if d.get("total_seats"):
+                    hist[ds] = {"chains": d["chains"], "total_seats": d["total_seats"],
+                                "total_shows": d["total_shows"]}
+            except Exception:
+                pass
+    json.dump(hist, open(HIST_JSON, "w", encoding="utf-8"), ensure_ascii=False)
+    print("시간표 파싱:", data.get("date"), "| 이력 날짜:", sorted(hist))
     return 0
 
 

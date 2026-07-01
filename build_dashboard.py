@@ -17,6 +17,36 @@ COMP_CSV = os.path.join(BASE, "competitors_hourly.csv")   # 경쟁작 비교(TOP
 MEMBER_SNAP = os.path.join(BASE, "member_snapshots.csv")  # 회원통계 실관람 스냅샷
 MEMBER_DETAIL = os.path.join(BASE, "member_detail.json")  # 회원통계 극장/지역/회차 상세
 SCHED_JSON = os.path.join(BASE, "schedule.json")          # 배급 편성(시간대별 회차/좌석)
+MEMBER_HIST = os.path.join(BASE, "member_detail_history.json")  # 날짜별 상세 이력
+SCHED_HIST = os.path.join(BASE, "schedule_history.json")        # 날짜별 편성 이력
+
+
+def _load_json(path):
+    if os.path.exists(path):
+        try:
+            return json.load(open(path, encoding="utf-8"))
+        except Exception:
+            return {}
+    return {}
+
+
+def build_membydate():
+    """날짜별 {체인표(편성+관객+판매율), 극장TOP} 구조 → 날짜 선택용."""
+    mem = _load_json(MEMBER_HIST)
+    sch = _load_json(SCHED_HIST)
+    out = {}
+    for date in sorted(mem):  # 실관람(회원통계) 있는 날짜만
+        aud_by = {c[0]: c[3] for c in (mem.get(date, {}).get("chains") or [])}
+        sc = (sch.get(date) or {}).get("chains") or {}
+        chains = []
+        for name in sorted(sc, key=lambda n: sc[n].get("좌석") or 0, reverse=True):
+            info = sc[name]
+            seat = info.get("좌석") or 0
+            aud = aud_by.get(name, 0)
+            sell = round(aud / seat * 100, 1) if seat else None
+            chains.append([name, info.get("상영관"), info.get("회차"), seat, aud, sell])
+        out[date] = {"chains": chains, "theaters": mem.get(date, {}).get("theaters") or []}
+    return out
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
@@ -637,7 +667,9 @@ def predict_eod_curve(snaps):
     if not days:
         return None
     today = max(days)
-    prior = {d: v for d, v in days.items() if d < today and max(m for m, _ in v) >= 21 * 60}
+    # '온전한 하루' = 아침(<=10시)부터 저녁(>=21시)까지 커버된 이전 날만 곡선에 사용
+    prior = {d: v for d, v in days.items()
+             if d < today and min(m for m, _ in v) <= 10 * 60 and max(m for m, _ in v) >= 21 * 60}
     if not prior:
         return None
     frac_pts = defaultdict(list)
@@ -650,8 +682,11 @@ def predict_eod_curve(snaps):
     curve = sorted((mb, sum(fs) / len(fs)) for mb, fs in frac_pts.items())
     tv = sorted(days[today])
     now_m, now_a = tv[-1]
+    # 곡선 범위(아침 시작~) 안일 때만 예측. 곡선 시작 전 시각은 외삽 금지.
+    if not curve or now_m < curve[0][0] or not now_a:
+        return None
     frac = _interp(curve, now_m)
-    if not frac or frac < 0.15 or not now_a:
+    if not frac or frac < 0.15:
         return None
     frac = min(frac, 1.0)
     return {"pred": int(round(now_a / frac)), "now": now_a, "frac": frac, "ndays": len(prior)}
@@ -688,61 +723,27 @@ def member_section(snaps, detail, pred=None, sched=None):
         ("스크린수", fmt(_num(last.get("스크린수")))),
     ]
     cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
-    # 체인별 비교 표 — 편성(관/회차/좌석)은 시간표 데이터, 관객은 회원통계
-    chain_tbl = ""
-    sched_chains = (sched or {}).get("chains") if sched else None
-    if sched_chains:
-        aud_by = {c[0]: c[3] for c in (detail.get("chains") or [])} if detail else {}
-        cv = ""
-        for name in sorted(sched_chains, key=lambda n: sched_chains[n].get("좌석") or 0, reverse=True):
-            info = sched_chains[name]
-            seat = info.get("좌석") or 0
-            aud = aud_by.get(name, 0)
-            occ = f"{aud/seat*100:.1f}%" if seat else "-"
-            cv += (f"<tr><td>{name}</td><td>{fmt(info.get('상영관'))}</td><td>{fmt(info.get('회차'))}</td>"
-                   f"<td>{fmt(seat)}</td><td>{fmt(aud)}</td><td class='gain'>{occ}</td></tr>")
-        chain_tbl = ('<div class="panel"><h2>🎦 체인별 편성·성적</h2><table>'
-                     '<thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석판매율</th></tr></thead>'
-                     f'<tbody>{cv}</tbody></table>'
-                     '<p class="hint">좌석수 = 정원×상영횟수(편성 총 좌석). 좌석판매율 = 관객÷좌석수(현재까지 — 저녁 상영 남아 계속 오름). '
-                     '<b>적게 깔고 점유율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>')
-    # 극장(지점)별 관객 TOP — 체인 색 구분 + 상영관수
-    def chain_color(nm):
-        if "CGV" in nm:
-            return "#ef4444"
-        if "메가박스" in nm:
-            return "#a855f7"
-        if "롯데" in nm:
-            return "#3b82f6"
-        return "#9aa0ab"
-    tv = ""
-    if detail and detail.get("theaters"):
-        for i, row in enumerate(detail["theaters"], 1):
-            name, a = row[0], row[1]
-            scr = row[2] if len(row) > 2 else None
-            dot = (f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
-                   f'background:{chain_color(name)};margin-right:7px"></span>')
-            tv += (f'<tr><td>{i}</td><td style="text-align:left">{dot}{name}</td>'
-                   f"<td>{fmt(scr)}</td><td>{fmt(a)}</td></tr>")
-    theater_tbl = (
-        '<div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
-        '<div class="cbox xtall"><canvas id="c_theater"></canvas></div>'
-        '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
-        f'<tbody>{tv}</tbody></table>'
-        '<p class="hint">어느 지점이 관객을 많이 끌어오나. 색 = 체인('
-        '<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
-        '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
         eod_banner(snaps) + "\n"
-        f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점) · '
+        f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} · '
         '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
-        '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
+        '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>.</p></div>\n'
         '  <div class="panel"><h2>시간대별 실관람 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
-        '<p class="hint">각 시각까지 관객수의 <b>구간 증가분</b> = 그 시간대에 실관람이 얼마나 붙었나(현매+당일예매). 막대 높은 구간 = 관람 피크. 오늘 하루 채워지고, 여러 날 쌓이면 요일·시간대 경향이 보여요.</p></div>\n'
-        + chain_tbl + "\n" + theater_tbl)
+        '<p class="hint">각 시각까지 관객수의 <b>구간 증가분</b> = 그 시간대에 실관람이 얼마나 붙었나. 막대 높은 구간 = 관람 피크.</p></div>\n'
+        # 날짜 선택 (체인/극장은 날짜별)
+        '  <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: '
+        '<select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select>'
+        ' <span class="muted" style="font-size:12px">(체인별·극장별은 선택한 날짜 기준)</span></div>\n'
+        '  <div class="panel"><h2>🎦 체인별 편성·성적</h2><div id="chainBox"></div>'
+        '<p class="hint">좌석수=정원×상영횟수(편성 총 좌석). 좌석판매율=관객÷좌석수. '
+        '<b>적게 깔고 판매율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>\n'
+        '  <div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
+        '<div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div>'
+        '<p class="hint">색 = 체인(<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
+        '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>')
 
 
 HTML = r"""<!DOCTYPE html>
@@ -883,16 +884,43 @@ const lastOnly = (key, color, suffix='') => ({
 // ===== 오늘 실관람 (회원통계) =====
 const MEM = __MEMBER_JSON__;
 const chainColor = nm => nm.includes('CGV') ? '#ef4444' : nm.includes('메가박스') ? '#a855f7' : nm.includes('롯데') ? '#3b82f6' : '#9aa0ab';
-if (MEM.theaters && MEM.theaters.length) {
-  const th = MEM.theaters;
-  new Chart(c_theater, { type:'bar',
-    data:{ labels: th.map(t=>t[0].length>18?t[0].slice(0,17)+'…':t[0]),
-      datasets:[{ label:'관객수', data: th.map(t=>t[1]), backgroundColor: th.map(t=>chainColor(t[0])),
+
+// ===== 날짜별 체인/극장 (선택) =====
+const MEMBYDATE = __MEMBYDATE__;
+let theaterChart = null;
+function drawTheater(theaters){
+  if (theaterChart) theaterChart.destroy();
+  theaterChart = new Chart(c_theater, { type:'bar',
+    data:{ labels: theaters.map(t=>t[0].length>18?t[0].slice(0,17)+'…':t[0]),
+      datasets:[{ label:'관객수', data: theaters.map(t=>t[1]), backgroundColor: theaters.map(t=>chainColor(t[0])),
         datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:9,weight:'bold'}, formatter:won } }] },
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:44}},
       plugins:{ legend:{display:false}, datalabels:{} },
       scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6', font:{size:10}, autoSkip:false } } } } });
 }
+function renderMemberDate(date){
+  const d = MEMBYDATE[date]; if(!d) return;
+  let ct = '<table><thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석판매율</th></tr></thead><tbody>';
+  d.chains.forEach(c => { ct += `<tr><td>${c[0]}</td><td>${won(c[1])}</td><td>${won(c[2])}</td><td>${won(c[3])}</td><td>${won(c[4])}</td><td class="gain">${c[5]!=null?c[5]+'%':'-'}</td></tr>`; });
+  ct += '</tbody></table>';
+  document.getElementById('chainBox').innerHTML = ct;
+  let tt = '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead><tbody>';
+  d.theaters.forEach((t,i) => { const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${chainColor(t[0])};margin-right:7px"></span>`;
+    tt += `<tr><td>${i+1}</td><td style="text-align:left">${dot}${t[0]}</td><td>${won(t[2])}</td><td>${won(t[1])}</td></tr>`; });
+  tt += '</tbody></table>';
+  document.getElementById('theaterBox').innerHTML = tt;
+  drawTheater(d.theaters);
+}
+(function(){
+  const sel = document.getElementById('dateSel'); if(!sel) return;
+  const dates = Object.keys(MEMBYDATE).sort();
+  if(!dates.length){ sel.parentElement.style.display='none'; return; }
+  dates.forEach(dt => { const o=document.createElement('option'); o.value=dt; o.textContent=dt; sel.appendChild(o); });
+  sel.value = dates[dates.length-1];
+  sel.addEventListener('change', () => renderMemberDate(sel.value));
+  renderMemberDate(sel.value);
+})();
+
 if (MEM.peak && MEM.peak.length) {
   new Chart(c_mem_peak, { type:'bar',
     data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 실관람 증가', data: MEM.peak.map(p=>p[1]),
@@ -1034,6 +1062,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__MEMBER_JSON__", member_json)
+            .replace("__MEMBYDATE__", json.dumps(build_membydate(), ensure_ascii=False))
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)

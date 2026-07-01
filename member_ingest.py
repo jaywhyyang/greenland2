@@ -20,8 +20,22 @@ SNAP_CSV = os.path.join(BASE, "member_snapshots.csv")
 DETAIL_JSON = os.path.join(BASE, "member_detail.json")
 MOVIE_KEYWORD = "그린랜드 2"
 
+DETAIL_HISTORY = os.path.join(BASE, "member_detail_history.json")
 SNAP_HEADER = ["수집시각", "날짜", "관객수", "누적관객수", "무료관객수",
                "스크린수", "상영횟수", "매출액", "누적매출액"]
+
+
+def save_detail_history(detail, date_str):
+    """날짜별 상세(체인/극장) 이력 저장 → 대시보드 날짜 선택용."""
+    hist = {}
+    if os.path.exists(DETAIL_HISTORY):
+        try:
+            hist = json.load(open(DETAIL_HISTORY, encoding="utf-8"))
+        except Exception:
+            hist = {}
+    hist[date_str] = {"chains": detail.get("chains"), "theaters": detail.get("theaters"),
+                      "total": detail.get("total"), "updated": detail.get("updated")}
+    json.dump(hist, open(DETAIL_HISTORY, "w", encoding="utf-8"), ensure_ascii=False)
 
 
 def _latest(pattern):
