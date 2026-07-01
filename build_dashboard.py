@@ -567,32 +567,27 @@ _REGION_POS = {
 def region_map(regions):
     if not regions:
         return ""
-    occs = [r[3] for r in regions if r[3]]
-    lo, hi = (min(occs), max(occs)) if occs else (0, 1)
-    seatmax = max((r[2] for r in regions), default=1) or 1
+    audmax = max((r[1] for r in regions), default=1) or 1
 
-    def color(o):
-        t = (o - lo) / (hi - lo) if hi > lo else 0.5
-        if t < 0.5:
-            a, c0, c1 = t / 0.5, (0x33, 0x41, 0x55), (0xf5, 0x9e, 0x0b)
-        else:
-            a, c0, c1 = (t - 0.5) / 0.5, (0xf5, 0x9e, 0x0b), (0xef, 0x44, 0x44)
-        return "#%02x%02x%02x" % tuple(int(c0[i] + (c1[i] - c0[i]) * a) for i in range(3))
+    def color(a):
+        t = (a / audmax) ** 0.6
+        c0, c1 = (0x33, 0x41, 0x55), (0xef, 0x44, 0x44)  # 적음(슬레이트)→많음(빨강)
+        return "#%02x%02x%02x" % tuple(int(c0[i] + (c1[i] - c0[i]) * t) for i in range(3))
 
     body = ""
     for name, aud, seat, occ in regions:
         if name not in _REGION_POS:
             continue
         x, y, lbl = _REGION_POS[name]
-        rad = 9 + (seat / seatmax) ** 0.5 * 21
-        body += (f'<circle cx="{x}" cy="{y}" r="{rad:.1f}" fill="{color(occ)}" fill-opacity="0.82" '
-                 f'stroke="#0f1117" stroke-width="1"><title>{name} · 좌석 {seat:,} · 관객 {aud:,} · 점유율 {occ}%</title></circle>'
+        rad = 8 + (aud / audmax) ** 0.5 * 24
+        body += (f'<circle cx="{x}" cy="{y}" r="{rad:.1f}" fill="{color(aud)}" fill-opacity="0.82" '
+                 f'stroke="#0f1117" stroke-width="1"><title>{name} · 관객 {aud:,}</title></circle>'
                  f'<text x="{x}" y="{y-1}" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">{lbl}</text>'
-                 f'<text x="{x}" y="{y+9}" text-anchor="middle" font-size="8" fill="#e7e9ee">{occ}%</text>')
+                 f'<text x="{x}" y="{y+9}" text-anchor="middle" font-size="8" fill="#e7e9ee">{aud:,}</text>')
     svg = (f'<svg viewBox="0 0 300 340" style="width:100%;max-width:440px;display:block;margin:6px auto">{body}</svg>')
-    return ('<div class="panel"><h2>🗺️ 지역별 좌석점유율 지도</h2>' + svg +
-            '<p class="hint">원 크기 = 좌석수(편성 규모), 색 = 좌석점유율(<b style="color:#ef4444">빨강=꽉 참</b>). '
-            '경기처럼 크지만 색이 옅으면 규모 대비 덜 찬 것, 서울·부산이 붉으면 도심 수요가 뜨거운 것.</p></div>')
+    return ('<div class="panel"><h2>🗺️ 지역별 관객 규모 지도</h2>' + svg +
+            '<p class="hint">원 크기·색 = 관객수(<b style="color:#ef4444">빨강=많음</b>). 어디에서 많이 보는지 분포. '
+            '(지역별 정확한 좌석점유율은 지역 좌석 데이터가 없어 생략 — 대체로 인구 규모를 따라갑니다.)</p></div>')
 
 
 def member_section(snaps, detail, pred=None, sched=None):
@@ -609,21 +604,24 @@ def member_section(snaps, detail, pred=None, sched=None):
         ("스크린수", fmt(_num(last.get("스크린수")))),
     ]
     cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
-    # 체인별 비교 표 (상영관/좌석/관객/좌석점유율)
+    # 체인별 비교 표 — 편성(관/회차/좌석)은 시간표 데이터, 관객은 회원통계
     chain_tbl = ""
-    if detail and detail.get("chains"):
+    sched_chains = (sched or {}).get("chains") if sched else None
+    if sched_chains:
+        aud_by = {c[0]: c[3] for c in (detail.get("chains") or [])} if detail else {}
         cv = ""
-        for name, scr, seat, aud in detail["chains"]:
-            if name == "기타" and scr <= 0:
-                continue
+        for name in sorted(sched_chains, key=lambda n: sched_chains[n].get("좌석") or 0, reverse=True):
+            info = sched_chains[name]
+            seat = info.get("좌석") or 0
+            aud = aud_by.get(name, 0)
             occ = f"{aud/seat*100:.1f}%" if seat else "-"
-            cv += (f"<tr><td>{name}</td><td>{fmt(scr)}</td><td>{fmt(seat)}</td>"
-                   f"<td>{fmt(aud)}</td><td class='gain'>{occ}</td></tr>")
+            cv += (f"<tr><td>{name}</td><td>{fmt(info.get('상영관'))}</td><td>{fmt(info.get('회차'))}</td>"
+                   f"<td>{fmt(seat)}</td><td>{fmt(aud)}</td><td class='gain'>{occ}</td></tr>")
         chain_tbl = ('<div class="panel"><h2>🎦 체인별 편성·성적</h2><table>'
-                     '<thead><tr><th>체인</th><th>상영관</th><th>좌석수</th><th>관객수</th><th>좌석점유율</th></tr></thead>'
+                     '<thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석점유율</th></tr></thead>'
                      f'<tbody>{cv}</tbody></table>'
-                     '<p class="hint">상영관·좌석 = 배급 화력(얼마나 깔아줬나), 좌석점유율 = 실수요 효율. '
-                     '<b>적게 깔았는데 점유율 높으면 = 더 달라고 요청할 근거</b>, 많이 깔았는데 낮으면 = 조정 대상.</p></div>')
+                     '<p class="hint">좌석수 = 정원×상영횟수(편성 총 좌석). 좌석점유율 = 관객÷좌석수(현재까지 — 저녁 상영 남아 계속 오름). '
+                     '<b>적게 깔고 점유율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>')
     # 극장 TOP 표
     tv = ""
     if detail and detail.get("theaters"):

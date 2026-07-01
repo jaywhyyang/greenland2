@@ -47,6 +47,21 @@ def parse(path, date_str=None):
 
     bands = {"오전": 0, "오후": 0, "저녁": 0}
     total_seats = 0
+    # 체인별 편성(극장/상영관/상영회차/좌석수) — '합계' 행에서
+    CHAINMAP = {"롯데": "롯데시네마", "CGV": "CGV", "메가": "메가박스"}
+    chains = {}
+    cur_chain = None
+    for r in rows:
+        cells = [("" if c is None else c) for c in r]
+        c0 = str(cells[0]).strip() if cells else ""
+        c1 = str(cells[1]).strip() if len(cells) > 1 else ""
+        if c0 in CHAINMAP:
+            cur_chain = CHAINMAP[c0]
+        if c1 == "합계" and cur_chain and len(cells) > 6:
+            chains[cur_chain] = {"극장": _num(cells[2]), "회차": _num(cells[3]),
+                                 "상영관": _num(cells[5]), "좌석": _num(cells[6])}
+            cur_chain = None
+
     for r in rows:
         cells = [("" if c is None else c) for c in r]
         first = str(cells[0]).strip() if cells else ""
@@ -65,7 +80,7 @@ def parse(path, date_str=None):
                     total_seats = max(total_seats, n)
     total_shows = sum(bands.values())
     return {"date": date_str, "sheet": sheet, "total_shows": total_shows,
-            "total_seats": total_seats, "bands": bands}
+            "total_seats": total_seats, "bands": bands, "chains": chains}
 
 
 def main():
