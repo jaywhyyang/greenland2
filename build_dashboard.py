@@ -521,7 +521,8 @@ def member_section(snaps, detail):
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점)</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이 (스냅샷)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div></div>\n'
-        '  <div class="panel"><h2>회차별 관객 분포 (조조→심야 순서)</h2><div class="cbox"><canvas id="c_mem_slot"></canvas></div></div>\n'
+        '  <div class="panel"><h2>회차 순번별 관객 (1회=각 상영관 첫 회차, 실제 시각 아님)</h2><div class="cbox"><canvas id="c_mem_slot"></canvas></div>'
+        '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 시계 시각이 아니라 상영관별 회차 순번입니다. 앞 회차일수록 대체로 이른 시간대 경향. 실제 시간대 수요는 아래 \'실관람 추이\'(엑셀 내린 시각 기준)로 보세요.</p></div>\n'
         '  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div></div>\n'
         + theater_tbl)
 
