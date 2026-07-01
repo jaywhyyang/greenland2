@@ -103,7 +103,13 @@ def parse_detail(path):
     region_seats = {}
     for s in by_screen.values():
         region_seats[s["region"]] = region_seats.get(s["region"], 0) + s["좌석"]
-    top_theaters = sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:15]
+    # 극장별 상영관수(관객 랭킹표에 함께 표시)
+    scr_per_theater = {}
+    for key in by_screen:
+        th = key.split(" | ")[0]
+        scr_per_theater[th] = scr_per_theater.get(th, 0) + 1
+    top_theaters = [[name, aud, scr_per_theater.get(name, 0)]
+                    for name, aud in sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:20]]
     # regions: [지역, 관객, 좌석, 좌석점유율%]
     regions = sorted(
         ([r, by_region[r], region_seats.get(r, 0),

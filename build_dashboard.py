@@ -622,14 +622,30 @@ def member_section(snaps, detail, pred=None, sched=None):
                      f'<tbody>{cv}</tbody></table>'
                      '<p class="hint">좌석수 = 정원×상영횟수(편성 총 좌석). 좌석점유율 = 관객÷좌석수(현재까지 — 저녁 상영 남아 계속 오름). '
                      '<b>적게 깔고 점유율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>')
-    # 극장 TOP 표
+    # 극장(지점)별 관객 TOP — 체인 색 구분 + 상영관수
+    def chain_color(nm):
+        if "CGV" in nm:
+            return "#ef4444"
+        if "메가박스" in nm:
+            return "#a855f7"
+        if "롯데" in nm:
+            return "#3b82f6"
+        return "#9aa0ab"
     tv = ""
     if detail and detail.get("theaters"):
-        for name, a in detail["theaters"][:12]:
-            tv += f"<tr><td>{name}</td><td>{fmt(a)}</td></tr>"
-    theater_tbl = (f'<div class="panel"><h2>🏢 극장별 관객 TOP</h2><table>'
-                   '<thead><tr><th>극장</th><th>관객수</th></tr></thead>'
-                   f'<tbody>{tv}</tbody></table></div>') if tv else ""
+        for row in detail["theaters"]:
+            name, a = row[0], row[1]
+            scr = row[2] if len(row) > 2 else None
+            dot = (f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
+                   f'background:{chain_color(name)};margin-right:7px"></span>')
+            tv += f"<tr><td>{dot}{name}</td><td>{fmt(scr)}</td><td>{fmt(a)}</td></tr>"
+    theater_tbl = (
+        '<div class="panel"><h2>🏢 극장(지점)별 관객 TOP20</h2><table>'
+        '<thead><tr><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
+        f'<tbody>{tv}</tbody></table>'
+        '<p class="hint">어느 지점이 관객을 많이 끌어오나. 점 = 체인('
+        '<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
+        '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점) · '
@@ -637,7 +653,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
-        + chain_tbl + "\n" + region_map(detail.get("regions") if detail else None) + "\n" + theater_tbl)
+        + chain_tbl + "\n" + theater_tbl)
 
 
 HTML = r"""<!DOCTYPE html>
