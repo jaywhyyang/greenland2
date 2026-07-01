@@ -572,13 +572,11 @@ def member_section(snaps, detail, pred=None, sched=None):
                    f'<tbody>{tv}</tbody></table></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
-        predict_banner(pred, sched or {}) + "\n"
-        f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점)</div>\n'
+        f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점) · '
+        '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
-        '<p class="hint">엑셀을 내릴 때마다 점이 찍혀요. 오르는 기울기 = 지금 관객이 붙는 속도(현장 포함). 하루 여러 번 내리면 시간대별 흐름이 보입니다.</p></div>\n'
-        '  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div>'
-        '<p class="hint">어느 지역에서 잘 되는지 → 지역 마케팅·무대인사 배치 판단.</p></div>\n'
+        '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
         + theater_tbl)
 
 
@@ -725,16 +723,6 @@ if (MEM.aud && MEM.aud.length) {
       datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
     options:base() });
 }
-if (MEM.regions && MEM.regions.length) {
-  new Chart(c_mem_region, { type:'bar',
-    data:{ labels:MEM.regions.map(r=>r[0]), datasets:[{ label:'지역별 관객', data:MEM.regions.map(r=>r[1]),
-      backgroundColor:'#a78bfa',
-      datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:46}},
-      plugins:{ legend:{display:false}, datalabels:{} },
-      scales:{ x:{grid,ticks:tick,beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#c7ccd6'}} } } });
-}
-
 // ===== 경쟁작 비교 =====
 const COMP = __COMP_JSON__;
 if (COMP.latest && COMP.latest.length) {

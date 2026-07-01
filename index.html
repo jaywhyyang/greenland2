@@ -70,7 +70,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-01 18:30</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-01 18:52</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">6위</div></div>
@@ -82,11 +82,9 @@
 
   <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
   <div class="secdesc">실제 극장에서 본 관객(예매+현장). <b>예매는 안 줄었는데 이 관객수가 늘면 = 현장/당일 신규 유입 = 흡인력 ↑.</b> 예매율만 보면 놓치는 실제 저력을 봅니다.</div>
-  <div class="forecast" style="background:linear-gradient(135deg,#3a2a0e 0%,#1a1d27 70%);border-color:#5a4a1a"><div class="lbl">🎯 편성 반영 오늘 예상 최종관객 (실관람)</div><div class="big" style="color:#f4c89a">약 11,900명</div><div class="sub2">현재 실관람 7,771 · 좌석소진율 12.8% · 편성 오전159/오후299/저녁301회, 총 93,055석 반영 · 남은 편성이 현재 소진율만큼 찬다고 가정한 추정치</div></div>
-  <div class="sub" style="margin-top:4px">회원통계 기준 · 2026-07-01 17:53:34 (엑셀 업로드 시점)</div>
+  <div class="sub" style="margin-top:4px">회원통계 기준 · 2026-07-01 17:53:34 (엑셀 업로드 시점) · 이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>
   <div class="cards"><div class="card"><div class="k">오늘 관객수(실관람)</div><div class="v">7,516</div></div><div class="card"><div class="k">누적관객수</div><div class="v">7,934</div></div><div class="card"><div class="k">회당 관객수</div><div class="v">11</div></div><div class="card"><div class="k">스크린수</div><div class="v">370</div></div></div>
-  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div><p class="hint">엑셀을 내릴 때마다 점이 찍혀요. 오르는 기울기 = 지금 관객이 붙는 속도(현장 포함). 하루 여러 번 내리면 시간대별 흐름이 보입니다.</p></div>
-  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div><p class="hint">어느 지역에서 잘 되는지 → 지역 마케팅·무대인사 배치 판단.</p></div>
+  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div><p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>
 <div class="panel"><h2>🏢 극장별 관객 TOP</h2><table><thead><tr><th>극장</th><th>관객수</th></tr></thead><tbody><tr><td>롯데시네마 월드타워</td><td>286</td></tr><tr><td>CGV 용산아이파크몰</td><td>237</td></tr><tr><td>CGV 목포평화광장</td><td>165</td></tr><tr><td>메가박스 코엑스</td><td>155</td></tr><tr><td>CGV 영등포</td><td>147</td></tr><tr><td>롯데시네마 건대입구</td><td>138</td></tr><tr><td>롯데시네마 김포공항</td><td>122</td></tr><tr><td>CGV 왕십리</td><td>108</td></tr><tr><td>롯데시네마 광복</td><td>96</td></tr><tr><td>롯데시네마 부산본점</td><td>87</td></tr><tr><td>롯데시네마 청량리</td><td>75</td></tr><tr><td>메가박스 대구신세계</td><td>75</td></tr></tbody></table></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
@@ -154,16 +152,6 @@ if (MEM.aud && MEM.aud.length) {
       datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
     options:base() });
 }
-if (MEM.regions && MEM.regions.length) {
-  new Chart(c_mem_region, { type:'bar',
-    data:{ labels:MEM.regions.map(r=>r[0]), datasets:[{ label:'지역별 관객', data:MEM.regions.map(r=>r[1]),
-      backgroundColor:'#a78bfa',
-      datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:46}},
-      plugins:{ legend:{display:false}, datalabels:{} },
-      scales:{ x:{grid,ticks:tick,beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#c7ccd6'}} } } });
-}
-
 // ===== 경쟁작 비교 =====
 const COMP = {"latest": [{"name": "마티 슈프림", "book": 19785, "rate": 10.9, "g": false, "inc": -630, "avg": -295}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "book": 7647, "rate": 4.2, "g": false, "inc": -216, "avg": -77}, {"name": "그린랜드 2: 마이그레이션", "book": 7496, "rate": 4.1, "g": true, "inc": -334, "avg": -63}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "book": 3221, "rate": 1.8, "g": false, "inc": -106, "avg": -45}, {"name": "극장판 암살교실 모두의 시간", "book": 2199, "rate": 1.2, "g": false, "inc": -440, "avg": -37}, {"name": "그림자 아이", "book": 2115, "rate": 1.2, "g": false, "inc": -208, "avg": -27}], "labels": ["06-30 12:55", "06-30 13:08", "06-30 14:00", "06-30 15:28", "06-30 15:30", "06-30 16:00", "06-30 16:30", "06-30 17:00", "06-30 17:30", "06-30 18:08", "06-30 18:30", "06-30 19:00", "06-30 19:30", "06-30 20:00", "06-30 20:30", "06-30 21:00", "07-01 10:21", "07-01 15:06", "07-01 15:30", "07-01 16:00", "07-01 16:30", "07-01 17:00", "07-01 17:30", "07-01 18:00", "07-01 18:30"], "series": [{"name": "마티 슈프림", "g": false, "rates": [16.8, 16.9, 16.9, 16.9, 16.9, 16.9, 17.0, 16.8, 16.8, 17.2, 17.3, 17.4, 17.5, 17.5, 17.4, 17.3, 14.4, 12.4, 12.3, 12.3, 12.2, 11.8, 11.6, 10.9, 10.9], "incs": [null, null, 196, 263, null, 262, 242, 194, -154, 257, 253, 238, 352, 252, 350, 348, null, null, -349, -144, -790, -1974, -1370, -3276, -630], "incRank": [null, null, 1, 1, null, 1, 1, 1, 6, 1, 1, 1, 1, 1, 1, 1, null, null, 6, 5, 6, 6, 6, 6, 6]}, {"name": "극장판 도라에몽: 신 진구의 해저비밀성", "g": false, "rates": [5.9, 5.9, 5.9, 5.8, 5.8, 5.8, 5.9, 5.8, 5.9, 6.0, 6.0, 6.0, 6.0, 6.0, 6.0, 5.9, 5.0, 4.5, 4.4, 4.4, 4.4, 4.4, 4.3, 4.2, 4.2], "incs": [null, null, 33, 54, null, 56, 144, 98, 68, 39, 60, 50, 54, 80, 82, 96, null, null, -256, -46, -134, -194, -713, -509, -216], "incRank": [null, null, 4, 4, null, 3, 2, 2, 3, 5, 4, 4, 4, 3, 4, 3, null, null, 5, 1, 1, 3, 4, 5, 3]}, {"name": "그린랜드 2: 마이그레이션", "g": true, "rates": [5.5, 5.6, 5.6, 5.5, 5.5, 5.5, 5.6, 5.5, 5.6, 5.7, 5.7, 5.7, 5.8, 5.8, 5.7, 5.7, 5.0, 4.5, 4.4, 4.4, 4.4, 4.2, 4.1, 4.2, 4.1], "incs": [null, null, 52, 77, null, 52, 70, 58, 100, 106, 60, 90, 128, 76, 102, 90, null, null, -192, -110, -253, -574, -723, -104, -334], "incRank": [null, null, 3, 3, null, 4, 4, 4, 2, 2, 5, 3, 2, 4, 3, 4, null, null, 4, 3, 3, 5, 5, 1, 4]}, {"name": "레디 오어 낫: 죽음의 숨바꼭질", "g": false, "rates": [2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.6, 2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.7, 2.3, 1.9, 1.9, 1.9, 1.8, 1.8, 1.8, 1.8, 1.8], "incs": [null, null, 26, 16, null, 38, 12, 14, 22, 14, 11, 30, 10, 28, 48, 44, null, null, -96, -56, -311, -84, -116, -108, -106], "incRank": [null, null, 5, 6, null, 5, 6, 5, 4, 6, 6, 6, 6, 6, 5, 5, null, null, 2, 2, 4, 2, 2, 2, 1]}, {"name": "극장판 암살교실 모두의 시간", "g": false, "rates": [1.9, 2.0, 2.0, 2.0, 2.0, 2.1, 2.1, 2.1, 2.1, 2.2, 2.2, 2.2, 2.3, 2.3, 2.3, 2.3, 2.4, 1.6, 1.6, 1.5, 1.4, 1.4, 1.3, 1.3, 1.2], "incs": [null, null, 89, 84, null, 86, 94, 72, 114, 59, 117, 96, 124, 130, 124, 124, null, null, -104, -247, -313, -276, -258, -108, -440], "incRank": [null, null, 2, 2, null, 2, 3, 3, 1, 3, 2, 2, 3, 2, 2, 2, null, null, 3, 6, 5, 4, 3, 3, 5]}, {"name": "그림자 아이", "g": false, "rates": [1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.7, 1.8, 1.8, 1.8, 1.8, 1.8, 1.8, 1.5, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2, 1.2], "incs": [null, null, -24, 21, null, 2, 14, 12, 10, 43, 68, 42, 36, 30, 22, 22, null, null, -3, -132, -227, -64, -94, -190, -208], "incRank": [null, null, 6, 5, null, 6, 5, 6, 5, 4, 3, 5, 5, 5, 6, 6, null, null, 1, 4, 2, 1, 1, 4, 2]}], "open": "2026-07-01"};
 if (COMP.latest && COMP.latest.length) {
