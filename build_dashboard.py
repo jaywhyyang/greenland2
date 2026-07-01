@@ -717,16 +717,17 @@ def member_section(snaps, detail, pred=None, sched=None):
         return "#9aa0ab"
     tv = ""
     if detail and detail.get("theaters"):
-        for row in detail["theaters"]:
+        for i, row in enumerate(detail["theaters"], 1):
             name, a = row[0], row[1]
             scr = row[2] if len(row) > 2 else None
             dot = (f'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;'
                    f'background:{chain_color(name)};margin-right:7px"></span>')
-            tv += f"<tr><td>{dot}{name}</td><td>{fmt(scr)}</td><td>{fmt(a)}</td></tr>"
+            tv += (f'<tr><td>{i}</td><td style="text-align:left">{dot}{name}</td>'
+                   f"<td>{fmt(scr)}</td><td>{fmt(a)}</td></tr>")
     theater_tbl = (
         '<div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
         '<div class="cbox xtall"><canvas id="c_theater"></canvas></div>'
-        '<table><thead><tr><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
+        '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
         f'<tbody>{tv}</tbody></table>'
         '<p class="hint">어느 지점이 관객을 많이 끌어오나. 색 = 체인('
         '<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
