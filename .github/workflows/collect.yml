@@ -1,0 +1,38 @@
+name: KOBIS 실시간 예매 수집 (30분)
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # 30분마다 (UTC=KST 정각/30분과 동일 오프셋)
+  workflow_dispatch: {}        # 수동 실행 버튼
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kobis-collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    env:
+      TZ: Asia/Seoul            # 타임스탬프를 한국시간으로
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 수집 + 대시보드 갱신
+        run: python kobis_greenland2.py
+      - name: 커밋 & 푸시
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add greenland2_hourly.csv competitors_hourly.csv index.html
+          if git diff --quiet --cached; then
+            echo "변경 없음"
+          else
+            git commit -m "data update (cloud) $(date '+%Y-%m-%d %H:%M')"
+            git pull --rebase --autostash origin main || true
+            git push
+          fi
