@@ -565,6 +565,21 @@ def member_section(snaps, detail, pred=None, sched=None):
         ("스크린수", fmt(_num(last.get("스크린수")))),
     ]
     cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
+    # 체인별 비교 표 (상영관/좌석/관객/좌석점유율)
+    chain_tbl = ""
+    if detail and detail.get("chains"):
+        cv = ""
+        for name, scr, seat, aud in detail["chains"]:
+            if name == "기타" and scr <= 0:
+                continue
+            occ = f"{aud/seat*100:.1f}%" if seat else "-"
+            cv += (f"<tr><td>{name}</td><td>{fmt(scr)}</td><td>{fmt(seat)}</td>"
+                   f"<td>{fmt(aud)}</td><td class='gain'>{occ}</td></tr>")
+        chain_tbl = ('<div class="panel"><h2>🎦 체인별 편성·성적</h2><table>'
+                     '<thead><tr><th>체인</th><th>상영관</th><th>좌석수</th><th>관객수</th><th>좌석점유율</th></tr></thead>'
+                     f'<tbody>{cv}</tbody></table>'
+                     '<p class="hint">상영관·좌석 = 배급 화력(얼마나 깔아줬나), 좌석점유율 = 실수요 효율. '
+                     '<b>적게 깔았는데 점유율 높으면 = 더 달라고 요청할 근거</b>, 많이 깔았는데 낮으면 = 조정 대상.</p></div>')
     # 극장 TOP 표
     tv = ""
     if detail and detail.get("theaters"):
@@ -580,7 +595,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
-        + theater_tbl)
+        + chain_tbl + "\n" + theater_tbl)
 
 
 HTML = r"""<!DOCTYPE html>

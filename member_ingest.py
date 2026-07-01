@@ -79,12 +79,33 @@ def parse_detail(path):
         # 회차별 관객: col9,11,13,15,17,19,21 = 1~7회 관객수
         for i, col in enumerate(range(9, 22, 2)):
             by_slot[i] += _num(d[col]) or 0
+    # 체인별 집계 (상영관수/좌석수/관객) — 상영관 단위로 중복 없이
+    def chain_of(name):
+        if "CGV" in name:
+            return "CGV"
+        if "메가박스" in name:
+            return "메가박스"
+        if "롯데" in name:
+            return "롯데시네마"
+        return "기타"
+    by_chain = {}
+    for key, s in by_screen.items():
+        ch = chain_of(key.split(" | ")[0])
+        c = by_chain.setdefault(ch, {"screens": 0, "seats": 0, "aud": 0})
+        c["screens"] += 1
+        c["seats"] += s["좌석"]
+        c["aud"] += s["관객"]
+    chains = sorted(
+        ([k, v["screens"], v["seats"], v["aud"]] for k, v in by_chain.items()),
+        key=lambda x: x[2], reverse=True)
+
     top_theaters = sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:15]
     regions = sorted(by_region.items(), key=lambda x: x[1], reverse=True)
     return {
         "total": total,
         "theaters": top_theaters,
         "regions": regions,
+        "chains": chains,
         "slots": by_slot,
         "screen_count": len(by_screen),
     }
