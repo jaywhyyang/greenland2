@@ -14,6 +14,8 @@ CSV_PATH = os.path.join(BASE, "greenland2_hourly.csv")
 BOX_CSV = os.path.join(BASE, "greenland2_boxoffice.csv")  # 개봉 후 일별 박스오피스
 BOXC_CSV = os.path.join(BASE, "boxoffice_competitors.csv")  # 동시개봉작 경쟁력 리더보드
 COMP_CSV = os.path.join(BASE, "competitors_hourly.csv")   # 경쟁작 비교(TOP-N 스냅샷)
+MEMBER_SNAP = os.path.join(BASE, "member_snapshots.csv")  # 회원통계 실관람 스냅샷
+MEMBER_DETAIL = os.path.join(BASE, "member_detail.json")  # 회원통계 극장/지역/회차 상세
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
@@ -476,6 +478,54 @@ def comp_section(comp):
     return table + "\n" + charts
 
 
+def load_member():
+    snaps = []
+    if os.path.exists(MEMBER_SNAP):
+        with open(MEMBER_SNAP, encoding="utf-8-sig", newline="") as f:
+            snaps = [r for r in csv.DictReader(f) if r.get("수집시각")]
+    detail = None
+    if os.path.exists(MEMBER_DETAIL):
+        try:
+            detail = json.load(open(MEMBER_DETAIL, encoding="utf-8"))
+        except Exception:
+            detail = None
+    return snaps, detail
+
+
+def member_section(snaps, detail):
+    if not snaps:
+        return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
+                '🎟️ 오늘 실관람 현황(회원통계) — 회원통계 엑셀을 넣으면 표시됩니다.</div>')
+    last = snaps[-1]
+    aud = _num(last.get("관객수")); shows = _num(last.get("상영횟수"))
+    per = round(aud / shows) if aud and shows else None
+    cards = [
+        ("오늘 관객수(실관람)", fmt(aud)),
+        ("누적관객수", fmt(_num(last.get("누적관객수")))),
+        ("무료관객수", fmt(_num(last.get("무료관객수")))),
+        ("회당 관객수", fmt(per)),
+        ("스크린수", fmt(_num(last.get("스크린수")))),
+        ("상영횟수", fmt(_num(last.get("상영횟수")))),
+    ]
+    cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
+    # 극장 TOP 표
+    tv = ""
+    if detail and detail.get("theaters"):
+        for name, a in detail["theaters"][:12]:
+            tv += f"<tr><td>{name}</td><td>{fmt(a)}</td></tr>"
+    theater_tbl = (f'<div class="panel"><h2>🏢 극장별 관객 TOP</h2><table>'
+                   '<thead><tr><th>극장</th><th>관객수</th></tr></thead>'
+                   f'<tbody>{tv}</tbody></table></div>') if tv else ""
+    updated = (detail or {}).get("updated", last.get("수집시각", ""))
+    return (
+        f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점)</div>\n'
+        f'  <div class="cards">{cards_html}</div>\n'
+        '  <div class="panel"><h2>실관람 관객수 추이 (스냅샷)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div></div>\n'
+        '  <div class="panel"><h2>회차별 관객 분포 (조조→심야 순서)</h2><div class="cbox"><canvas id="c_mem_slot"></canvas></div></div>\n'
+        '  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div></div>\n'
+        + theater_tbl)
+
+
 HTML = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -552,7 +602,10 @@ __FORECAST__
 __CARDS__
   </div>
 
-  <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
+  <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
+__MEMBER_SECTION__
+
+  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
 __COMP_SECTION__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
@@ -601,6 +654,32 @@ const lastOnly = (key, color, suffix='') => ({
   align:'top', color, font:{ weight:'bold', size:13 },
   formatter: v => v==null ? '' : won(v)+suffix
 });
+
+// ===== 오늘 실관람 (회원통계) =====
+const MEM = __MEMBER_JSON__;
+if (MEM.aud && MEM.aud.length) {
+  new Chart(c_mem_aud, { type:'line',
+    data:{ labels:MEM.labels, datasets:[{ label:'오늘 관객수(실관람)', data:MEM.aud,
+      borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', fill:true, tension:.3, spanGaps:true,
+      datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
+    options:base() });
+}
+if (MEM.slots && MEM.slots.length) {
+  new Chart(c_mem_slot, { type:'bar',
+    data:{ labels:MEM.slots.map((_,i)=>(i+1)+'회'), datasets:[{ label:'회차별 관객', data:MEM.slots,
+      backgroundColor:'#22d3ee',
+      datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
+    options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+}
+if (MEM.regions && MEM.regions.length) {
+  new Chart(c_mem_region, { type:'bar',
+    data:{ labels:MEM.regions.map(r=>r[0]), datasets:[{ label:'지역별 관객', data:MEM.regions.map(r=>r[1]),
+      backgroundColor:'#a78bfa',
+      datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:46}},
+      plugins:{ legend:{display:false}, datalabels:{} },
+      scales:{ x:{grid,ticks:tick,beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#c7ccd6'}} } } });
+}
 
 // ===== 경쟁작 비교 =====
 const COMP = __COMP_JSON__;
@@ -795,6 +874,13 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     box_json = json.dumps(box, ensure_ascii=False)
     comp = build_comp(load_competitors())
     comp_json = json.dumps(comp, ensure_ascii=False)
+    m_snaps, m_detail = load_member()
+    member_json = json.dumps({
+        "labels": [s["수집시각"][5:16] for s in m_snaps],
+        "aud": [_num(s.get("관객수")) for s in m_snaps],
+        "slots": (m_detail or {}).get("slots", []),
+        "regions": (m_detail or {}).get("regions", []),
+    }, ensure_ascii=False)
     fc_html = forecast_banner(forecast_eod(pts))
     html = (HTML
             .replace("__MOVIE__", movie)
@@ -813,6 +899,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
+            .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail))
+            .replace("__MEMBER_JSON__", member_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)

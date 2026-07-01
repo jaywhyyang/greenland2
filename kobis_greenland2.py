@@ -170,7 +170,9 @@ def publish_to_github(now):
         print("publish 건너뜀: GitHub 원격(origin) 미연결")
         return
 
-    for fn in ("index.html", "greenland2_hourly.csv", "competitors_hourly.csv", "greenland2_boxoffice.csv"):
+    for fn in ("index.html", "greenland2_hourly.csv", "competitors_hourly.csv",
+               "greenland2_boxoffice.csv", "boxoffice_competitors.csv",
+               "member_snapshots.csv", "member_detail.json"):
         if os.path.exists(os.path.join(repo, fn)):
             git("add", fn)
     # 변경사항 없으면 커밋 스킵
