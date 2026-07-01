@@ -590,6 +590,67 @@ def region_map(regions):
             '(지역별 정확한 좌석점유율은 지역 좌석 데이터가 없어 생략 — 대체로 인구 규모를 따라갑니다.)</p></div>')
 
 
+def _interp(curve, x):
+    """(x,y) 정렬 리스트에서 x 위치 선형보간."""
+    if not curve:
+        return None
+    if x <= curve[0][0]:
+        return curve[0][1]
+    if x >= curve[-1][0]:
+        return curve[-1][1]
+    for i in range(1, len(curve)):
+        x0, y0 = curve[i - 1]
+        x1, y1 = curve[i]
+        if x0 <= x <= x1:
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0) if x1 > x0 else y0
+    return curve[-1][1]
+
+
+def predict_eod_curve(snaps):
+    """당일 누적 곡선(이전 완료일들의 시간대별 도달률)으로 오늘 마감 관객 추정.
+    이전 완료일(저녁 21시 이후 데이터 있는 날)이 최소 1개 있어야 작동 → 7/2부터 자동 켜짐."""
+    from collections import defaultdict
+    days = defaultdict(list)
+    for s in snaps:
+        ts = s.get("수집시각", "")
+        a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            days[ts[:10]].append((int(ts[11:13]) * 60 + int(ts[14:16]), a))
+    if not days:
+        return None
+    today = max(days)
+    prior = {d: v for d, v in days.items() if d < today and max(m for m, _ in v) >= 21 * 60}
+    if not prior:
+        return None
+    frac_pts = defaultdict(list)
+    for d, v in prior.items():
+        v = sorted(v)
+        final = v[-1][1]
+        if final > 0:
+            for m, a in v:
+                frac_pts[m // 30 * 30].append(a / final)
+    curve = sorted((mb, sum(fs) / len(fs)) for mb, fs in frac_pts.items())
+    tv = sorted(days[today])
+    now_m, now_a = tv[-1]
+    frac = _interp(curve, now_m)
+    if not frac or frac < 0.15 or not now_a:
+        return None
+    frac = min(frac, 1.0)
+    return {"pred": int(round(now_a / frac)), "now": now_a, "frac": frac, "ndays": len(prior)}
+
+
+def eod_banner(snaps):
+    fc = predict_eod_curve(snaps)
+    if not fc:
+        return ""
+    p = int(round(fc["pred"] / 100.0) * 100)
+    tag = " (잠정, 1일 곡선)" if fc["ndays"] < 2 else f" (최근 {fc['ndays']}일 곡선)"
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
+            '<div class="lbl">🔮 오늘 예상 마감 관객 (실관람) · 당일 곡선 기반' + tag + '</div>'
+            f'<div class="big" style="color:#60a5fa">약 {p:,}명</div>'
+            f'<div class="sub2">현재 실관람 {fc["now"]:,} · 오늘 진행률 {fc["frac"]*100:.0f}% (이 시간대엔 보통 최종의 {fc["frac"]*100:.0f}%까지 참)</div></div>')
+
+
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
@@ -654,6 +715,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
+        eod_banner(snaps) + "\n"
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점) · '
         '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
