@@ -298,9 +298,9 @@ def build_box(rows):
 
 
 def box_leaderboard(open_date):
-    """동시개봉작(같은 개봉일) 최신일 좌석점유율·회당관객 리더보드."""
+    """동시개봉작(같은 개봉일) 최신일 좌석판매율·회당관객 리더보드."""
     ph = ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
-          '🏆 동시개봉작 좌석점유율 리더보드 — 개봉 후(7/2 아침~) KOBIS 확정 집계가 나오면 표시됩니다.</div>')
+          '🏆 동시개봉작 좌석판매율 리더보드 — 개봉 후(7/2 아침~) KOBIS 확정 집계가 나오면 표시됩니다.</div>')
     if not os.path.exists(BOXC_CSV):
         return ph
     with open(BOXC_CSV, encoding="utf-8-sig", newline="") as f:
@@ -311,9 +311,9 @@ def box_leaderboard(open_date):
     day = [r for r in rows if r["날짜"] == last]
     # 그린랜드2와 같은 개봉일만 (없으면 전체)
     same = [r for r in day if (r.get("개봉일") or "").strip() == open_date] or day
-    def occ(r):
-        return _num(r.get("좌석점유율")) or -1
-    same.sort(key=occ, reverse=True)
+    def sell(r):
+        return _num(r.get("좌석판매율")) or -1
+    same.sort(key=sell, reverse=True)
     trs = ""
     for r in same[:10]:
         g = GKEY in (r.get("영화명") or "")
@@ -321,14 +321,14 @@ def box_leaderboard(open_date):
         aud = _num(r.get("관객수")); shows = _num(r.get("상영횟수"))
         per = round(aud / shows) if aud and shows else None
         trs += (f"<tr{cls}><td>{'★ ' if g else ''}{r.get('영화명','')}</td>"
-                f"<td>{r.get('좌석점유율') or '-'}</td><td>{fmt(per)}</td>"
+                f"<td>{r.get('좌석판매율') or '-'}</td><td>{fmt(per)}</td>"
                 f"<td>{fmt(aud)}</td><td>{fmt(_num(r.get('스크린수')))}</td>"
                 f"<td>{fmt(_num(r.get('누적관객수')))}</td></tr>")
-    return (f'  <div class="panel"><h2>🏆 {last} 동시개봉작 경쟁력 (좌석점유율 순)</h2>'
-            '<table><thead><tr><th>영화</th><th>좌석점유율</th><th>회당관객</th>'
+    return (f'  <div class="panel"><h2>🏆 {last} 동시개봉작 경쟁력 (좌석판매율 순)</h2>'
+            '<table><thead><tr><th>영화</th><th>좌석판매율</th><th>회당관객</th>'
             '<th>관객수</th><th>스크린</th><th>누적관객</th></tr></thead>'
             f'<tbody>{trs}</tbody></table>'
-            '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">좌석점유율=관객÷좌석(공급량 무관 순수 수요강도), 회당관객=관객÷상영횟수. 개봉 후 경쟁력의 핵심 지표.</p></div>')
+            '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">좌석판매율=관객÷좌석(깔린 좌석이 얼마나 팔렸나=순수 수요강도), 회당관객=관객÷상영횟수. 개봉 후 경쟁력의 핵심 지표.</p></div>')
 
 
 def box_section(has_data):
@@ -590,6 +590,24 @@ def region_map(regions):
             '(지역별 정확한 좌석점유율은 지역 좌석 데이터가 없어 생략 — 대체로 인구 규모를 따라갑니다.)</p></div>')
 
 
+def _member_peak(snaps):
+    """오늘 스냅샷의 구간(관객수 증가) → 시간대별 실관람 증가. 마지막 날짜 기준."""
+    if not snaps:
+        return []
+    today = max(s.get("수집시각", "")[:10] for s in snaps)
+    ts = sorted((s for s in snaps if s.get("수집시각", "")[:10] == today),
+                key=lambda s: s.get("수집시각", ""))
+    out, prev = [], None
+    for s in ts:
+        a = _num(s.get("관객수"))
+        t = s.get("수집시각", "")[11:16]
+        if prev is not None and a is not None and a - prev >= 0:
+            out.append([t, a - prev])
+        if a is not None:
+            prev = a
+    return out
+
+
 def _interp(curve, x):
     """(x,y) 정렬 리스트에서 x 위치 선형보간."""
     if not curve:
@@ -664,7 +682,7 @@ def member_section(snaps, detail, pred=None, sched=None):
                  if aud and tot_seats else "-")
     cards = [
         ("오늘 관객수(실관람)", fmt(aud)),
-        ("전체 좌석점유율", occ_total),
+        ("전체 좌석판매율", occ_total),
         ("누적관객수", fmt(_num(last.get("누적관객수")))),
         ("회당 관객수", fmt(per)),
         ("스크린수", fmt(_num(last.get("스크린수")))),
@@ -684,9 +702,9 @@ def member_section(snaps, detail, pred=None, sched=None):
             cv += (f"<tr><td>{name}</td><td>{fmt(info.get('상영관'))}</td><td>{fmt(info.get('회차'))}</td>"
                    f"<td>{fmt(seat)}</td><td>{fmt(aud)}</td><td class='gain'>{occ}</td></tr>")
         chain_tbl = ('<div class="panel"><h2>🎦 체인별 편성·성적</h2><table>'
-                     '<thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석점유율</th></tr></thead>'
+                     '<thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석판매율</th></tr></thead>'
                      f'<tbody>{cv}</tbody></table>'
-                     '<p class="hint">좌석수 = 정원×상영횟수(편성 총 좌석). 좌석점유율 = 관객÷좌석수(현재까지 — 저녁 상영 남아 계속 오름). '
+                     '<p class="hint">좌석수 = 정원×상영횟수(편성 총 좌석). 좌석판매율 = 관객÷좌석수(현재까지 — 저녁 상영 남아 계속 오름). '
                      '<b>적게 깔고 점유율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>')
     # 극장(지점)별 관객 TOP — 체인 색 구분 + 상영관수
     def chain_color(nm):
@@ -721,6 +739,8 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
+        '  <div class="panel"><h2>시간대별 실관람 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
+        '<p class="hint">각 시각까지 관객수의 <b>구간 증가분</b> = 그 시간대에 실관람이 얼마나 붙었나(현매+당일예매). 막대 높은 구간 = 관람 피크. 오늘 하루 채워지고, 여러 날 쌓이면 요일·시간대 경향이 보여요.</p></div>\n'
         + chain_tbl + "\n" + theater_tbl)
 
 
@@ -820,8 +840,8 @@ __COMP_SECTION__
   <div class="panel"><h2>예매관객수 추이 (앞으로의 예약)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
     <p class="hint">개봉일엔 회색 점선(프로모 7,750장) 위쪽이 순수 예매분. <b>개봉 다음날부터는 프로모(7/1 상영분)가 빠져나가 회색선은 사라지고</b>, 이 수치는 앞으로 예약된 미래 수요를 뜻해요.</p></div>
 
-  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 경쟁력 (좌석점유율) —</div>
-  <div class="secdesc"><b>좌석점유율 = 관객 ÷ 좌석</b> — 스크린을 많이 깔았든 적게 깔았든 "깔린 좌석이 얼마나 찼나". 공급량과 무관한 순수 수요강도라, 개봉작 진짜 경쟁력 지표. (KOBIS 확정 집계, 7/2~)</div>
+  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 경쟁력 (좌석판매율) —</div>
+  <div class="secdesc"><b>좌석판매율 = 관객 ÷ 좌석</b> — 스크린을 많이 깔았든 적게 깔았든 "깔린 좌석이 얼마나 팔렸나". 공급량과 무관한 순수 수요강도라, 개봉작 진짜 경쟁력 지표. (좌석점유율=전체 대비 점유 share와는 다른 개념. KOBIS 확정 집계, 7/2~)</div>
 __BOX_SECTION__
 
   <div class="panel"><h2>📅 일자별 요약</h2>
@@ -871,6 +891,13 @@ if (MEM.theaters && MEM.theaters.length) {
     options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:44}},
       plugins:{ legend:{display:false}, datalabels:{} },
       scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6', font:{size:10}, autoSkip:false } } } } });
+}
+if (MEM.peak && MEM.peak.length) {
+  new Chart(c_mem_peak, { type:'bar',
+    data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 실관람 증가', data: MEM.peak.map(p=>p[1]),
+      backgroundColor:'#22d3ee',
+      datalabels:{ display: MEM.peak.length<=24, anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
+    options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
 }
 if (MEM.aud && MEM.aud.length) {
   new Chart(c_mem_aud, { type:'line',
@@ -983,6 +1010,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
         "slots": (m_detail or {}).get("slots", []),
         "regions": (m_detail or {}).get("regions", []),
         "theaters": (m_detail or {}).get("theaters", []),
+        "peak": _member_peak(m_snaps),
     }, ensure_ascii=False)
     fc_html = forecast_banner(forecast_eod(pts))
     html = (HTML
