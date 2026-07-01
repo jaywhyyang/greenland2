@@ -35,8 +35,11 @@ def _num(s):
 
 
 def parse_summary(path):
-    """회원용통계보기(HTML table .xls)에서 그린랜드2 행 파싱."""
-    html = open(path, "rb").read().decode("utf-8", "replace")
+    return parse_summary_html(open(path, "rb").read().decode("utf-8", "replace"))
+
+
+def parse_summary_html(html):
+    """회원용통계보기 HTML에서 그린랜드2 행 파싱 (엑셀/웹 공통)."""
     date = ""
     m = re.search(r"조회일\s*:\s*(\d{4}-\d{2}-\d{2})", html)
     if m:
@@ -57,15 +60,20 @@ def parse_summary(path):
 
 
 def parse_detail(path):
-    """영화사별 상세(SpreadsheetML)에서 극장/지역/회차별 관객 집계."""
+    """영화사별 상세(SpreadsheetML 엑셀) → 셀행 추출 후 집계."""
     xml = open(path, "rb").read().decode("utf-8", "replace")
-    rows = re.findall(r"<Row[^>]*>(.*?)</Row>", xml, re.S)
+    cellrows = [[re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<Data[^>]*>(.*?)</Data>", r, re.S)]
+                for r in re.findall(r"<Row[^>]*>(.*?)</Row>", xml, re.S)]
+    return aggregate_detail(cellrows)
+
+
+def aggregate_detail(cellrows):
+    """상세 셀행(list of cell-lists) → 극장/지역/체인/회차 집계."""
     by_theater, by_region, by_screen = {}, {}, {}
     by_slot = [0] * 7  # 1회~7회 관객 합
     total = 0
-    for r in rows:
-        d = [re.sub(r"<[^>]+>", "", c) for c in re.findall(r"<Data[^>]*>(.*?)</Data>", r, re.S)]
-        if len(d) < 22 or not re.match(r"^\d{8}$", d[0]):
+    for d in cellrows:
+        if len(d) < 22 or not re.match(r"^\d{4}", str(d[0])):  # 20260701 / 2026-07-01 둘다
             continue
         region, theater, screen, seats = d[1], d[2], d[3], _num(d[4])
         aud_total = _num(d[7]) or 0           # 전체 관객수
