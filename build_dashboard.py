@@ -166,13 +166,16 @@ def build_cards(pts):
     # 최고 증가 시점
     peak = max((p for p in pts if p["inc"] is not None), key=lambda x: x["inc"], default=None)
 
+    # 프로모(7/1 상영분)는 개봉일에만 예매관객수에 섞여있음 → 개봉일에만 '순수예매' 표시
+    promo_on = bool(last.get("date") and last.get("open") and last["date"] <= last["open"])
     organic = (last.get("book") - PROMO_TICKETS) if last.get("book") is not None else None
     cards = [
         ("현재 순위", f'{last.get("rank","-")}위'),
         ("예매율", f'{last.get("rate","-")}%' if last.get("rate") is not None else "-"),
         ("예매관객수", fmt(last.get("book"))),
-        ("순수 예매 (프로모션 제외)", fmt(organic)),
     ]
+    if promo_on:
+        cards.append(("순수 예매 (프로모션 제외)", fmt(organic)))
     html = ""
     for k, v in cards:
         html += f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>\n'
@@ -672,8 +675,8 @@ __COMP_SECTION__
     <p class="hint">전체 예매 순위. 순위 유지·상승이면 경쟁작 대비 위치 양호.</p></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div>
     <p class="hint">전체 예매 중 우리 비중. 절대 예매수보다 <b>기세</b>를 보기 좋아요.</p></div>
-  <div class="panel"><h2>예매관객수 (프로모션 기준선 포함)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
-    <p class="hint">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b> — 실수요를 프로모와 분리해 봅니다.</p></div>
+  <div class="panel"><h2>예매관객수 추이 (앞으로의 예약)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
+    <p class="hint">개봉일엔 회색 점선(프로모 7,750장) 위쪽이 순수 예매분. <b>개봉 다음날부터는 프로모(7/1 상영분)가 빠져나가 회색선은 사라지고</b>, 이 수치는 앞으로 예약된 미래 수요를 뜻해요.</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 경쟁력 (좌석점유율) —</div>
   <div class="secdesc"><b>좌석점유율 = 관객 ÷ 좌석</b> — 스크린을 많이 깔았든 적게 깔았든 "깔린 좌석이 얼마나 찼나". 공급량과 무관한 순수 수요강도라, 개봉작 진짜 경쟁력 지표. (KOBIS 확정 집계, 7/2~)</div>
@@ -789,16 +792,16 @@ new Chart(c_rate, { type:'line',
     datalabels:lastOnly('rate','#6ea8fe','%') }] },
   options:base() });
 
-new Chart(c_book, { type:'line',
-  data:{ labels, datasets:[
-    { label:'예매관객수', data:PTS.map(p=>p.book),
-      borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', tension:.3, fill:true, spanGaps:true,
-      datalabels:lastOnly('book','#4ade80') },
-    { label:'프로모션 물량(7,750)', data:labels.map(()=>__PROMO__),
-      borderColor:'#9aa0ab', borderDash:[6,4], borderWidth:1.5, pointRadius:0, fill:false,
-      datalabels:{ display:false } }
-  ]},
-  options:base() });
+const bookDs = [
+  { label:'예매관객수', data:PTS.map(p=>p.book),
+    borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', tension:.3, fill:true, spanGaps:true,
+    datalabels:lastOnly('book','#4ade80') }
+];
+if (__PROMO_ON__) bookDs.push(
+  { label:'프로모션 물량(7,750)', data:labels.map(()=>__PROMO__),
+    borderColor:'#9aa0ab', borderDash:[6,4], borderWidth:1.5, pointRadius:0, fill:false,
+    datalabels:{ display:false } });
+new Chart(c_book, { type:'line', data:{ labels, datasets:bookDs }, options:base() });
 </script>
 </body>
 </html>
@@ -835,6 +838,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__TAGLINE__", TAGLINE)
             .replace("__CAST__", CAST)
             .replace("__PROMO__", str(PROMO_TICKETS))
+            .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
             .replace("__FORECAST__", "")
