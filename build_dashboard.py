@@ -172,10 +172,6 @@ def build_cards(pts):
         ("예매율", f'{last.get("rate","-")}%' if last.get("rate") is not None else "-"),
         ("예매관객수", fmt(last.get("book"))),
         ("순수 예매 (프로모션 제외)", fmt(organic)),
-        ("직전 1시간 증가", fmt(last.get("inc"))),
-        ("오늘 증가", fmt(today_gain)),
-        ("시간당 평균 (09~22시)", f'{fmt(today_avg)}/h' if today_avg is not None else "-"),
-        ("최고 증가", f'{fmt(peak["inc"])} ({peak["label"]})' if peak else "-"),
     ]
     html = ""
     for k, v in cards:
@@ -300,12 +296,14 @@ def build_box(rows):
 
 def box_leaderboard(open_date):
     """동시개봉작(같은 개봉일) 최신일 좌석점유율·회당관객 리더보드."""
+    ph = ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
+          '🏆 동시개봉작 좌석점유율 리더보드 — 개봉 후(7/2 아침~) KOBIS 확정 집계가 나오면 표시됩니다.</div>')
     if not os.path.exists(BOXC_CSV):
-        return ""
+        return ph
     with open(BOXC_CSV, encoding="utf-8-sig", newline="") as f:
         rows = [r for r in csv.DictReader(f) if r.get("날짜")]
     if not rows:
-        return ""
+        return ph
     last = max(r["날짜"] for r in rows)
     day = [r for r in rows if r["날짜"] == last]
     # 그린랜드2와 같은 개봉일만 (없으면 전체)
@@ -470,12 +468,8 @@ def comp_section(comp):
              '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">“직전 1시간 ↑”는 수집 2시간 이상 쌓여야 채워집니다. · '
              '“시간당 평균”은 경쟁작 공통 수집구간(오늘 시작분~) 기준이라, 위 그린랜드2 카드(자체 10시~ 집계)와 값이 다를 수 있어요.</p></div>')
     charts = (
-        f'  <div class="panel"><h2>동시 개봉작 · 예매관객수 (현재)</h2><div class="cbox tall"><canvas id="c_comp_bar"></canvas></div></div>\n'
-        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div></div>\n'
-        '  <div class="panel"><h2>시간당 예매 증가 비교 (명/시간)</h2><div class="cbox"><canvas id="c_comp_inc"></canvas></div>\n'
-        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">동시 개봉작별 시간당 예매관객 증가분. 그린랜드2는 굵은 초록선.</p></div>\n'
-        '  <div class="panel"><h2>시간당 증가 순위 추이 (위=1위, 그 시간 가장 많이 증가)</h2><div class="cbox"><canvas id="c_comp_incrank"></canvas></div>\n'
-        '    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">매시간 증가량 기준 순위. 그린랜드2가 몇 위로 오르내리는지 한눈에. (굵은 초록선)</p></div>')
+        '  <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div>'
+        '<p class="hint">동시 개봉작들의 예매율(=미래 수요 점유율) 흐름. 그린랜드2(굵은 초록)가 경쟁작 대비 올라가면 상대적 기세 ↑. 개봉 후 절대 증감은 상영소화로 출렁여 노이즈라 뺐고, 상대지표인 예매율/순위만 남겼어요.</p></div>')
     return table + "\n" + charts
 
 
@@ -564,10 +558,8 @@ def member_section(snaps, detail, pred=None, sched=None):
     cards = [
         ("오늘 관객수(실관람)", fmt(aud)),
         ("누적관객수", fmt(_num(last.get("누적관객수")))),
-        ("무료관객수", fmt(_num(last.get("무료관객수")))),
         ("회당 관객수", fmt(per)),
         ("스크린수", fmt(_num(last.get("스크린수")))),
-        ("상영횟수", fmt(_num(last.get("상영횟수")))),
     ]
     cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
     # 극장 TOP 표
@@ -583,10 +575,10 @@ def member_section(snaps, detail, pred=None, sched=None):
         predict_banner(pred, sched or {}) + "\n"
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점)</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
-        '  <div class="panel"><h2>실관람 관객수 추이 (스냅샷)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div></div>\n'
-        '  <div class="panel"><h2>회차 순번별 관객 (1회=각 상영관 첫 회차, 실제 시각 아님)</h2><div class="cbox"><canvas id="c_mem_slot"></canvas></div>'
-        '<p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 시계 시각이 아니라 상영관별 회차 순번입니다. 앞 회차일수록 대체로 이른 시간대 경향. 실제 시간대 수요는 아래 \'실관람 추이\'(엑셀 내린 시각 기준)로 보세요.</p></div>\n'
-        '  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div></div>\n'
+        '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
+        '<p class="hint">엑셀을 내릴 때마다 점이 찍혀요. 오르는 기울기 = 지금 관객이 붙는 속도(현장 포함). 하루 여러 번 내리면 시간대별 흐름이 보입니다.</p></div>\n'
+        '  <div class="panel"><h2>지역별 관객</h2><div class="cbox"><canvas id="c_mem_region"></canvas></div>'
+        '<p class="hint">어느 지역에서 잘 되는지 → 지역 마케팅·무대인사 배치 판단.</p></div>\n'
         + theater_tbl)
 
 
@@ -645,6 +637,8 @@ HTML = r"""<!DOCTYPE html>
   .gain { color:#4ade80; font-weight:600; }
   .muted { color:#6b7280; }
   .foot { color:#6b7280; font-size:12px; margin-top:16px; text-align:center; }
+  .hint { color:#9aa0ab; font-size:12px; margin:10px 2px 0; line-height:1.5; }
+  .secdesc { color:#c7ccd6; font-size:12.5px; margin:0 2px 16px; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -666,22 +660,25 @@ __FORECAST__
 __CARDS__
   </div>
 
-  <div style="border-top:1px solid #262a36;margin:8px 0 18px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
+  <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
+  <div class="secdesc">실제 극장에서 본 관객(예매+현장). <b>예매는 안 줄었는데 이 관객수가 늘면 = 현장/당일 신규 유입 = 흡인력 ↑.</b> 예매율만 보면 놓치는 실제 저력을 봅니다.</div>
 __MEMBER_SECTION__
 
-  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
+  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
+  <div class="secdesc">같은 날(7/1) 개봉작 중 우리 위치. 규모(예매수)보다 <b>상대적 기세(예매율·순위)</b>로 판단.</div>
 __COMP_SECTION__
 
-  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 그린랜드2 예매 추이 —</div>
-  <div class="panel"><h2>순위 변동 추이 (위로 갈수록 상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div></div>
-  <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div></div>
-  <div class="panel"><h2>예매관객수 추이 (예매된 표 누적)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
-    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b>입니다.</p></div>
-  <div class="panel"><h2>누적관객수 추이 (실제 입장, 개봉 후 증가)</h2><div class="cbox"><canvas id="c_cumul"></canvas></div></div>
-  <div class="panel"><h2>시간당 증가분 · 이동평균(보라선) · 스파이크(빨강)</h2><div class="cbox"><canvas id="c_hourly"></canvas></div>
-    <p style="color:#9aa0ab;font-size:12px;margin:10px 2px 0">※ 수집이 1시간 넘게 끊긴 구간(PC 꺼짐/절전 등)은 1시간치가 아니므로 증가분에서 제외합니다. (누적 그래프엔 그대로 반영)</p></div>
+  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 우리 영화 예매(미래 수요) 추이 —</div>
+  <div class="secdesc">앞으로의 예약 상황. 실제 관람은 위 '실관람' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
+  <div class="panel"><h2>순위 변동 추이 (위=상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div>
+    <p class="hint">전체 예매 순위. 순위 유지·상승이면 경쟁작 대비 위치 양호.</p></div>
+  <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div>
+    <p class="hint">전체 예매 중 우리 비중. 절대 예매수보다 <b>기세</b>를 보기 좋아요.</p></div>
+  <div class="panel"><h2>예매관객수 (프로모션 기준선 포함)</h2><div class="cbox"><canvas id="c_book"></canvas></div>
+    <p class="hint">회색 점선 = 프로모션 물량 7,750장(무료 6,750 + 2,000원 1,000). <b style="color:#4ade80">그 위쪽이 순수 예매분</b> — 실수요를 프로모와 분리해 봅니다.</p></div>
 
-  <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 실적 —</div>
+  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 경쟁력 (좌석점유율) —</div>
+  <div class="secdesc"><b>좌석점유율 = 관객 ÷ 좌석</b> — 스크린을 많이 깔았든 적게 깔았든 "깔린 좌석이 얼마나 찼나". 공급량과 무관한 순수 수요강도라, 개봉작 진짜 경쟁력 지표. (KOBIS 확정 집계, 7/2~)</div>
 __BOX_SECTION__
 
   <div class="panel"><h2>📅 일자별 요약</h2>
@@ -728,13 +725,6 @@ if (MEM.aud && MEM.aud.length) {
       datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
     options:base() });
 }
-if (MEM.slots && MEM.slots.length) {
-  new Chart(c_mem_slot, { type:'bar',
-    data:{ labels:MEM.slots.map((_,i)=>(i+1)+'회'), datasets:[{ label:'회차별 관객', data:MEM.slots,
-      backgroundColor:'#22d3ee',
-      datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
-    options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
-}
 if (MEM.regions && MEM.regions.length) {
   new Chart(c_mem_region, { type:'bar',
     data:{ labels:MEM.regions.map(r=>r[0]), datasets:[{ label:'지역별 관객', data:MEM.regions.map(r=>r[1]),
@@ -748,17 +738,6 @@ if (MEM.regions && MEM.regions.length) {
 // ===== 경쟁작 비교 =====
 const COMP = __COMP_JSON__;
 if (COMP.latest && COMP.latest.length) {
-  // 현재 예매관객수 가로 막대 (그린랜드2 강조)
-  new Chart(c_comp_bar, { type:'bar',
-    data:{ labels: COMP.latest.map(m=>m.name.length>16?m.name.slice(0,15)+'…':m.name),
-      datasets:[{ label:'예매관객수', data:COMP.latest.map(m=>m.book),
-        backgroundColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#3b4252'),
-        borderColor: COMP.latest.map(m=> m.g ? '#4ade80' : '#4c566a'), borderWidth:1,
-        datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:11,weight:'bold'}, formatter:won } }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:46}},
-      plugins:{ legend:{display:false}, datalabels:{} },
-      scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6' } } } } });
-
   // 예매율 추이 멀티라인 (그린랜드2 굵게)
   const palette = ['#f59e0b','#60a5fa','#f472b6','#a78bfa','#22d3ee','#fb7185'];
   let ci=0;
@@ -780,40 +759,6 @@ if (COMP.latest && COMP.latest.length) {
     data:{ labels: COMP.labels, datasets: ds },
     options:{ ...base(), layout:{padding:{right:60, top:22}},
       plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
-
-  // 시간당 예매 증가 비교 (동시 개봉작별)
-  let ci2 = 0;
-  const dsi = COMP.series.map(s => {
-    const color = s.g ? '#4ade80' : palette[(ci2++)%palette.length];
-    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
-    return { label: (s.g?'★ ':'') + nm, data: s.incs,
-      borderColor: color, backgroundColor: color, spanGaps:true, tension:.3,
-      borderWidth: s.g?3:1.5, pointRadius: s.g?3:2,
-      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incs.length-1, align:'top', clamp:true,
-        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':(v>=0?'+':'')+won(v) } };
-  });
-  new Chart(c_comp_inc, { type:'line',
-    data:{ labels: COMP.labels, datasets: dsi },
-    options:{ ...base(), layout:{padding:{right:50, top:22}},
-      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} } } });
-
-  // 시간당 증가 '순위' 추이 (1위=그 시간 가장 많이 증가, 위로 갈수록 상위)
-  let ci3 = 0;
-  const dsr = COMP.series.map(s => {
-    const color = s.g ? '#4ade80' : palette[(ci3++)%palette.length];
-    const nm = s.name.length>12 ? s.name.slice(0,11)+'…' : s.name;
-    return { label: (s.g?'★ ':'') + nm, data: s.incRank,
-      borderColor: color, backgroundColor: color, spanGaps:true, stepped:false, tension:0,
-      borderWidth: s.g?3:1.5, pointRadius: s.g?4:2,
-      datalabels:{ display: ctx => s.g && ctx.dataIndex===s.incRank.length-1, align:'right', clamp:true,
-        color, font:{weight:'bold', size:12}, formatter:v=>v==null?'':v+'위' } };
-  });
-  new Chart(c_comp_incrank, { type:'line',
-    data:{ labels: COMP.labels, datasets: dsr },
-    options:{ ...base(), layout:{padding:{right:50, top:22}},
-      plugins:{ legend:{ labels:{ color:'#c7ccd6', boxWidth:12 } }, datalabels:{} },
-      scales:{ x:{ grid, ticks:tick },
-        y:{ reverse:true, min:1, grid, ticks:{ color:'#9aa0ab', stepSize:1, precision:0 } } } } });
 }
 
 // 개봉 D-day 뱃지
@@ -866,59 +811,6 @@ new Chart(c_book, { type:'line',
       datalabels:{ display:false } }
   ]},
   options:base() });
-
-new Chart(c_cumul, { type:'line',
-  data:{ labels, datasets:[{ label:'누적관객수', data:PTS.map(p=>p.cumul),
-    borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.12)', tension:.3, fill:true, spanGaps:true,
-    datalabels:lastOnly('cumul','#f59e0b') }] },
-  options:base() });
-
-new Chart(c_hourly, { type:'bar',
-  data:{ labels, datasets:[
-    { type:'bar', label:'시간당 증가분', data:PTS.map(p=>p.inc),
-      backgroundColor:PTS.map(p=> p.spike ? '#ef4444' : '#a78bfa'), order:2,
-      datalabels:{ display: ctx => showAllBars && ctx.dataset.data[ctx.dataIndex]!=null,
-        anchor:'end', align:'end', color:'#e7e9ee', font:{ size:11, weight:'bold' }, formatter:won } },
-    { type:'line', label:'이동평균(최근 6시간)', data:PTS.map(p=>p.ma),
-      borderColor:'#c084fc', borderDash:[5,4], pointRadius:0, tension:.3, spanGaps:true, order:1,
-      datalabels:{ display:false } }
-  ]},
-  options:{ ...base(), scales:{ x:{ grid, ticks:tick }, y:{ grid, ticks:tick, beginAtZero:true } } } });
-
-// ===== 개봉 후 박스오피스 차트 (데이터 있을 때만) =====
-const BOX = __BOX_JSON__;
-if (BOX.length) {
-  const bl = BOX.map(b=>b.d);
-  const boxAll = BOX.length <= 36;
-  const lastIdxB = key => { for(let i=BOX.length-1;i>=0;i--){ if(BOX[i][key]!=null) return i; } return -1; };
-  const lastLabB = (key,color,suffix='') => ({ display:ctx=>ctx.dataIndex===lastIdxB(key),
-    align:'top', color, font:{weight:'bold',size:13}, formatter:v=>v==null?'':won(v)+suffix });
-
-  new Chart(c_box_audi, { type:'bar',
-    data:{ labels:bl, datasets:[{ label:'일일 관객수', data:BOX.map(b=>b.audi), backgroundColor:'#22d3ee',
-      datalabels:{ display:ctx=>boxAll&&ctx.dataset.data[ctx.dataIndex]!=null, anchor:'end', align:'end',
-        color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
-    options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
-
-  new Chart(c_box_cum, { type:'line',
-    data:{ labels:bl, datasets:[{ label:'누적 관객수', data:BOX.map(b=>b.cum), borderColor:'#34d399',
-      backgroundColor:'rgba(52,211,153,.12)', fill:true, tension:.3, spanGaps:true, datalabels:lastLabB('cum','#34d399') }] },
-    options:base() });
-
-  new Chart(c_box_seat, { type:'line',
-    data:{ labels:bl, datasets:[
-      { label:'좌석점유율', data:BOX.map(b=>b.occ), borderColor:'#fbbf24', tension:.3, spanGaps:true, datalabels:lastLabB('occ','#fbbf24','%') },
-      { label:'좌석판매율', data:BOX.map(b=>b.seat), borderColor:'#60a5fa', tension:.3, spanGaps:true, datalabels:lastLabB('seat','#60a5fa','%') }
-    ]},
-    options:base() });
-
-  new Chart(c_box_supply, { type:'line',
-    data:{ labels:bl, datasets:[
-      { label:'스크린수', data:BOX.map(b=>b.screens), borderColor:'#f472b6', tension:.3, spanGaps:true, datalabels:lastLabB('screens','#f472b6') },
-      { label:'상영횟수', data:BOX.map(b=>b.shows), borderColor:'#a78bfa', tension:.3, spanGaps:true, datalabels:lastLabB('shows','#a78bfa') }
-    ]},
-    options:base() });
-}
 </script>
 </body>
 </html>
@@ -957,11 +849,11 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO__", str(PROMO_TICKETS))
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", fc_html)
+            .replace("__FORECAST__", "")
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
-            .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")) + "\n" + box_section(bool(box)))
+            .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
