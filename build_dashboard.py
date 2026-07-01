@@ -16,6 +16,7 @@ BOXC_CSV = os.path.join(BASE, "boxoffice_competitors.csv")  # 동시개봉작 �
 COMP_CSV = os.path.join(BASE, "competitors_hourly.csv")   # 경쟁작 비교(TOP-N 스냅샷)
 MEMBER_SNAP = os.path.join(BASE, "member_snapshots.csv")  # 회원통계 실관람 스냅샷
 MEMBER_DETAIL = os.path.join(BASE, "member_detail.json")  # 회원통계 극장/지역/회차 상세
+SCHED_JSON = os.path.join(BASE, "schedule.json")          # 배급 편성(시간대별 회차/좌석)
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
@@ -492,7 +493,68 @@ def load_member():
     return snaps, detail
 
 
-def member_section(snaps, detail):
+def load_schedule():
+    if os.path.exists(SCHED_JSON):
+        try:
+            return json.load(open(SCHED_JSON, encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+
+def predict_final(member_last, sched):
+    """편성(시간대별 회차/좌석) + 현재 실관람 좌석소진율로 오늘 최종 실관람 추정."""
+    if not member_last or not sched or not sched.get("total_seats"):
+        return None
+    b = sched.get("bands", {})
+    tot_shows = sched.get("total_shows") or 0
+    if tot_shows <= 0:
+        return None
+    # 관객수 측정 시점(엑셀 내린 시각) 기준으로 경과 회차 계산 (같은 날짜일 때만)
+    ts = member_last.get("수집시각", "")
+    if sched.get("date") and ts[:10] and sched["date"] != ts[:10]:
+        return None
+    try:
+        dt = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        h = dt.hour + dt.minute / 60.0
+    except ValueError:
+        h = datetime.datetime.now().hour + 0.0
+
+    def frac(band):
+        if band == "오전":  # ~12:00 (상영 6시부터로 가정)
+            return 1.0 if h >= 12 else max(0.0, (h - 6) / 6)
+        if band == "오후":  # 12:01~17:00
+            return 1.0 if h >= 17 else (0.0 if h < 12 else (h - 12) / 5)
+        return 0.0 if h < 17 else min(1.0, (h - 17) / 7)  # 저녁 17:01~24:00
+
+    elapsed_shows = sum(b.get(k, 0) * frac(k) for k in ("오전", "오후", "저녁"))
+    if elapsed_shows <= 0:
+        return None
+    elapsed_seats = sched["total_seats"] * (elapsed_shows / tot_shows)
+    if elapsed_seats < 500:
+        return None
+    aud = (_num(member_last.get("관객수")) or 0) + (_num(member_last.get("무료관객수")) or 0)
+    occ = aud / elapsed_seats
+    pred = aud + (sched["total_seats"] - elapsed_seats) * occ
+    return {"pred": int(round(pred)), "aud": aud, "occ": occ,
+            "elapsed": elapsed_shows / tot_shows, "seats": sched["total_seats"]}
+
+
+def predict_banner(pred, sched):
+    if not pred:
+        return ""
+    def r100(n):
+        return int(round(n / 100.0) * 100)
+    b = sched.get("bands", {})
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#3a2a0e 0%,#1a1d27 70%);border-color:#5a4a1a">'
+            '<div class="lbl">🎯 편성 반영 오늘 예상 최종관객 (실관람)</div>'
+            f'<div class="big" style="color:#f4c89a">약 {r100(pred["pred"]):,}명</div>'
+            f'<div class="sub2">현재 실관람 {pred["aud"]:,} · 좌석소진율 {pred["occ"]*100:.1f}% · '
+            f'편성 오전{b.get("오전",0)}/오후{b.get("오후",0)}/저녁{b.get("저녁",0)}회, 총 {pred["seats"]:,}석 반영 · '
+            f'남은 편성이 현재 소진율만큼 찬다고 가정한 추정치</div></div>')
+
+
+def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
                 '🎟️ 오늘 실관람 현황(회원통계) — 회원통계 엑셀을 넣으면 표시됩니다.</div>')
@@ -518,6 +580,7 @@ def member_section(snaps, detail):
                    f'<tbody>{tv}</tbody></table></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
+        predict_banner(pred, sched or {}) + "\n"
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} (엑셀 업로드 시점)</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이 (스냅샷)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div></div>\n'
@@ -876,6 +939,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     comp = build_comp(load_competitors())
     comp_json = json.dumps(comp, ensure_ascii=False)
     m_snaps, m_detail = load_member()
+    m_sched = load_schedule()
+    m_pred = predict_final(m_snaps[-1] if m_snaps else None, m_sched)
     member_json = json.dumps({
         "labels": [s["수집시각"][5:16] for s in m_snaps],
         "aud": [_num(s.get("관객수")) for s in m_snaps],
@@ -900,7 +965,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
-            .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail))
+            .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__MEMBER_JSON__", member_json)
             .replace("__DATA_JSON__", data_json))
     with open(out_path, "w", encoding="utf-8") as f:

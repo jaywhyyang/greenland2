@@ -112,6 +112,14 @@ def main():
     except Exception as e:
         print("회원통계 반영 건너뜀:", e)
 
+    # 배급 시간표(편성) 있으면 오늘 날짜 시트 반영
+    try:
+        import schedule_ingest
+        if schedule_ingest._find_file():
+            schedule_ingest.main()
+    except Exception as e:
+        print("편성 반영 건너뜀:", e)
+
     # 대시보드 HTML 갱신 (실패해도 수집 자체는 성공으로 둠)
     try:
         import build_dashboard
@@ -180,7 +188,7 @@ def publish_to_github(now):
 
     for fn in ("index.html", "greenland2_hourly.csv", "competitors_hourly.csv",
                "greenland2_boxoffice.csv", "boxoffice_competitors.csv",
-               "member_snapshots.csv", "member_detail.json"):
+               "member_snapshots.csv", "member_detail.json", "schedule.json"):
         if os.path.exists(os.path.join(repo, fn)):
             git("add", fn)
     # 변경사항 없으면 커밋 스킵
