@@ -74,7 +74,7 @@ def parse_detail(path):
         by_region[region] = by_region.get(region, 0) + aud_total
         # 상영관 좌석수(대표값)와 관객 누적
         key = f"{theater} | {screen}"
-        s = by_screen.setdefault(key, {"관객": 0, "좌석": seats or 0})
+        s = by_screen.setdefault(key, {"관객": 0, "좌석": seats or 0, "region": region})
         s["관객"] += aud_total
         # 회차별 관객: col9,11,13,15,17,19,21 = 1~7회 관객수
         for i, col in enumerate(range(9, 22, 2)):
@@ -99,8 +99,17 @@ def parse_detail(path):
         ([k, v["screens"], v["seats"], v["aud"]] for k, v in by_chain.items()),
         key=lambda x: x[2], reverse=True)
 
+    # 지역별 좌석수(상영관 단위 중복없이) → 좌석점유율 계산용
+    region_seats = {}
+    for s in by_screen.values():
+        region_seats[s["region"]] = region_seats.get(s["region"], 0) + s["좌석"]
     top_theaters = sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:15]
-    regions = sorted(by_region.items(), key=lambda x: x[1], reverse=True)
+    # regions: [지역, 관객, 좌석, 좌석점유율%]
+    regions = sorted(
+        ([r, by_region[r], region_seats.get(r, 0),
+          round(by_region[r] / region_seats[r] * 100, 1) if region_seats.get(r) else 0]
+         for r in by_region),
+        key=lambda x: x[1], reverse=True)
     return {
         "total": total,
         "theaters": top_theaters,

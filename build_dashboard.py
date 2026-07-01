@@ -551,6 +551,50 @@ def predict_banner(pred, sched):
             f'남은 편성이 현재 소진율만큼 찬다고 가정한 추정치</div></div>')
 
 
+_REGION_POS = {
+    "서울특별시": (126, 86, "서울"), "인천광역시": (92, 96, "인천"),
+    "경기도": (150, 114, "경기"), "강원도": (216, 80, "강원"),
+    "충청북도": (178, 146, "충북"), "세종특별자치시": (138, 158, "세종"),
+    "대전광역시": (158, 176, "대전"), "충청남도": (104, 160, "충남"),
+    "경상북도": (218, 150, "경북"), "대구광역시": (208, 182, "대구"),
+    "울산광역시": (252, 198, "울산"), "부산광역시": (238, 220, "부산"),
+    "경상남도": (192, 212, "경남"), "전라북도": (132, 196, "전북"),
+    "광주광역시": (106, 232, "광주"), "전라남도": (122, 252, "전남"),
+    "제주도": (110, 316, "제주"),
+}
+
+
+def region_map(regions):
+    if not regions:
+        return ""
+    occs = [r[3] for r in regions if r[3]]
+    lo, hi = (min(occs), max(occs)) if occs else (0, 1)
+    seatmax = max((r[2] for r in regions), default=1) or 1
+
+    def color(o):
+        t = (o - lo) / (hi - lo) if hi > lo else 0.5
+        if t < 0.5:
+            a, c0, c1 = t / 0.5, (0x33, 0x41, 0x55), (0xf5, 0x9e, 0x0b)
+        else:
+            a, c0, c1 = (t - 0.5) / 0.5, (0xf5, 0x9e, 0x0b), (0xef, 0x44, 0x44)
+        return "#%02x%02x%02x" % tuple(int(c0[i] + (c1[i] - c0[i]) * a) for i in range(3))
+
+    body = ""
+    for name, aud, seat, occ in regions:
+        if name not in _REGION_POS:
+            continue
+        x, y, lbl = _REGION_POS[name]
+        rad = 9 + (seat / seatmax) ** 0.5 * 21
+        body += (f'<circle cx="{x}" cy="{y}" r="{rad:.1f}" fill="{color(occ)}" fill-opacity="0.82" '
+                 f'stroke="#0f1117" stroke-width="1"><title>{name} · 좌석 {seat:,} · 관객 {aud:,} · 점유율 {occ}%</title></circle>'
+                 f'<text x="{x}" y="{y-1}" text-anchor="middle" font-size="9" fill="#fff" font-weight="bold">{lbl}</text>'
+                 f'<text x="{x}" y="{y+9}" text-anchor="middle" font-size="8" fill="#e7e9ee">{occ}%</text>')
+    svg = (f'<svg viewBox="0 0 300 340" style="width:100%;max-width:440px;display:block;margin:6px auto">{body}</svg>')
+    return ('<div class="panel"><h2>🗺️ 지역별 좌석점유율 지도</h2>' + svg +
+            '<p class="hint">원 크기 = 좌석수(편성 규모), 색 = 좌석점유율(<b style="color:#ef4444">빨강=꽉 참</b>). '
+            '경기처럼 크지만 색이 옅으면 규모 대비 덜 찬 것, 서울·부산이 붉으면 도심 수요가 뜨거운 것.</p></div>')
+
+
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
@@ -595,7 +639,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>. 하루 여러 번 내리면 그 곡선이 보입니다.</p></div>\n'
-        + chain_tbl + "\n" + theater_tbl)
+        + chain_tbl + "\n" + region_map(detail.get("regions") if detail else None) + "\n" + theater_tbl)
 
 
 HTML = r"""<!DOCTYPE html>
