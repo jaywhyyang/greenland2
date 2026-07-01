@@ -47,6 +47,7 @@ def parse(path, date_str=None):
 
     bands = {"오전": 0, "오후": 0, "저녁": 0}
     total_seats = 0
+    total_screens = None
     # 체인별 편성(극장/상영관/상영회차/좌석수) — '합계' 행에서
     CHAINMAP = {"롯데": "롯데시네마", "CGV": "CGV", "메가": "메가박스"}
     chains = {}
@@ -72,15 +73,16 @@ def parse(path, date_str=None):
                     if (n := _num(c)) is not None and n > 1 and float(c) == int(float(c))]
             if ints:
                 bands[first] = max(ints)
-        # 총 좌석수: '계' 행의 큰 값
+        # 총계: '계' 행(좌석 큰 값)에서 좌석/상영관
         if first == "계":
-            for c in cells:
-                n = _num(c)
-                if n and n > 10000:
-                    total_seats = max(total_seats, n)
+            seats_here = max((_num(c) or 0) for c in cells)
+            if seats_here > 10000:
+                total_seats = seats_here
+                total_screens = _num(cells[5]) if len(cells) > 5 else None
     total_shows = sum(bands.values())
     return {"date": date_str, "sheet": sheet, "total_shows": total_shows,
-            "total_seats": total_seats, "bands": bands, "chains": chains}
+            "total_seats": total_seats, "total_screens": total_screens,
+            "bands": bands, "chains": chains}
 
 
 HIST_JSON = os.path.join(BASE, "schedule_history.json")
@@ -110,7 +112,7 @@ def main():
                 d = parse(f, ds)
                 if d.get("total_seats"):
                     hist[ds] = {"chains": d["chains"], "total_seats": d["total_seats"],
-                                "total_shows": d["total_shows"]}
+                                "total_shows": d["total_shows"], "total_screens": d.get("total_screens")}
             except Exception:
                 pass
     json.dump(hist, open(HIST_JSON, "w", encoding="utf-8"), ensure_ascii=False)

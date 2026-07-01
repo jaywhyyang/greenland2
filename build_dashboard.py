@@ -45,7 +45,18 @@ def build_membydate():
             aud = aud_by.get(name, 0)
             sell = round(aud / seat * 100, 1) if seat else None
             chains.append([name, info.get("상영관"), info.get("회차"), seat, aud, sell])
-        out[date] = {"chains": chains, "theaters": mem.get(date, {}).get("theaters") or []}
+        # 합계 (편성 총계 = 시간표 그랜드토탈, 관객 = 회원 전 체인 합)
+        sd = sch.get(date) or {}
+        tot_seat = sd.get("total_seats") or sum(c[3] or 0 for c in chains)
+        tot_aud = sum((c[3] for c in (mem.get(date, {}).get("chains") or [])))  # member aud
+        total = {
+            "screens": sd.get("total_screens") or sum((c[1] or 0) for c in chains),
+            "shows": sd.get("total_shows") or sum((c[2] or 0) for c in chains),
+            "seats": tot_seat,
+            "aud": tot_aud,
+            "sell": round(tot_aud / tot_seat * 100, 1) if tot_seat else None,
+        }
+        out[date] = {"chains": chains, "theaters": mem.get(date, {}).get("theaters") or [], "total": total}
     return out
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
@@ -902,6 +913,8 @@ function renderMemberDate(date){
   const d = MEMBYDATE[date]; if(!d) return;
   let ct = '<table><thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석판매율</th></tr></thead><tbody>';
   d.chains.forEach(c => { ct += `<tr><td>${c[0]}</td><td>${won(c[1])}</td><td>${won(c[2])}</td><td>${won(c[3])}</td><td>${won(c[4])}</td><td class="gain">${c[5]!=null?c[5]+'%':'-'}</td></tr>`; });
+  if (d.total) { const t=d.total;
+    ct += `<tr style="border-top:2px solid #3b4252;font-weight:700"><td>합계</td><td>${won(t.screens)}</td><td>${won(t.shows)}</td><td>${won(t.seats)}</td><td>${won(t.aud)}</td><td class="gain">${t.sell!=null?t.sell+'%':'-'}</td></tr>`; }
   ct += '</tbody></table>';
   document.getElementById('chainBox').innerHTML = ct;
   let tt = '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead><tbody>';
