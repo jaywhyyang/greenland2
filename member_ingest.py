@@ -117,7 +117,7 @@ def aggregate_detail(cellrows):
         th = key.split(" | ")[0]
         scr_per_theater[th] = scr_per_theater.get(th, 0) + 1
     top_theaters = [[name, aud, scr_per_theater.get(name, 0)]
-                    for name, aud in sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:20]]
+                    for name, aud in sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:50]]
     # regions: [지역, 관객, 좌석, 좌석점유율%]
     regions = sorted(
         ([r, by_region[r], region_seats.get(r, 0),

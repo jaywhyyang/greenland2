@@ -596,9 +596,14 @@ def member_section(snaps, detail, pred=None, sched=None):
                 '🎟️ 오늘 실관람 현황(회원통계) — 회원통계 엑셀을 넣으면 표시됩니다.</div>')
     last = snaps[-1]
     aud = _num(last.get("관객수")); shows = _num(last.get("상영횟수"))
+    free = _num(last.get("무료관객수")) or 0
     per = round(aud / shows) if aud and shows else None
+    tot_seats = (sched or {}).get("total_seats") if sched else None
+    occ_total = (f"{(aud + free) / tot_seats * 100:.1f}%"
+                 if aud and tot_seats else "-")
     cards = [
         ("오늘 관객수(실관람)", fmt(aud)),
+        ("전체 좌석점유율", occ_total),
         ("누적관객수", fmt(_num(last.get("누적관객수")))),
         ("회당 관객수", fmt(per)),
         ("스크린수", fmt(_num(last.get("스크린수")))),
@@ -640,10 +645,11 @@ def member_section(snaps, detail, pred=None, sched=None):
                    f'background:{chain_color(name)};margin-right:7px"></span>')
             tv += f"<tr><td>{dot}{name}</td><td>{fmt(scr)}</td><td>{fmt(a)}</td></tr>"
     theater_tbl = (
-        '<div class="panel"><h2>🏢 극장(지점)별 관객 TOP20</h2><table>'
-        '<thead><tr><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
+        '<div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
+        '<div class="cbox xtall"><canvas id="c_theater"></canvas></div>'
+        '<table><thead><tr><th>극장</th><th>상영관</th><th>관객수</th></tr></thead>'
         f'<tbody>{tv}</tbody></table>'
-        '<p class="hint">어느 지점이 관객을 많이 끌어오나. 점 = 체인('
+        '<p class="hint">어느 지점이 관객을 많이 끌어오나. 색 = 체인('
         '<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
         '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>') if tv else ""
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
@@ -703,7 +709,8 @@ HTML = r"""<!DOCTYPE html>
   .cbox { position:relative; width:100%; height:380px; margin-top:8px; }
   .cbox.short { height:300px; }
   .cbox.tall { height:460px; }
-  @media (max-width:560px){ .cbox{height:300px} .cbox.tall{height:380px} }
+  .cbox.xtall { height:900px; }
+  @media (max-width:560px){ .cbox{height:300px} .cbox.tall{height:380px} .cbox.xtall{height:760px} }
   table { width:100%; border-collapse:collapse; font-size:13px; }
   th,td { padding:9px 10px; text-align:right; border-bottom:1px solid #262a36; white-space:nowrap; }
   th:first-child,td:first-child { text-align:left; }
@@ -792,6 +799,17 @@ const lastOnly = (key, color, suffix='') => ({
 
 // ===== 오늘 실관람 (회원통계) =====
 const MEM = __MEMBER_JSON__;
+const chainColor = nm => nm.includes('CGV') ? '#ef4444' : nm.includes('메가박스') ? '#a855f7' : nm.includes('롯데') ? '#3b82f6' : '#9aa0ab';
+if (MEM.theaters && MEM.theaters.length) {
+  const th = MEM.theaters;
+  new Chart(c_theater, { type:'bar',
+    data:{ labels: th.map(t=>t[0].length>18?t[0].slice(0,17)+'…':t[0]),
+      datasets:[{ label:'관객수', data: th.map(t=>t[1]), backgroundColor: th.map(t=>chainColor(t[0])),
+        datalabels:{ anchor:'end', align:'end', color:'#e7e9ee', font:{size:9,weight:'bold'}, formatter:won } }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:44}},
+      plugins:{ legend:{display:false}, datalabels:{} },
+      scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6', font:{size:10}, autoSkip:false } } } } });
+}
 if (MEM.aud && MEM.aud.length) {
   new Chart(c_mem_aud, { type:'line',
     data:{ labels:MEM.labels, datasets:[{ label:'오늘 관객수(실관람)', data:MEM.aud,
@@ -902,6 +920,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
         "aud": [_num(s.get("관객수")) for s in m_snaps],
         "slots": (m_detail or {}).get("slots", []),
         "regions": (m_detail or {}).get("regions", []),
+        "theaters": (m_detail or {}).get("theaters", []),
     }, ensure_ascii=False)
     fc_html = forecast_banner(forecast_eod(pts))
     html = (HTML
