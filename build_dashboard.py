@@ -893,7 +893,7 @@ const lastOnly = (key, color, suffix='') => ({
   formatter: v => v==null ? '' : won(v)+suffix
 });
 
-// ===== 오늘 실관람 (회원통계) =====
+// ===== 오늘 관객 현황 (회원통계) =====
 const MEM = __MEMBER_JSON__;
 const chainColor = nm => nm.includes('CGV') ? '#ef4444' : nm.includes('메가박스') ? '#a855f7' : nm.includes('롯데') ? '#3b82f6' : '#9aa0ab';
 
@@ -960,7 +960,7 @@ if (MEM.peak && MEM.peak.length) {
 }
 if (MEM.aud && MEM.aud.length) {
   new Chart(c_mem_aud, { type:'line',
-    data:{ labels:MEM.labels, datasets:[{ label:'오늘 관객수(실관람)', data:MEM.aud,
+    data:{ labels:MEM.labels, datasets:[{ label:'오늘 관객수(예매포함)', data:MEM.aud,
       borderColor:'#4ade80', backgroundColor:'rgba(74,222,128,.12)', fill:true, tension:.3, spanGaps:true,
       datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
     options:base() });
