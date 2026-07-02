@@ -657,6 +657,62 @@ def secured_banner(pts, snaps):
             '<div class="sub2">누적관객수 = 과거 실관람 + 오늘 예매·발권 포함</div></div>')
 
 
+def member_daycompare(snaps):
+    """오늘 vs 어제 동시간대 관객 증가 비교 + 동시간 대비 예측(마감 관객).
+    이전 날짜가 현재 시각을 커버하면 예측 활성화(오늘 저녁부터/내일부터)."""
+    from collections import defaultdict
+    days = defaultdict(list)
+    for s in snaps:
+        ts = s.get("수집시각", "")
+        a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            days[ts[:10]].append((int(ts[11:13]) * 60 + int(ts[14:16]), a))
+    if len(days) < 2:
+        return None
+    dts = sorted(days)
+    today, yest = dts[-1], dts[-2]
+
+    def incs(v):
+        v = sorted(v); out = {}; prev = None
+        for m, a in v:
+            if prev is not None and a - prev >= 0:
+                out[m // 30 * 30] = out.get(m // 30 * 30, 0) + (a - prev)
+            prev = a
+        return out
+
+    ti, yi = incs(days[today]), incs(days[yest])
+    buckets = sorted(set(ti) | set(yi))
+    labels = [f"{b // 60:02d}:{b % 60:02d}" for b in buckets]
+    tv, yv = sorted(days[today]), sorted(days[yest])
+    now_m, now_a = tv[-1]
+    pred = None
+    if yv[0][0] <= now_m <= yv[-1][0]:
+        ya = _interp(yv, now_m)
+        yfinal = yv[-1][1]
+        if ya and ya > 0:
+            ratio = now_a / ya
+            pred = {"ratio": round(ratio, 3), "pred": int(round(yfinal * ratio)),
+                    "now": now_a, "yestNow": int(round(ya)), "yestFinal": yfinal, "yest": yest}
+    return {"labels": labels, "today": [ti.get(b) for b in buckets],
+            "yest": [yi.get(b) for b in buckets], "todayDate": today, "yestDate": yest, "pred": pred}
+
+
+def daycmp_banner(snaps):
+    dc = member_daycompare(snaps)
+    if not dc or not dc.get("pred"):
+        return ""
+    p = dc["pred"]
+    pct = (p["ratio"] - 1) * 100
+    updown = f'▲{pct:.0f}%' if pct >= 0 else f'▼{abs(pct):.0f}%'
+    color = "#4ade80" if pct >= 0 else "#f87171"
+    est = int(round(p["pred"] / 100.0) * 100)
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e3320 0%,#1a1d27 70%);border-color:#2f5a3a">'
+            f'<div class="lbl">📊 어제 동시간 대비 · 오늘 예상 마감 ({p["yest"]} 패턴 기준)</div>'
+            f'<div class="big" style="color:{color}">약 {est:,}명 <span style="font-size:15px">({updown})</span></div>'
+            f'<div class="sub2">지금 {p["now"]:,} vs 어제 이 시각 {p["yestNow"]:,} = <b>{p["ratio"]:.2f}배</b> · '
+            f'어제 최종 {p["yestFinal"]:,} × {p["ratio"]:.2f} = 예상 {est:,}. (관객수엔 예매 포함)</div></div>')
+
+
 def _member_peak(snaps):
     """오늘 스냅샷의 구간(관객수 증가) → 시간대별 실관람 증가. 마지막 날짜 기준."""
     if not snaps:
@@ -763,6 +819,7 @@ def member_section(snaps, detail, pred=None, sched=None):
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
         eod_banner(snaps) + "\n"
+        + daycmp_banner(snaps) + "\n"
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} · '
         '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
@@ -770,6 +827,9 @@ def member_section(snaps, detail, pred=None, sched=None):
         '<p class="hint">30분마다의 "오늘 확정 관객(예매+발권)". 오르는 기울기 = <b>현매·당일예매가 붙는 속도</b>. (실제 관람 완료 수 아님)</p></div>\n'
         '  <div class="panel"><h2>시간대별 관객 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
         '<p class="hint">각 구간의 확정 관객 <b>증가분</b> = 그 시간대에 예매·발권이 얼마나 붙었나. 막대 높은 구간 = 수요 피크.</p></div>\n'
+        '  <div class="panel"><h2 id="daycmpTitle">📊 시간대별 증가 · 오늘 vs 어제 (동시간대)</h2><div class="cbox"><canvas id="c_mem_daycmp"></canvas></div>'
+        '<p class="hint">같은 시각끼리 <b>구간 증가분</b>을 비교. 오늘 막대가 어제 선보다 높으면 <b style="color:#4ade80">그 시간대는 어제보다 빠른 페이스</b>. '
+        '(어제가 그 시각을 커버하는 구간만 겹쳐 보임 — 저녁부터 채워짐)</p></div>\n'
         # 날짜 선택 (체인/극장은 날짜별)
         '  <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: '
         '<select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select>'
@@ -984,6 +1044,19 @@ if (MEM.peak && MEM.peak.length) {
       datalabels:{ display: MEM.peak.length<=24, anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
     options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
 }
+if (MEM.daycmp && MEM.daycmp.labels && MEM.daycmp.labels.length) {
+  const dc = MEM.daycmp;
+  const tt = document.getElementById('daycmpTitle');
+  if (tt) tt.textContent = `📊 시간대별 증가 · 오늘(${dc.todayDate?.slice(5)}) vs 어제(${dc.yestDate?.slice(5)}) 동시간대`;
+  new Chart(c_mem_daycmp, {
+    data:{ labels: dc.labels, datasets:[
+      { type:'bar', label:`오늘 ${dc.todayDate?.slice(5)||''}`, data: dc.today, backgroundColor:'#22d3ee',
+        datalabels:{display:false} },
+      { type:'line', label:`어제 ${dc.yestDate?.slice(5)||''}`, data: dc.yest, borderColor:'#f59e0b',
+        backgroundColor:'#f59e0b', pointRadius:3, tension:.3, spanGaps:true, datalabels:{display:false} } ] },
+    options:{ ...base(), plugins:{ ...base().plugins, legend:{display:true, labels:{color:'#c7ccd6'}} },
+      scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+}
 if (MEM.aud && MEM.aud.length) {
   new Chart(c_mem_aud, { type:'line',
     data:{ labels:MEM.labels, datasets:[{ label:'오늘 관객수(예매포함)', data:MEM.aud,
@@ -1096,6 +1169,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
         "regions": (m_detail or {}).get("regions", []),
         "theaters": (m_detail or {}).get("theaters", []),
         "peak": _member_peak(m_snaps),
+        "daycmp": member_daycompare(m_snaps),
     }, ensure_ascii=False)
     fc_html = forecast_banner(forecast_eod(pts))
     html = (HTML
