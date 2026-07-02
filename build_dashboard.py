@@ -632,17 +632,29 @@ def region_map(regions):
 
 
 def secured_banner(pts, snaps):
-    """기확보 관객 = 누적 관람(이미 본) + 실시간 예매(앞으로 예약). 중복 없이 확보된 총 관객."""
-    book = _num(latest(pts).get("book")) if pts else None
-    cumul = _num(snaps[-1].get("누적관객수")) if snaps else None
-    if not book or not cumul:
+    """기확보 관객. 주의: 누적관객수는 '오늘 예매분'을 이미 포함하므로 실시간예매와 단순 합산하면
+    오늘분이 중복됨. 누적(오늘까지 확보)을 기준으로, 실시간예매 중 오늘과 겹치지 않는
+    미래날짜분(≈ 실시간예매 − 오늘관객수)만 추가로 표기."""
+    book = _num(latest(pts).get("book")) if pts else None       # 실시간 예매(오늘남은+미래)
+    cumul = _num(snaps[-1].get("누적관객수")) if snaps else None  # 누적(과거실관람+오늘 예매포함)
+    today = _num(snaps[-1].get("관객수")) if snaps else None      # 오늘(예매+발권)
+    if not cumul:
         return ""
-    total = cumul + book
+    future_extra = max(0, (book or 0) - (today or 0))  # 미래날짜 추가 예매(오늘과 중복 제외) 근사
+    est = cumul + future_extra
+    extra_txt = (f' + 미래날짜 예매 ≈ {future_extra:,}' if future_extra else '')
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a3a5a">'
-            '<div class="lbl">🎯 기확보 관객 (이미 본 + 예약된 잠재까지)</div>'
-            f'<div class="big" style="color:#c084fc">약 {total:,}명</div>'
-            f'<div class="sub2">누적 관람 {cumul:,}(이미 본) + 실시간 예매 {book:,}(앞으로 예약) · '
-            '중복 없이 = 지금까지 확보된 총 관객</div></div>')
+            '<div class="lbl">🎯 기확보 관객 (관람 + 예매, 오늘까지)</div>'
+            f'<div class="big" style="color:#c084fc">{cumul:,}명'
+            + (f' <span style="font-size:15px;color:#c7ccd6">(미래날짜까지 ≈ {est:,})</span>' if future_extra else '') + '</div>'
+            f'<div class="sub2">누적관객수 {cumul:,} = 과거 실관람 + <b>오늘 예매·발권 포함</b>'
+            f'{extra_txt}. '
+            f'실시간 예매 {book:,}은 향후 상영분(오늘 남은+미래)인데 <b>오늘분은 누적에 이미 포함</b>돼 단순 합산 안 함.</div></div>'
+            if book else
+            '  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a3a5a">'
+            '<div class="lbl">🎯 기확보 관객 (관람 + 예매, 오늘까지)</div>'
+            f'<div class="big" style="color:#c084fc">{cumul:,}명</div>'
+            '<div class="sub2">누적관객수 = 과거 실관람 + 오늘 예매·발권 포함</div></div>')
 
 
 def _member_peak(snaps):
