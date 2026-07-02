@@ -1047,6 +1047,53 @@ def defense_calculator(comp_rows):
         '③경쟁작도 늘어나니 <b>여유 20~30%</b> 얹기. ④0원→노출→<b>유기 예매 전환</b>은 소규모 실험으로 측정해야 확정(가설 검증).</p></div>')
 
 
+def manual_defense(detail):
+    """수동 입력 체인별 예매율 방어 계산기(인터랙티브).
+    한 체인 안에서 N = 우리예매관객 × (모아나율/우리율 − 1). 앱에서 본 예매율 입력."""
+    anchor = {"CGV": 0, "롯데시네마": 0, "메가박스": 0}
+    for c in (detail or {}).get("chains", []):
+        if c and c[0] in anchor and len(c) >= 4:
+            anchor[c[0]] = _num(c[3]) or 0
+    rows = [("CGV", "cgv", anchor["CGV"]), ("롯데시네마", "lot", anchor["롯데시네마"]),
+            ("메가박스", "meg", anchor["메가박스"])]
+    tr = ""
+    for name, k, tk in rows:
+        tr += (f'<tr><td style="text-align:left">{name}</td>'
+               f'<td><input id="d_{k}_t" type="number" value="{int(tk)}" style="width:72px" oninput="defCalc()"></td>'
+               f'<td><input id="d_{k}_u" type="number" step="0.1" placeholder="%" style="width:60px" oninput="defCalc()"></td>'
+               f'<td><input id="d_{k}_m" type="number" step="0.1" placeholder="%" style="width:60px" oninput="defCalc()"></td>'
+               f'<td id="d_{k}_n" class="gain">-</td><td id="d_{k}_nm" class="gain">-</td></tr>')
+    js = """<script>
+function defCalc(){
+  var keys=['cgv','lot','meg'], sum=0, summ=0;
+  keys.forEach(function(k){
+    var t=parseFloat(document.getElementById('d_'+k+'_t').value)||0;
+    var u=parseFloat(document.getElementById('d_'+k+'_u').value)||0;
+    var m=parseFloat(document.getElementById('d_'+k+'_m').value)||0;
+    var n=0; if(u>0 && m>u){ n=t*(m/u-1); }
+    var nm=Math.ceil(n*1.2/10)*10; n=Math.ceil(n/10)*10;
+    document.getElementById('d_'+k+'_n').textContent = n>0? '+'+n.toLocaleString()+'장':'-';
+    document.getElementById('d_'+k+'_nm').textContent = n>0? '+'+nm.toLocaleString()+'장':'-';
+    sum+=n; summ+=nm;
+  });
+  document.getElementById('d_sum').textContent = sum>0? '+'+sum.toLocaleString()+'장':'-';
+  document.getElementById('d_summ').textContent = summ>0? '+'+summ.toLocaleString()+'장':'-';
+}
+</script>"""
+    return (
+        '  <div class="panel"><h2>🎯 예매율 방어 계산기 · 수동 입력 (체인별)</h2>'
+        '<p class="hint" style="margin-top:0">각 앱(CGV·롯데·메가)에서 <b>우리 예매율</b>과 <b>모아나(넘을 대상) 예매율</b>을 보고 입력하세요. '
+        '예매관객(장)은 회원통계 기준 자동 채움(수정 가능). <b>N = 우리예매관객 × (모아나율 ÷ 우리율 − 1)</b> — 그 체인에서 모아나를 넘는 데 필요한 0원 티켓.</p>'
+        '<table><thead><tr><th>체인</th><th>우리 예매관객(장)</th><th>우리 예매율%</th><th>모아나 예매율%</th><th>필요 N</th><th>+마진20%</th></tr></thead><tbody>'
+        + tr +
+        '<tr style="border-top:2px solid #3b4252;font-weight:700"><td>합계</td><td>-</td><td>-</td><td>-</td>'
+        '<td id="d_sum" class="gain">-</td><td id="d_summ" class="gain">-</td></tr>'
+        '</tbody></table>'
+        '<p class="hint">⚠️ 예매관객 앵커는 회원통계 <b>실관람 기준</b>이라 실제 <b>선예매 장수</b>와 다를 수 있어요(수정 입력 권장). '
+        '모아나가 압도적이면 N이 커져 비현실적 → 그땐 <b>모아나 대신 우리 바로 위 홀드오버 예매율</b>을 넣어 "관 지키는 최소 N"을 보세요. '
+        '경쟁작도 늘어나니 <b>+마진20%</b> 열을 실제 목표로.</p>' + js + '</div>')
+
+
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
@@ -1489,7 +1536,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
-            .replace("__DEFENSE__", defense_calculator(load_competitors()))
+            .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__WEEKEND__", weekend_scenario(
