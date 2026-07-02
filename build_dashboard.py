@@ -710,15 +710,15 @@ def eod_banner(snaps):
     p = int(round(fc["pred"] / 100.0) * 100)
     tag = " (잠정, 1일 곡선)" if fc["ndays"] < 2 else f" (최근 {fc['ndays']}일 곡선)"
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
-            '<div class="lbl">🔮 오늘 예상 마감 관객 (실관람) · 당일 곡선 기반' + tag + '</div>'
+            '<div class="lbl">🔮 오늘 예상 최종 관객 · 당일 곡선 기반' + tag + '</div>'
             f'<div class="big" style="color:#60a5fa">약 {p:,}명</div>'
-            f'<div class="sub2">현재 실관람 {fc["now"]:,} · 오늘 진행률 {fc["frac"]*100:.0f}% (이 시간대엔 보통 최종의 {fc["frac"]*100:.0f}%까지 참)</div></div>')
+            f'<div class="sub2">현재 확정 {fc["now"]:,} · 오늘 진행률 {fc["frac"]*100:.0f}% (이 시간대엔 보통 최종의 {fc["frac"]*100:.0f}%까지 참)</div></div>')
 
 
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
-                '🎟️ 오늘 실관람 현황(회원통계) — 회원통계 엑셀을 넣으면 표시됩니다.</div>')
+                '🎟️ 오늘 관객 현황(회원통계) — 회원통계 엑셀을 넣으면 표시됩니다.</div>')
     last = snaps[-1]
     aud = _num(last.get("관객수")); shows = _num(last.get("상영횟수"))
     free = _num(last.get("무료관객수")) or 0
@@ -727,7 +727,7 @@ def member_section(snaps, detail, pred=None, sched=None):
     occ_total = (f"{(aud + free) / tot_seats * 100:.1f}%"
                  if aud and tot_seats else "-")
     cards = [
-        ("오늘 관객수(실관람)", fmt(aud)),
+        ("오늘 관객수 (예매·발권 포함)", fmt(aud)),
         ("전체 좌석판매율", occ_total),
         ("누적관객수", fmt(_num(last.get("누적관객수")))),
         ("회당 관객수", fmt(per)),
@@ -740,10 +740,10 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} · '
         '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
-        '  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
-        '<p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>.</p></div>\n'
-        '  <div class="panel"><h2>시간대별 실관람 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
-        '<p class="hint">각 시각까지 관객수의 <b>구간 증가분</b> = 그 시간대에 실관람이 얼마나 붙었나. 막대 높은 구간 = 관람 피크.</p></div>\n'
+        '  <div class="panel"><h2>오늘 관객수 추이 (예매·발권 포함)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
+        '<p class="hint">30분마다의 "오늘 확정 관객(예매+발권)". 오르는 기울기 = <b>현매·당일예매가 붙는 속도</b>. (실제 관람 완료 수 아님)</p></div>\n'
+        '  <div class="panel"><h2>시간대별 관객 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
+        '<p class="hint">각 구간의 확정 관객 <b>증가분</b> = 그 시간대에 예매·발권이 얼마나 붙었나. 막대 높은 구간 = 수요 피크.</p></div>\n'
         # 날짜 선택 (체인/극장은 날짜별)
         '  <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: '
         '<select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select>'
@@ -837,8 +837,8 @@ __FORECAST__
 __CARDS__
   </div>
 
-  <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
-  <div class="secdesc">실제 극장에서 본 관객(예매+현장). <b>예매는 안 줄었는데 이 관객수가 늘면 = 현장/당일 신규 유입 = 흡인력 ↑.</b> 예매율만 보면 놓치는 실제 저력을 봅니다.</div>
+  <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 관객 현황 (회원통계) —</div>
+  <div class="secdesc"><b>여기 "관객수"는 오늘 상영분에 대해 현재까지 예매·발권된 관객 총합</b>이에요 (= 이미 본 관객 + 오늘 남은 회차 예매분 + 현장발권). <b style="color:#f4c89a">"지금까지 실제로 본 사람 수"가 아니라 "오늘 최종 관객의 현재 확정분"</b>에 가깝습니다. 이게 늘면(특히 예매 안 줄었는데) = 현장·당일 신규 수요.</div>
 __MEMBER_SECTION__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
@@ -846,7 +846,7 @@ __MEMBER_SECTION__
 __COMP_SECTION__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 우리 영화 예매(미래 수요) 추이 —</div>
-  <div class="secdesc">앞으로의 예약 상황. 실제 관람은 위 '실관람' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
+  <div class="secdesc">앞으로의 예약 상황. 실제 관객은 위 '오늘 관객 현황' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
   <div class="panel"><h2>순위 변동 추이 (위=상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div>
     <p class="hint">전체 예매 순위. 순위 유지·상승이면 경쟁작 대비 위치 양호.</p></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div>
@@ -953,7 +953,7 @@ function renderMemberDate(date){
 
 if (MEM.peak && MEM.peak.length) {
   new Chart(c_mem_peak, { type:'bar',
-    data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 실관람 증가', data: MEM.peak.map(p=>p[1]),
+    data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 관객 증가', data: MEM.peak.map(p=>p[1]),
       backgroundColor:'#22d3ee',
       datalabels:{ display: MEM.peak.length<=24, anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
     options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });

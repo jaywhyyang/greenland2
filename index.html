@@ -71,7 +71,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-02 10:00</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-02 10:20</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">7위</div></div>
@@ -80,13 +80,13 @@
 
   </div>
 
-  <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 실관람 (회원통계) —</div>
-  <div class="secdesc">실제 극장에서 본 관객(예매+현장). <b>예매는 안 줄었는데 이 관객수가 늘면 = 현장/당일 신규 유입 = 흡인력 ↑.</b> 예매율만 보면 놓치는 실제 저력을 봅니다.</div>
+  <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 관객 현황 (회원통계) —</div>
+  <div class="secdesc"><b>여기 "관객수"는 오늘 상영분에 대해 현재까지 예매·발권된 관객 총합</b>이에요 (= 이미 본 관객 + 오늘 남은 회차 예매분 + 현장발권). <b style="color:#f4c89a">"지금까지 실제로 본 사람 수"가 아니라 "오늘 최종 관객의 현재 확정분"</b>에 가깝습니다. 이게 늘면(특히 예매 안 줄었는데) = 현장·당일 신규 수요.</div>
 
   <div class="sub" style="margin-top:4px">회원통계 기준 · 2026-07-02 10:00:02 · 이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>
-  <div class="cards"><div class="card"><div class="k">오늘 관객수(실관람)</div><div class="v">3,810</div></div><div class="card"><div class="k">전체 좌석판매율</div><div class="v">4.4%</div></div><div class="card"><div class="k">누적관객수</div><div class="v">12,393</div></div><div class="card"><div class="k">회당 관객수</div><div class="v">7</div></div><div class="card"><div class="k">스크린수</div><div class="v">337</div></div></div>
-  <div class="panel"><h2>실관람 관객수 추이</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div><p class="hint">엑셀 내릴 때마다 점이 찍혀요. 오르는 기울기 = 예매 이후 <b>현매·당일예매가 붙는 속도</b>.</p></div>
-  <div class="panel"><h2>시간대별 실관람 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div><p class="hint">각 시각까지 관객수의 <b>구간 증가분</b> = 그 시간대에 실관람이 얼마나 붙었나. 막대 높은 구간 = 관람 피크.</p></div>
+  <div class="cards"><div class="card"><div class="k">오늘 관객수 (예매·발권 포함)</div><div class="v">3,810</div></div><div class="card"><div class="k">전체 좌석판매율</div><div class="v">4.4%</div></div><div class="card"><div class="k">누적관객수</div><div class="v">12,393</div></div><div class="card"><div class="k">회당 관객수</div><div class="v">7</div></div><div class="card"><div class="k">스크린수</div><div class="v">337</div></div></div>
+  <div class="panel"><h2>오늘 관객수 추이 (예매·발권 포함)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div><p class="hint">30분마다의 "오늘 확정 관객(예매+발권)". 오르는 기울기 = <b>현매·당일예매가 붙는 속도</b>. (실제 관람 완료 수 아님)</p></div>
+  <div class="panel"><h2>시간대별 관객 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div><p class="hint">각 구간의 확정 관객 <b>증가분</b> = 그 시간대에 예매·발권이 얼마나 붙었나. 막대 높은 구간 = 수요 피크.</p></div>
   <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: <select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select> <span class="muted" style="font-size:12px">(체인별·극장별은 선택한 날짜 기준)</span></div>
   <div class="panel"><h2 id="chainTitle">🎦 체인별 편성·성적</h2><div id="chainBox"></div><p class="hint">좌석수=정원×상영횟수(편성 총 좌석). 좌석판매율=관객÷좌석수. <b style="color:#4ade80">▲</b>/<b style="color:#f87171">▼</b> = 전날 대비 증감(상영관·상영횟수·좌석). <b>적게 깔고 판매율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>
   <div class="panel"><h2 id="theaterTitle">🏢 극장(지점)별 관객 TOP50</h2><div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div><p class="hint">색 = 체인(<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · <b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>
@@ -97,7 +97,7 @@
   <div class="panel"><h2>예매율 추이 비교 (%)</h2><div class="cbox"><canvas id="c_comp_rate"></canvas></div><p class="hint">동시 개봉작들의 예매율(=미래 수요 점유율) 흐름. 그린랜드2(굵은 초록)가 경쟁작 대비 올라가면 상대적 기세 ↑. 개봉 후 절대 증감은 상영소화로 출렁여 노이즈라 뺐고, 상대지표인 예매율/순위만 남겼어요.</p></div>
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 우리 영화 예매(미래 수요) 추이 —</div>
-  <div class="secdesc">앞으로의 예약 상황. 실제 관람은 위 '실관람' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
+  <div class="secdesc">앞으로의 예약 상황. 실제 관객은 위 '오늘 관객 현황' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
   <div class="panel"><h2>순위 변동 추이 (위=상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div>
     <p class="hint">전체 예매 순위. 순위 유지·상승이면 경쟁작 대비 위치 양호.</p></div>
   <div class="panel"><h2>예매율 추이 (%)</h2><div class="cbox"><canvas id="c_rate"></canvas></div>
@@ -208,7 +208,7 @@ function renderMemberDate(date){
 
 if (MEM.peak && MEM.peak.length) {
   new Chart(c_mem_peak, { type:'bar',
-    data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 실관람 증가', data: MEM.peak.map(p=>p[1]),
+    data:{ labels: MEM.peak.map(p=>p[0]), datasets:[{ label:'구간 관객 증가', data: MEM.peak.map(p=>p[1]),
       backgroundColor:'#22d3ee',
       datalabels:{ display: MEM.peak.length<=24, anchor:'end', align:'end', color:'#e7e9ee', font:{size:10,weight:'bold'}, formatter:won } }] },
     options:{ ...base(), scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
