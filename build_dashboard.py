@@ -713,6 +713,76 @@ def daycmp_banner(snaps):
             f'어제 최종 {p["yestFinal"]:,} × {p["ratio"]:.2f} = 예상 {est:,}. (관객수엔 예매 포함)</div></div>')
 
 
+def top_forecast(snaps):
+    """오늘 최종 관객 예상(맨 위 히어로). 신뢰도 3단:
+    ① 어제 동시간 보정(daycmp) + ② 당일 곡선(predict_eod_curve) → 되면 평균(정밀)
+    ③ 둘 다 안되면 당일 추세 슬로프로 마감 시각(23:30)까지 외삽(잠정)."""
+    from collections import defaultdict
+    days = defaultdict(list)
+    for s in snaps:
+        ts = s.get("수집시각", "")
+        a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            days[ts[:10]].append((int(ts[11:13]) * 60 + int(ts[14:16]), a))
+    if not days:
+        return None
+    today = max(days)
+    tv = sorted(days[today])
+    now_m, now_a = tv[-1]
+
+    dc = member_daycompare(snaps)
+    ratio_est = dc["pred"]["pred"] if dc and dc.get("pred") else None
+    cv = predict_eod_curve(snaps)
+    curve_est = cv["pred"] if cv else None
+    ests = [(e, lbl) for e, lbl in ((ratio_est, "어제 동시간 보정"), (curve_est, "당일 곡선 보정")) if e]
+
+    END = 23 * 60 + 30  # 마감 기준 시각(관객수 확정이 대체로 이 무렵)
+    if ests:
+        vals = [e for e, _ in ests]
+        est = sum(vals) / len(vals)
+        return {"est": est, "low": min(vals), "high": max(vals), "now": now_a,
+                "method": " + ".join(l for _, l in ests), "conf": "정밀",
+                "detail": [(l, e) for e, l in ests]}
+    # 잠정: 최근 구간 기울기로 마감까지 외삽
+    if now_m >= END or len(tv) < 3:
+        return {"est": now_a, "low": now_a, "high": now_a, "now": now_a,
+                "method": "현재 확정치", "conf": "floor"}
+    recent = tv[-6:]
+    span = recent[-1][0] - recent[0][0]
+    slope = (recent[-1][1] - recent[0][1]) / span if span > 0 else 0
+    # 저녁엔 예매·발권 속도가 둔화(어제 저녁 관측) → 남은 증가분에 감속계수 0.7
+    est = now_a + max(0, slope) * (END - now_m) * 0.7
+    return {"est": est, "low": est * 0.85, "high": est * 1.15, "now": now_a,
+            "method": "당일 추세 외삽", "conf": "잠정"}
+
+
+def top_forecast_banner(snaps):
+    f = top_forecast(snaps)
+    if not f:
+        return ""
+    r = lambda v: int(round(v / 100.0) * 100)
+    est, lo, hi = r(f["est"]), r(f["low"]), r(f["high"])
+    if f["conf"] == "floor":
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a2410 0%,#1a1d27 70%);border-color:#5a4a2f">'
+                '<div class="lbl">🎯 오늘 최종 관객 예상</div>'
+                f'<div class="big" style="color:#fbbf24">확정 {f["now"]:,}명</div>'
+                '<div class="sub2">마감 시각이라 추가 예측 없음 · 오늘 확정 관객수.</div></div>')
+    if f["conf"] == "정밀":
+        dt = " · ".join(f"{l} {r(e):,}" for l, e in f["detail"])
+        band = f"{lo:,}~{hi:,}명 범위" if lo != hi else ""
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 65%);border-color:#2f5a42">'
+                '<div class="lbl">🎯 오늘 최종 관객 예상 · 어제 추이 보정 (정밀)</div>'
+                f'<div class="big" style="color:#4ade80">약 {est:,}명</div>'
+                f'<div class="sub2">현재 확정 {f["now"]:,} → {dt}. {band} '
+                '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div></div>')
+    # 잠정
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
+            '<div class="lbl">🎯 오늘 최종 관객 예상 · 당일 추세 (잠정)</div>'
+            f'<div class="big" style="color:#60a5fa">약 {est:,}명 <span style="font-size:14px;color:#9aa0ab">({lo:,}~{hi:,})</span></div>'
+            f'<div class="sub2">현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>. '
+            '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)</div></div>')
+
+
 def _member_peak(snaps):
     """오늘 스냅샷의 구간(관객수 증가) → 시간대별 실관람 증가. 마지막 날짜 기준."""
     if not snaps:
@@ -1182,7 +1252,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", secured_banner(pts, m_snaps))
+            .replace("__FORECAST__", top_forecast_banner(m_snaps) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
