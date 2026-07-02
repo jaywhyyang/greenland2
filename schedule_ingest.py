@@ -88,34 +88,33 @@ def parse(path, date_str=None):
             "bands": bands, "chains": chains, "hourly": hourly, "regions": regions}
 
 
-# 시간대 세부표: 밴드 라벨 col3, 계열사 col2, 회차 카운트 col7부터.
-# 밴드 내 상대 슬롯 → 절대 시각 매핑(오전은 단일값이라 11시로 집약).
-_BAND_HOURS = {
-    "오전": [11],
-    "오후": [12, 13, 14, 15, 16],
-    "저녁": [17, 18, 19, 20, 21, 22, 23],
-}
-
-
 def _parse_hourly(rows):
-    """계열사×밴드 시간분포표 → {절대시각(str): 회차수} (전 계열사 합)."""
+    """극장 상세행의 '1회~11회' 컬럼에 든 실제 상영시각(HHMM 정수, 예 1915=19:15)을
+    전 극장에서 모아 {시각(str): 상영회차수}. 밴드 요약표가 아니라 진짜 시각 분포."""
     hourly = {}
+    in_sec = False
     for r in rows:
         cells = [("" if c is None else c) for c in r]
-        if len(cells) < 8:
+        c3 = str(cells[3]).strip() if len(cells) > 3 else ""
+        if c3 == "극장명":          # 극장 상세 블록 헤더 → 이후부터 상세행
+            in_sec = True
             continue
-        c3 = str(cells[3]).strip()
-        band = next((b for b in _BAND_HOURS if c3.startswith(b)), None)
-        if not band:
+        if not in_sec or len(cells) < 20:
             continue
-        hrs = _BAND_HOURS[band]
-        if band == "오전":
-            counts = [sum((_num(c) or 0) for c in cells[7:18])]
-        else:
-            counts = [(_num(c) or 0) for c in cells[7:7 + len(hrs)]]
-        for h, n in zip(hrs, counts):
-            if n:
-                hourly[h] = hourly.get(h, 0) + n
+        n = _num(cells[19])         # 회차 수(그 행의 상영 횟수)
+        if not n or n <= 0:
+            continue
+        times = []
+        for c in cells[7:18]:       # 1회~11회 = 실제 시각 (밀린 행은 좌석수 섞임)
+            v = _num(c)
+            if v is None or (isinstance(v, float) and v != int(v)):
+                continue
+            v = int(v)
+            if 600 <= v <= 2659 and v % 100 < 60:  # HHMM 유효 시각만
+                times.append(v)
+        for v in times[-int(n):]:   # 마지막 n개 = 실제 시각(좌석수는 앞이라 제외됨)
+            h = (v // 100) % 24
+            hourly[h] = hourly.get(h, 0) + 1
     return {str(k): v for k, v in sorted(hourly.items())}
 
 
