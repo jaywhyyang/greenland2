@@ -72,7 +72,7 @@
       <div id="status" class="status"></div>
     </div>
   </div>
-  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-02 14:30</b> · 10분마다 자동 새로고침</div>
+  <div class="sub">KOBIS 실시간 예매율 · 마지막 갱신 <b>2026-07-02 14:46</b> · 10분마다 자동 새로고침</div>
 
   <div class="cards">
 <div class="card"><div class="k">현재 순위</div><div class="v">7위</div></div>
@@ -220,14 +220,27 @@ if (MEM.daycmp && MEM.daycmp.labels && MEM.daycmp.labels.length) {
   const dc = MEM.daycmp;
   const tt = document.getElementById('daycmpTitle');
   if (tt) tt.textContent = `📊 시간대별 증가 · 오늘(${dc.todayDate?.slice(5)}) vs 어제(${dc.yestDate?.slice(5)}) 동시간대`;
-  new Chart(c_mem_daycmp, {
-    data:{ labels: dc.labels, datasets:[
-      { type:'bar', label:`오늘 ${dc.todayDate?.slice(5)||''}`, data: dc.today, backgroundColor:'#22d3ee',
-        datalabels:{display:false} },
-      { type:'line', label:`어제 ${dc.yestDate?.slice(5)||''}`, data: dc.yest, borderColor:'#f59e0b',
-        backgroundColor:'#f59e0b', pointRadius:3, tension:.3, spanGaps:true, datalabels:{display:false} } ] },
-    options:{ ...base(), plugins:{ ...base().plugins, legend:{display:true, labels:{color:'#c7ccd6'}} },
-      scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+  // 두 날짜가 같은 시각에 모두 값이 있는 구간만 비교(겹치는 시간대만) → 사과 대 사과
+  const ov = dc.labels.map((l,i)=>({l, t:dc.today[i], y:dc.yest[i]}))
+                      .filter(o => o.t!=null && o.y!=null);
+  const panel = document.getElementById('c_mem_daycmp').closest('.cbox');
+  if (ov.length) {
+    new Chart(c_mem_daycmp, {
+      data:{ labels: ov.map(o=>o.l), datasets:[
+        { type:'bar', label:`오늘 ${dc.todayDate?.slice(5)||''}`, data: ov.map(o=>o.t), backgroundColor:'#22d3ee',
+          datalabels:{display:false} },
+        { type:'bar', label:`어제 ${dc.yestDate?.slice(5)||''}`, data: ov.map(o=>o.y), backgroundColor:'#f59e0b',
+          datalabels:{display:false} } ] },
+      options:{ ...base(), plugins:{ ...base().plugins, legend:{display:true, labels:{color:'#c7ccd6'}} },
+        scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+  } else if (panel) {
+    panel.style.height='auto';
+    panel.innerHTML = '<div style="color:#9aa0ab;font-size:13px;padding:26px 14px;text-align:center;line-height:1.6">'
+      + '아직 <b>어제와 겹치는 시간대</b>가 없어요.<br>'
+      + `오늘 수집: <b>${dc.today.filter(x=>x!=null).length?dc.labels.find((l,i)=>dc.today[i]!=null)+'~':'-'}</b> · `
+      + `어제 수집: <b>${dc.yest.filter(x=>x!=null).length?dc.labels.filter((l,i)=>dc.yest[i]!=null)[0]+'~':'-'}</b><br>`
+      + '오늘이 어제 수집 시간대(저녁)에 도달하면 겹치는 구간부터 자동으로 나란히 표시됩니다.</div>';
+  }
 }
 if (MEM.aud && MEM.aud.length) {
   new Chart(c_mem_aud, { type:'line',
