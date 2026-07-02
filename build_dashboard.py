@@ -997,6 +997,56 @@ def weekend_scenario(current_day):
             f'  <div class="secdesc" style="margin-top:2px">{note}</div>')
 
 
+def defense_calculator(comp_rows):
+    """예매율 방어 계산기: 0원 티켓 N장 추정.
+    예매율 순위 ≡ 예매관객수 순위 → 경쟁작 넘는 N = 예매관객 gap.
+    절대 예매율 s% 목표 → N=(s·G−b)/(1−s). (전국 실시간 기준·근사)"""
+    if not comp_rows:
+        return ""
+    times = sorted({r["수집시각"] for r in comp_rows})
+    last = times[-1]
+    snap = [r for r in comp_rows if r["수집시각"] == last]
+    for r in snap:
+        r["_b"] = _num(r.get("예매관객수"))
+        r["_r"] = _num(r.get("예매율"))
+    snap = [r for r in snap if r["_b"] is not None]
+    snap.sort(key=lambda r: r["_b"], reverse=True)
+    us = next((r for r in snap if GKEY in r.get("영화명", "")), None)
+    if not us or not us["_b"]:
+        return ""
+    b = us["_b"]
+    r_us = us["_r"] or 0
+    G = b / (r_us / 100) if r_us else sum(x["_b"] for x in snap)
+    rank = snap.index(us) + 1
+    # 우리보다 위(넘을 대상) — 예매관객 가까운 순 4편
+    above = sorted((r for r in snap if r["_b"] > b), key=lambda r: r["_b"])[:4]
+    rows_html = ""
+    for r in above:
+        n = int(r["_b"] - b)
+        rows_html += (f'<tr><td style="text-align:left">{r.get("영화명","")[:16]}</td>'
+                      f'<td>{r["_r"]:.1f}%</td><td>{int(r["_b"]):,}</td>'
+                      f'<td class="gain"><b>+{n:,}장</b></td></tr>')
+    # 절대 예매율 목표
+    thr_html = ""
+    base_pct = int(r_us) + 1
+    for s_pct in range(base_pct, base_pct + 4):
+        s = s_pct / 100.0
+        N = (s * G - b) / (1 - s)
+        if N > 0:
+            thr_html += (f'<tr><td style="text-align:left">예매율 {s_pct}%</td>'
+                         f'<td>-</td><td>-</td><td class="gain"><b>+{int(round(N/10)*10):,}장</b></td></tr>')
+    return (
+        '  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 🎯 예매율 방어 계산기 (0원 티켓 N장) —</div>\n'
+        f'  <div class="secdesc">현재 <b>예매율 {r_us:.1f}% · 전국 {rank}위 · 예매관객 {int(b):,}</b> (전체 예매 ~{int(round(G/1000)):,}천). '
+        '예매율 순위 = 예매관객수 순위라, 경쟁작 넘는 데 필요한 0원 티켓 = <b>예매관객 차이</b>.</div>\n'
+        '  <div class="panel"><table><thead><tr><th>목표</th><th>예매율</th><th>예매관객</th><th>필요 N(지금)</th></tr></thead><tbody>'
+        + rows_html + '<tr><td colspan="4" style="border-top:2px solid #3b4252;padding-top:8px;color:#9aa0ab;font-size:12px">▼ 절대 예매율 목표(극장 기준선)</td></tr>'
+        + thr_html + '</tbody></table>'
+        '<p class="hint">⚠️ <b>전국 실시간 근사치</b>예요. ①실시간 총 예매관객은 날짜가 섞이고 오후엔 당일소진으로 빠짐 → 2주차 방어는 '
+        '<b>"그 날 상영분 예매율"</b>이 진짜 타깃(경쟁작 날짜별 예매 스크랩 필요). ②각 앱(CGV·롯데·메가) 순위는 체인별이라 별도 확인 권장. '
+        '③경쟁작도 늘어나니 <b>여유 20~30%</b> 얹기. ④0원→노출→<b>유기 예매 전환</b>은 소규모 실험으로 측정해야 확정(가설 검증).</p></div>')
+
+
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
@@ -1136,6 +1186,8 @@ __WEEKEND__
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
   <div class="secdesc">같은 날(7/1) 개봉작 중 우리 위치. 규모(예매수)보다 <b>상대적 기세(예매율·순위)</b>로 판단.</div>
 __COMP_SECTION__
+
+__DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 우리 영화 예매(미래 수요) 추이 —</div>
   <div class="secdesc">앞으로의 예약 상황. 실제 관객은 위 '오늘 관객 현황' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
@@ -1437,6 +1489,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
+            .replace("__DEFENSE__", defense_calculator(load_competitors()))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__WEEKEND__", weekend_scenario(
