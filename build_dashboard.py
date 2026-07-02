@@ -750,6 +750,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         ' <span class="muted" style="font-size:12px">(체인별·극장별은 선택한 날짜 기준)</span></div>\n'
         '  <div class="panel"><h2>🎦 체인별 편성·성적</h2><div id="chainBox"></div>'
         '<p class="hint">좌석수=정원×상영횟수(편성 총 좌석). 좌석판매율=관객÷좌석수. '
+        '<b style="color:#4ade80">▲</b>/<b style="color:#f87171">▼</b> = 전날 대비 증감(상영관·상영횟수·좌석). '
         '<b>적게 깔고 판매율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>\n'
         '  <div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
         '<div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div>'
@@ -909,12 +910,25 @@ function drawTheater(theaters){
       plugins:{ legend:{display:false}, datalabels:{} },
       scales:{ x:{ grid, ticks:tick, beginAtZero:true }, y:{ grid:{display:false}, ticks:{ color:'#c7ccd6', font:{size:10}, autoSkip:false } } } } });
 }
+const dlt = (cur, prev) => {
+  if (prev==null || cur==null) return '';
+  const x = cur - prev;
+  if (x===0) return ' <span style="color:#6b7280;font-size:11px">-</span>';
+  return ` <span style="color:${x>0?'#4ade80':'#f87171'};font-size:11px">${x>0?'▲':'▼'}${won(Math.abs(x))}</span>`;
+};
 function renderMemberDate(date){
   const d = MEMBYDATE[date]; if(!d) return;
+  const dts = Object.keys(MEMBYDATE).sort();
+  const prev = dts.indexOf(date)>0 ? MEMBYDATE[dts[dts.indexOf(date)-1]] : null;
+  const pByChain = {}; if(prev) prev.chains.forEach(c=>pByChain[c[0]]=c);
   let ct = '<table><thead><tr><th>체인</th><th>상영관</th><th>상영횟수</th><th>좌석수</th><th>관객수</th><th>좌석판매율</th></tr></thead><tbody>';
-  d.chains.forEach(c => { ct += `<tr><td>${c[0]}</td><td>${won(c[1])}</td><td>${won(c[2])}</td><td>${won(c[3])}</td><td>${won(c[4])}</td><td class="gain">${c[5]!=null?c[5]+'%':'-'}</td></tr>`; });
-  if (d.total) { const t=d.total;
-    ct += `<tr style="border-top:2px solid #3b4252;font-weight:700"><td>합계</td><td>${won(t.screens)}</td><td>${won(t.shows)}</td><td>${won(t.seats)}</td><td>${won(t.aud)}</td><td class="gain">${t.sell!=null?t.sell+'%':'-'}</td></tr>`; }
+  d.chains.forEach(c => { const p = pByChain[c[0]];
+    ct += `<tr><td>${c[0]}</td><td>${won(c[1])}${dlt(c[1],p?p[1]:null)}</td><td>${won(c[2])}${dlt(c[2],p?p[2]:null)}</td>`
+        + `<td>${won(c[3])}${dlt(c[3],p?p[3]:null)}</td><td>${won(c[4])}</td><td class="gain">${c[5]!=null?c[5]+'%':'-'}</td></tr>`; });
+  if (d.total) { const t=d.total, pt=prev?prev.total:null;
+    ct += `<tr style="border-top:2px solid #3b4252;font-weight:700"><td>합계</td><td>${won(t.screens)}${dlt(t.screens,pt?pt.screens:null)}</td>`
+        + `<td>${won(t.shows)}${dlt(t.shows,pt?pt.shows:null)}</td><td>${won(t.seats)}${dlt(t.seats,pt?pt.seats:null)}</td>`
+        + `<td>${won(t.aud)}</td><td class="gain">${t.sell!=null?t.sell+'%':'-'}</td></tr>`; }
   ct += '</tbody></table>';
   document.getElementById('chainBox').innerHTML = ct;
   let tt = '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead><tbody>';
