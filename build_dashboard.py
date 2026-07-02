@@ -748,11 +748,11 @@ def member_section(snaps, detail, pred=None, sched=None):
         '  <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: '
         '<select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select>'
         ' <span class="muted" style="font-size:12px">(체인별·극장별은 선택한 날짜 기준)</span></div>\n'
-        '  <div class="panel"><h2>🎦 체인별 편성·성적</h2><div id="chainBox"></div>'
+        '  <div class="panel"><h2 id="chainTitle">🎦 체인별 편성·성적</h2><div id="chainBox"></div>'
         '<p class="hint">좌석수=정원×상영횟수(편성 총 좌석). 좌석판매율=관객÷좌석수. '
         '<b style="color:#4ade80">▲</b>/<b style="color:#f87171">▼</b> = 전날 대비 증감(상영관·상영횟수·좌석). '
         '<b>적게 깔고 판매율 높으면 = 스크린 더 요청 근거</b>, 많이 깔고 낮으면 = 조정 대상.</p></div>\n'
-        '  <div class="panel"><h2>🏢 극장(지점)별 관객 TOP50</h2>'
+        '  <div class="panel"><h2 id="theaterTitle">🏢 극장(지점)별 관객 TOP50</h2>'
         '<div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div>'
         '<p class="hint">색 = 체인(<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
         '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>')
@@ -931,11 +931,14 @@ function renderMemberDate(date){
         + `<td>${won(t.aud)}</td><td class="gain">${t.sell!=null?t.sell+'%':'-'}</td></tr>`; }
   ct += '</tbody></table>';
   document.getElementById('chainBox').innerHTML = ct;
+  const pTh = {}; if(prev) prev.theaters.forEach(t=>pTh[t[0]]=t[1]);
   let tt = '<table><thead><tr><th>순위</th><th>극장</th><th>상영관</th><th>관객수</th></tr></thead><tbody>';
   d.theaters.forEach((t,i) => { const dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${chainColor(t[0])};margin-right:7px"></span>`;
-    tt += `<tr><td>${i+1}</td><td style="text-align:left">${dot}${t[0]}</td><td>${won(t[2])}</td><td>${won(t[1])}</td></tr>`; });
+    tt += `<tr><td>${i+1}</td><td style="text-align:left">${dot}${t[0]}</td><td>${won(t[2])}</td><td>${won(t[1])}${dlt(t[1], (t[0] in pTh)?pTh[t[0]]:null)}</td></tr>`; });
   tt += '</tbody></table>';
   document.getElementById('theaterBox').innerHTML = tt;
+  const dtl = document.getElementById('theaterTitle'); if(dtl) dtl.textContent = '🏢 극장(지점)별 관객 TOP50 · '+date;
+  const dtc = document.getElementById('chainTitle'); if(dtc) dtc.textContent = '🎦 체인별 편성·성적 · '+date;
   drawTheater(d.theaters);
 }
 (function(){
