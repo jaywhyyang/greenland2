@@ -115,6 +115,14 @@ def main():
     except Exception as e:
         print("상세 수집 실패:", e)
 
+    # 미래 날짜 선예매 추적(같은 로그인 세션 재사용)
+    try:
+        import member_future
+        got = member_future.collect(op)
+        print("미래날짜 선예매:", " · ".join(f"{d[5:]} {a:,}" for d, a in sorted(got.items())))
+    except Exception as e:
+        print("미래날짜 예매 건너뜀:", e)
+
     try:
         import schedule_ingest
         if schedule_ingest._find_file():

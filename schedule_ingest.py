@@ -80,12 +80,64 @@ def parse(path, date_str=None):
                 total_seats = seats_here
                 total_screens = _num(cells[5]) if len(cells) > 5 else None
     total_shows = sum(bands.values())
+
+    hourly = _parse_hourly(rows)
+    regions = _parse_regions(rows)
     return {"date": date_str, "sheet": sheet, "total_shows": total_shows,
             "total_seats": total_seats, "total_screens": total_screens,
-            "bands": bands, "chains": chains}
+            "bands": bands, "chains": chains, "hourly": hourly, "regions": regions}
+
+
+# 시간대 세부표: 밴드 라벨 col3, 계열사 col2, 회차 카운트 col7부터.
+# 밴드 내 상대 슬롯 → 절대 시각 매핑(오전은 단일값이라 11시로 집약).
+_BAND_HOURS = {
+    "오전": [11],
+    "오후": [12, 13, 14, 15, 16],
+    "저녁": [17, 18, 19, 20, 21, 22, 23],
+}
+
+
+def _parse_hourly(rows):
+    """계열사×밴드 시간분포표 → {절대시각(str): 회차수} (전 계열사 합)."""
+    hourly = {}
+    for r in rows:
+        cells = [("" if c is None else c) for c in r]
+        if len(cells) < 8:
+            continue
+        c3 = str(cells[3]).strip()
+        band = next((b for b in _BAND_HOURS if c3.startswith(b)), None)
+        if not band:
+            continue
+        hrs = _BAND_HOURS[band]
+        if band == "오전":
+            counts = [sum((_num(c) or 0) for c in cells[7:18])]
+        else:
+            counts = [(_num(c) or 0) for c in cells[7:7 + len(hrs)]]
+        for h, n in zip(hrs, counts):
+            if n:
+                hourly[h] = hourly.get(h, 0) + n
+    return {str(k): v for k, v in sorted(hourly.items())}
+
+
+def _parse_regions(rows):
+    """우측 지역별 블록 → [[지역, 극장수, 회차, 상영관, 좌석], ...]."""
+    out = []
+    for r in rows:
+        cells = [("" if c is None else c) for c in r]
+        if len(cells) < 21:
+            continue
+        name = str(cells[10]).strip()
+        seats = _num(cells[20])
+        # 지역명은 문자열(숫자 아님) + 좌석 큰 값 → 시간분포표 오염행 배제
+        if (not name or name in ("지역별", "계") or _num(name) is not None
+                or seats is None or seats <= 1000):
+            continue
+        out.append([name, _num(cells[12]), _num(cells[14]), _num(cells[18]), seats])
+    return out
 
 
 HIST_JSON = os.path.join(BASE, "schedule_history.json")
+CAP_LOG = os.path.join(BASE, "schedule_capacity_log.json")  # 좌석 개방 곡선(수집일×대상일)
 
 
 def main():
@@ -104,6 +156,15 @@ def main():
             hist = json.load(open(HIST_JSON, encoding="utf-8"))
         except Exception:
             hist = {}
+    # 좌석 개방 곡선(수집일 asof × 대상일) — 주말 좌석이 며칠에 걸쳐 열리는 추이
+    cap = {}
+    if os.path.exists(CAP_LOG):
+        try:
+            cap = json.load(open(CAP_LOG, encoding="utf-8"))
+        except Exception:
+            cap = {}
+    asof = datetime.date.today().strftime("%Y-%m-%d")
+
     year = datetime.date.today().strftime("%Y")
     for s in openpyxl.load_workbook(f, read_only=True).sheetnames:
         if re.fullmatch(r"\d{4}", s):
@@ -112,11 +173,16 @@ def main():
                 d = parse(f, ds)
                 if d.get("total_seats"):
                     hist[ds] = {"chains": d["chains"], "total_seats": d["total_seats"],
-                                "total_shows": d["total_shows"], "total_screens": d.get("total_screens")}
+                                "total_shows": d["total_shows"], "total_screens": d.get("total_screens"),
+                                "hourly": d.get("hourly", {}), "regions": d.get("regions", [])}
+                    cap.setdefault(ds, {})[asof] = {
+                        "seats": d["total_seats"], "shows": d["total_shows"],
+                        "screens": d.get("total_screens")}
             except Exception:
                 pass
     json.dump(hist, open(HIST_JSON, "w", encoding="utf-8"), ensure_ascii=False)
-    print("시간표 파싱:", data.get("date"), "| 이력 날짜:", sorted(hist))
+    json.dump(cap, open(CAP_LOG, "w", encoding="utf-8"), ensure_ascii=False)
+    print("시간표 파싱:", data.get("date"), "| 이력 날짜:", sorted(hist), "| 좌석로그 asof:", asof)
     return 0
 
 

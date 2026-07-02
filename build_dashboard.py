@@ -56,7 +56,10 @@ def build_membydate():
             "aud": tot_aud,
             "sell": round(tot_aud / tot_seat * 100, 1) if tot_seat else None,
         }
-        out[date] = {"chains": chains, "theaters": mem.get(date, {}).get("theaters") or [], "total": total}
+        sd_full = sch.get(date) or {}
+        out[date] = {"chains": chains, "theaters": mem.get(date, {}).get("theaters") or [],
+                     "total": total, "hourly": sd_full.get("hourly") or {},
+                     "regions": sd_full.get("regions") or []}
     return out
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
@@ -713,10 +716,26 @@ def daycmp_banner(snaps):
             f'어제 최종 {p["yestFinal"]:,} × {p["ratio"]:.2f} = 예상 {est:,}. (관객수엔 예매 포함)</div></div>')
 
 
-def top_forecast(snaps):
+def _remaining_seats(sched, today, now_m):
+    """시간표(hourly)로 현재시각 이후 아직 시작 안 한 회차의 좌석 합.
+    최종 관객수의 물리적 상한(=현재 + 남은좌석) 계산용. 오늘 편성일 때만."""
+    if not sched or sched.get("date") != today:
+        return None
+    hourly = sched.get("hourly") or {}
+    tot_shows = sched.get("total_shows") or 0
+    tot_seats = sched.get("total_seats") or 0
+    if not hourly or tot_shows <= 0 or tot_seats <= 0:
+        return None
+    now_h = now_m / 60.0
+    remain_shows = sum(v for h, v in hourly.items() if int(h) >= now_h)
+    return tot_seats * remain_shows / tot_shows
+
+
+def top_forecast(snaps, sched=None):
     """오늘 최종 관객 예상(맨 위 히어로). 신뢰도 3단:
     ① 어제 동시간 보정(daycmp) + ② 당일 곡선(predict_eod_curve) → 되면 평균(정밀)
-    ③ 둘 다 안되면 당일 추세 슬로프로 마감 시각(23:30)까지 외삽(잠정)."""
+    ③ 둘 다 안되면 당일 추세 슬로프로 마감 시각(23:30)까지 외삽(잠정).
+    + 시간표 있으면 '현재 + 남은좌석' 물리 상한으로 캡."""
     from collections import defaultdict
     days = defaultdict(list)
     for s in snaps:
@@ -730,6 +749,12 @@ def top_forecast(snaps):
     tv = sorted(days[today])
     now_m, now_a = tv[-1]
 
+    remain = _remaining_seats(sched, today, now_m)
+    cap = (now_a + remain) if remain is not None else None
+
+    def capped(v):
+        return min(v, cap) if cap is not None else v
+
     dc = member_daycompare(snaps)
     ratio_est = dc["pred"]["pred"] if dc and dc.get("pred") else None
     cv = predict_eod_curve(snaps)
@@ -737,31 +762,40 @@ def top_forecast(snaps):
     ests = [(e, lbl) for e, lbl in ((ratio_est, "어제 동시간 보정"), (curve_est, "당일 곡선 보정")) if e]
 
     END = 23 * 60 + 30  # 마감 기준 시각(관객수 확정이 대체로 이 무렵)
+    base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
+            "remain": (int(round(remain)) if remain is not None else None)}
     if ests:
         vals = [e for e, _ in ests]
         est = sum(vals) / len(vals)
-        return {"est": est, "low": min(vals), "high": max(vals), "now": now_a,
+        capped_est = capped(est)
+        return {**base, "est": capped_est, "low": capped(min(vals)), "high": capped(max(vals)),
                 "method": " + ".join(l for _, l in ests), "conf": "정밀",
-                "detail": [(l, e) for e, l in ests]}
+                "capped": capped_est < est, "detail": [(l, e) for e, l in ests]}
     # 잠정: 최근 구간 기울기로 마감까지 외삽
     if now_m >= END or len(tv) < 3:
-        return {"est": now_a, "low": now_a, "high": now_a, "now": now_a,
-                "method": "현재 확정치", "conf": "floor"}
+        return {**base, "est": now_a, "low": now_a, "high": now_a,
+                "method": "현재 확정치", "conf": "floor", "capped": False}
     recent = tv[-6:]
     span = recent[-1][0] - recent[0][0]
     slope = (recent[-1][1] - recent[0][1]) / span if span > 0 else 0
     # 저녁엔 예매·발권 속도가 둔화(어제 저녁 관측) → 남은 증가분에 감속계수 0.7
-    est = now_a + max(0, slope) * (END - now_m) * 0.7
-    return {"est": est, "low": est * 0.85, "high": est * 1.15, "now": now_a,
-            "method": "당일 추세 외삽", "conf": "잠정"}
+    raw = now_a + max(0, slope) * (END - now_m) * 0.7
+    est = capped(raw)
+    return {**base, "est": est, "low": capped(est * 0.85), "high": capped(est * 1.15),
+            "method": "당일 추세 외삽", "conf": "잠정", "capped": est < raw}
 
 
-def top_forecast_banner(snaps):
-    f = top_forecast(snaps)
+def top_forecast_banner(snaps, sched=None):
+    f = top_forecast(snaps, sched)
     if not f:
         return ""
     r = lambda v: int(round(v / 100.0) * 100)
     est, lo, hi = r(f["est"]), r(f["low"]), r(f["high"])
+    capnote = ""
+    if f.get("remain") is not None:
+        capnote = f' · 남은 좌석 {f["remain"]:,}석(상한 {f["cap"]:,})'
+        if f.get("capped"):
+            capnote += ' <b style="color:#fbbf24">← 좌석 상한 적용</b>'
     if f["conf"] == "floor":
         return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a2410 0%,#1a1d27 70%);border-color:#5a4a2f">'
                 '<div class="lbl">🎯 오늘 최종 관객 예상</div>'
@@ -773,13 +807,13 @@ def top_forecast_banner(snaps):
         return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 65%);border-color:#2f5a42">'
                 '<div class="lbl">🎯 오늘 최종 관객 예상 · 어제 추이 보정 (정밀)</div>'
                 f'<div class="big" style="color:#4ade80">약 {est:,}명</div>'
-                f'<div class="sub2">현재 확정 {f["now"]:,} → {dt}. {band} '
+                f'<div class="sub2">현재 확정 {f["now"]:,} → {dt}. {band}{capnote} '
                 '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div></div>')
     # 잠정
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
             '<div class="lbl">🎯 오늘 최종 관객 예상 · 당일 추세 (잠정)</div>'
             f'<div class="big" style="color:#60a5fa">약 {est:,}명 <span style="font-size:14px;color:#9aa0ab">({lo:,}~{hi:,})</span></div>'
-            f'<div class="sub2">현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>. '
+            f'<div class="sub2">현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>{capnote}. '
             '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)</div></div>')
 
 
@@ -867,6 +901,84 @@ def eod_banner(snaps):
             f'<div class="sub2">현재 확정 {fc["now"]:,} · 오늘 진행률 {fc["frac"]*100:.0f}% (이 시간대엔 보통 최종의 {fc["frac"]*100:.0f}%까지 참)</div></div>')
 
 
+FUTURE_ADV = os.path.join(BASE, "future_advance_log.json")
+CAP_LOG = os.path.join(BASE, "schedule_capacity_log.json")
+DOW_NAME = ["월", "화", "수", "목", "금", "토", "일"]
+# 요일계수(평일 수/목 기준 배수) — 첫 주말 실적 나오면 자동 보정 예정
+DOW_FACTOR = {0: (0.7, 0.8, 0.95), 1: (0.7, 0.8, 0.95), 2: (0.8, 0.9, 1.05),
+              3: (0.8, 0.9, 1.05), 4: (1.0, 1.15, 1.35), 5: (1.4, 1.8, 2.3),
+              6: (1.2, 1.5, 1.9)}
+
+
+def _dow(date_str):
+    y, m, d = map(int, date_str.split("-"))
+    return datetime.date(y, m, d).weekday()
+
+
+def weekend_scenario(current_day):
+    """향후 날짜(금·토·일 등) 예상 시나리오. 직전 완료일 최종관객 × 요일계수(범위) +
+    현재 선예매(하한) + 좌석 개방 현황. 데이터 쌓이면 매일 정밀화."""
+    sched_hist = _load_json(SCHED_HIST)
+    adv = _load_json(FUTURE_ADV)
+    mem = _load_json(MEMBER_HIST)
+    box = load_box()
+    box_final = {r.get("날짜"): _num(r.get("관객수")) for r in box if r.get("날짜")}
+    # 완료된 날(오늘 이전)의 최종 관객: 박스오피스 우선, 없으면 회원 total
+    finals = {}
+    for d, a in box_final.items():
+        if d < current_day and a:
+            finals[d] = a
+    for d, v in mem.items():
+        if d < current_day and v.get("total"):
+            finals.setdefault(d, v["total"])
+    if not finals or not sched_hist:
+        return ""
+    bdate = max(finals)
+    bfin = finals[bdate]
+    bdow = _dow(bdate)
+    base_wd = bfin / DOW_FACTOR[bdow][1]  # 평일(수/목) 환산 기준
+    wk_ref = (sched_hist.get(current_day) or {}).get("total_seats") or max(
+        (v.get("total_seats") or 0) for v in sched_hist.values())
+
+    fut = [d for d in sorted(sched_hist) if d > current_day]
+    if not fut:
+        return ""
+    cards = []
+    for d in fut[:4]:
+        dw = _dow(d)
+        lo, mid, hi = (int(base_wd * f) for f in DOW_FACTOR[dw])
+        seats = (sched_hist.get(d) or {}).get("total_seats") or 0
+        a_latest = None
+        if adv.get(d):
+            a_latest = adv[d][max(adv[d])].get("aud")
+        if a_latest:
+            lo = max(lo, a_latest)  # 이미 확보된 선예매는 하한
+        opennote = ""
+        fully = seats >= 0.75 * wk_ref if wk_ref else False
+        if fully:
+            hi = min(hi, int(seats * 0.7))  # 좌석 충분히 열림 → 물리 상한 반영
+        elif dw in (5, 6) and seats:
+            opennote = (f' · <b style="color:#7dd3fc">🔓 좌석 추가 개방 예정</b>'
+                        f'(현재 {seats:,}석 = 평일의 {seats/wk_ref*100:.0f}% 수준)')
+        r = lambda v: int(round(v / 100.0) * 100)
+        wend = dw >= 4
+        adv_txt = f'선예매 {a_latest:,}' if a_latest else '선예매 -'
+        cards.append(
+            f'<div class="card" style="border-color:{"#3a4a2f" if wend else "#262a36"}">'
+            f'<div class="k">{d[5:]} ({DOW_NAME[dw]}){" ⭐주말" if wend else ""}</div>'
+            f'<div class="v" style="font-size:19px;color:{"#4ade80" if wend else "#e7e9ee"}">약 {r(mid):,}명</div>'
+            f'<div style="font-size:11px;color:#9aa0ab;margin-top:4px">범위 {r(lo):,}~{r(hi):,} · {adv_txt}</div>'
+            f'<div style="font-size:11px;color:#c7ccd6;margin-top:2px">좌석 {seats:,}{opennote}</div></div>')
+    note = (f'직전 완료일 <b>{bdate[5:]}({DOW_NAME[bdow]}) {bfin:,}명</b> 기준, 요일 특성(평일 대비 '
+            '금 1.15·토 1.8·일 1.5배, 범위 포함)으로 환산한 <b>시나리오</b>예요. '
+            '<b style="color:#f4c89a">선예매(=이미 확보)</b>는 하한, 주말 좌석은 아직 다 안 열려 더 늘 수 있어요. '
+            '<b style="color:#7dd3fc">첫 주말 실적이 나오면 요일계수를 실제값으로 자동 교체</b>합니다. '
+            f'({bdate[5:]}이 개봉일이면 변동 큼 — 평일 실적 쌓이면 정밀화)')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 🔮 향후·주말 예상 (시나리오) —</div>\n'
+            f'  <div class="cards">{"".join(cards)}</div>\n'
+            f'  <div class="secdesc" style="margin-top:2px">{note}</div>')
+
+
 def member_section(snaps, detail, pred=None, sched=None):
     if not snaps:
         return ('<div class="panel" style="text-align:center;color:#9aa0ab;padding:32px 18px">'
@@ -911,7 +1023,11 @@ def member_section(snaps, detail, pred=None, sched=None):
         '  <div class="panel"><h2 id="theaterTitle">🏢 극장(지점)별 관객 TOP50</h2>'
         '<div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div>'
         '<p class="hint">색 = 체인(<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
-        '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>')
+        '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>\n'
+        '  <div class="panel"><h2 id="hourlyTitle">🕒 시간대별 편성 (회차)</h2><div class="cbox short"><canvas id="c_hourly"></canvas></div>'
+        '<p class="hint">선택 날짜의 <b>상영 회차가 몇 시에 몰려 있나</b>(시간표 기준, 전 극장 합). 저녁 피크가 수요와 맞는지 확인용.</p></div>\n'
+        '  <div class="panel"><h2 id="regionTitle">🗺️ 지역별 편성 (좌석)</h2><div class="cbox short"><canvas id="c_region"></canvas></div>'
+        '<p class="hint">권역별 편성 <b>좌석 규모</b>(시간표 기준). 어느 권역에 물량이 실렸는지.</p></div>')
 
 
 HTML = r"""<!DOCTYPE html>
@@ -996,6 +1112,8 @@ __CARDS__
   <div style="border-top:1px solid #262a36;margin:8px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 오늘 관객 현황 (회원통계) —</div>
   <div class="secdesc"><b>여기 "관객수"는 오늘 상영분에 대해 현재까지 예매·발권된 관객 총합</b>이에요 (= 이미 본 관객 + 오늘 남은 회차 예매분 + 현장발권). <b style="color:#f4c89a">"지금까지 실제로 본 사람 수"가 아니라 "오늘 최종 관객의 현재 확정분"</b>에 가깝습니다. 이게 늘면(특히 예매 안 줄었는데) = 현장·당일 신규 수요.</div>
 __MEMBER_SECTION__
+
+__WEEKEND__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
   <div class="secdesc">같은 날(7/1) 개봉작 중 우리 위치. 규모(예매수)보다 <b>상대적 기세(예매율·순위)</b>로 판단.</div>
@@ -1096,6 +1214,35 @@ function renderMemberDate(date){
   const dtl = document.getElementById('theaterTitle'); if(dtl) dtl.textContent = '🏢 극장(지점)별 관객 TOP50 · '+date;
   const dtc = document.getElementById('chainTitle'); if(dtc) dtc.textContent = '🎦 체인별 편성·성적 · '+date;
   drawTheater(d.theaters);
+  drawHourly(d.hourly, date);
+  drawRegion(d.regions, date);
+}
+let hourlyChart=null, regionChart=null;
+function drawHourly(hourly, date){
+  const el=document.getElementById('c_hourly'); if(!el) return;
+  const t=document.getElementById('hourlyTitle'); if(t) t.textContent='🕒 시간대별 편성 (회차) · '+date;
+  const hrs=Object.keys(hourly||{}).map(Number).sort((a,b)=>a-b);
+  if(hourlyChart) hourlyChart.destroy();
+  if(!hrs.length){ return; }
+  hourlyChart=new Chart(el,{ type:'bar',
+    data:{ labels:hrs.map(h=>h+'시'), datasets:[{ label:'상영 회차', data:hrs.map(h=>hourly[h]),
+      backgroundColor:hrs.map(h=>h>=17?'#f59e0b':h>=12?'#22d3ee':'#60a5fa'),
+      datalabels:{ anchor:'end',align:'end',color:'#e7e9ee',font:{size:9,weight:'bold'},formatter:won } }] },
+    options:{ ...base(), plugins:{...base().plugins}, scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
+}
+function drawRegion(regions, date){
+  const el=document.getElementById('c_region'); if(!el) return;
+  const t=document.getElementById('regionTitle'); if(t) t.textContent='🗺️ 지역별 편성 (좌석) · '+date;
+  const rg=(regions||[]).slice().sort((a,b)=>(b[4]||0)-(a[4]||0));
+  if(regionChart) regionChart.destroy();
+  if(!rg.length){ return; }
+  regionChart=new Chart(el,{ type:'bar',
+    data:{ labels:rg.map(r=>r[0]), datasets:[{ label:'편성 좌석', data:rg.map(r=>r[4]),
+      backgroundColor:'#a855f7',
+      datalabels:{ anchor:'end',align:'end',color:'#e7e9ee',font:{size:9,weight:'bold'},formatter:won } }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:44}},
+      plugins:{ legend:{display:false}, datalabels:{} },
+      scales:{ x:{grid,ticks:tick,beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#c7ccd6',font:{size:11},autoSkip:false}} } } });
 }
 (function(){
   const sel = document.getElementById('dateSel'); if(!sel) return;
@@ -1265,7 +1412,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", top_forecast_banner(m_snaps) + "\n" + secured_banner(pts, m_snaps))
+            .replace("__FORECAST__", top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
@@ -1274,6 +1421,9 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
+            .replace("__WEEKEND__", weekend_scenario(
+                max((s["수집시각"][:10] for s in m_snaps),
+                    default=datetime.datetime.now().strftime("%Y-%m-%d"))))
             .replace("__MEMBER_JSON__", member_json)
             .replace("__MEMBYDATE__", json.dumps(build_membydate(), ensure_ascii=False))
             .replace("__DATA_JSON__", data_json))
