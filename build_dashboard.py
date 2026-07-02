@@ -796,6 +796,18 @@ def top_forecast_banner(snaps, sched=None):
         capnote = f' · 남은 좌석 {f["remain"]:,}석(상한 {f["cap"]:,})'
         if f.get("capped"):
             capnote += ' <b style="color:#fbbf24">← 좌석 상한 적용</b>'
+    # 편성 기반 참고치: 오늘 좌석 × (직전 완료일 판매율, 요일 보정)
+    schedref = ""
+    if sched and sched.get("total_seats") and sched.get("date"):
+        fb = _fill_baseline(sched["date"])
+        if fb:
+            wf = fb["fill"] / DOW_FILL[fb["dow"]][1]
+            dw = _dow(sched["date"])
+            ref = int(round(sched["total_seats"] * wf * DOW_FILL[dw][1] / 100.0) * 100)
+            schedref = (f'<div style="font-size:11px;color:#c7ccd6;margin-top:4px">📐 편성 기반 참고: '
+                        f'좌석 {sched["total_seats"]:,} × 판매율 {wf*DOW_FILL[dw][1]*100:.1f}% ≈ '
+                        f'<b>{ref:,}명</b> (직전 {fb["date"][5:]} {fb["fill"]*100:.1f}% 기준). '
+                        f'오늘 헤드라인은 실시간 누적이 더 정확해 그 값을 사용.</div>')
     if f["conf"] == "floor":
         return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a2410 0%,#1a1d27 70%);border-color:#5a4a2f">'
                 '<div class="lbl">🎯 오늘 최종 관객 예상</div>'
@@ -808,13 +820,15 @@ def top_forecast_banner(snaps, sched=None):
                 '<div class="lbl">🎯 오늘 최종 관객 예상 · 어제 추이 보정 (정밀)</div>'
                 f'<div class="big" style="color:#4ade80">약 {est:,}명</div>'
                 f'<div class="sub2">현재 확정 {f["now"]:,} → {dt}. {band}{capnote} '
-                '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div></div>')
+                '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div>'
+                + schedref + '</div>')
     # 잠정
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
             '<div class="lbl">🎯 오늘 최종 관객 예상 · 당일 추세 (잠정)</div>'
             f'<div class="big" style="color:#60a5fa">약 {est:,}명 <span style="font-size:14px;color:#9aa0ab">({lo:,}~{hi:,})</span></div>'
             f'<div class="sub2">현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>{capnote}. '
-            '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)</div></div>')
+            '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)</div>'
+            + schedref + '</div>')
 
 
 def _member_peak(snaps):
@@ -904,10 +918,12 @@ def eod_banner(snaps):
 FUTURE_ADV = os.path.join(BASE, "future_advance_log.json")
 CAP_LOG = os.path.join(BASE, "schedule_capacity_log.json")
 DOW_NAME = ["월", "화", "수", "목", "금", "토", "일"]
-# 요일계수(평일 수/목 기준 배수) — 첫 주말 실적 나오면 자동 보정 예정
-DOW_FACTOR = {0: (0.7, 0.8, 0.95), 1: (0.7, 0.8, 0.95), 2: (0.8, 0.9, 1.05),
-              3: (0.8, 0.9, 1.05), 4: (1.0, 1.15, 1.35), 5: (1.4, 1.8, 2.3),
-              6: (1.2, 1.5, 1.9)}
+# 요일별 좌석판매율 배수(평일 월~목=1.0 기준). 첫 주말 실적 나오면 자동 보정.
+DOW_FILL = {0: (0.85, 1.0, 1.1), 1: (0.85, 1.0, 1.1), 2: (0.9, 1.0, 1.1),
+            3: (0.9, 1.0, 1.1), 4: (1.0, 1.15, 1.35), 5: (1.25, 1.55, 1.9),
+            6: (1.1, 1.4, 1.7)}
+# 주말 최종 좌석(개방 완료 가정) ≈ 평일 대비 — 주말 좌석은 임박해 열려 지금 과소
+WEEKEND_CAP = {4: 0.95, 5: 1.05, 6: 0.95}
 
 
 def _dow(date_str):
@@ -915,66 +931,68 @@ def _dow(date_str):
     return datetime.date(y, m, d).weekday()
 
 
+def _fill_baseline(current_day):
+    """직전 완료일의 좌석판매율(수요 강도) — 예측 앵커. 박스오피스 확정치 사용."""
+    box = load_box()
+    comp = {r["날짜"]: r for r in box if r.get("날짜") and r["날짜"] < current_day
+            and _num(r.get("좌석판매율"))}
+    if not comp:
+        return None
+    d = max(comp)
+    return {"date": d, "dow": _dow(d), "fill": _num(comp[d]["좌석판매율"]) / 100.0,
+            "aud": _num(comp[d].get("관객수"))}
+
+
 def weekend_scenario(current_day):
-    """향후 날짜(금·토·일 등) 예상 시나리오. 직전 완료일 최종관객 × 요일계수(범위) +
-    현재 선예매(하한) + 좌석 개방 현황. 데이터 쌓이면 매일 정밀화."""
+    """향후 날짜 예상 = 편성 좌석 × 좌석판매율(요일 보정). 편성(좌석)이 스케일,
+    판매율(과거 실적)이 수요강도. 선예매는 하한. 주말 좌석은 개방 진행중이라 상향 여지."""
     sched_hist = _load_json(SCHED_HIST)
     adv = _load_json(FUTURE_ADV)
-    mem = _load_json(MEMBER_HIST)
-    box = load_box()
-    box_final = {r.get("날짜"): _num(r.get("관객수")) for r in box if r.get("날짜")}
-    # 완료된 날(오늘 이전)의 최종 관객: 박스오피스 우선, 없으면 회원 total
-    finals = {}
-    for d, a in box_final.items():
-        if d < current_day and a:
-            finals[d] = a
-    for d, v in mem.items():
-        if d < current_day and v.get("total"):
-            finals.setdefault(d, v["total"])
-    if not finals or not sched_hist:
+    fb = _fill_baseline(current_day)
+    if not fb or not sched_hist:
         return ""
-    bdate = max(finals)
-    bfin = finals[bdate]
-    bdow = _dow(bdate)
-    base_wd = bfin / DOW_FACTOR[bdow][1]  # 평일(수/목) 환산 기준
+    weekday_fill = fb["fill"] / DOW_FILL[fb["dow"]][1]  # 평일 환산 판매율
     wk_ref = (sched_hist.get(current_day) or {}).get("total_seats") or max(
         (v.get("total_seats") or 0) for v in sched_hist.values())
 
     fut = [d for d in sorted(sched_hist) if d > current_day]
     if not fut:
         return ""
+    r = lambda v: int(round(v / 100.0) * 100)
     cards = []
     for d in fut[:4]:
         dw = _dow(d)
-        lo, mid, hi = (int(base_wd * f) for f in DOW_FACTOR[dw])
-        seats = (sched_hist.get(d) or {}).get("total_seats") or 0
-        a_latest = None
-        if adv.get(d):
-            a_latest = adv[d][max(adv[d])].get("aud")
+        seats_now = (sched_hist.get(d) or {}).get("total_seats") or 0
+        # 주말은 좌석 개방 진행중 → 최종좌석을 평일 규모로 투영(하한은 현재 좌석)
+        seats_proj = max(seats_now, int(wk_ref * WEEKEND_CAP.get(dw, 1.0))) if dw >= 4 else seats_now
+        flo, fmid, fhi = DOW_FILL[dw]
+        low = seats_now * weekday_fill * flo          # 보수: 현재 개방 좌석
+        mid = seats_proj * weekday_fill * fmid        # 좌석 평일수준 개방 가정
+        high = seats_proj * weekday_fill * fhi
+        a_latest = adv[d][max(adv[d])].get("aud") if adv.get(d) else None
         if a_latest:
-            lo = max(lo, a_latest)  # 이미 확보된 선예매는 하한
+            low = max(low, a_latest)                   # 선예매 하한
+            mid = max(mid, a_latest)
         opennote = ""
-        fully = seats >= 0.75 * wk_ref if wk_ref else False
-        if fully:
-            hi = min(hi, int(seats * 0.7))  # 좌석 충분히 열림 → 물리 상한 반영
-        elif dw in (5, 6) and seats:
-            opennote = (f' · <b style="color:#7dd3fc">🔓 좌석 추가 개방 예정</b>'
-                        f'(현재 {seats:,}석 = 평일의 {seats/wk_ref*100:.0f}% 수준)')
-        r = lambda v: int(round(v / 100.0) * 100)
+        under = dw in (5, 6) and wk_ref and seats_now < 0.75 * wk_ref
+        if under:
+            opennote = (f' · <b style="color:#7dd3fc">🔓 개방 진행중</b>'
+                        f'(현재 {seats_now:,}석=평일 {seats_now/wk_ref*100:.0f}%, 최종 ~{seats_proj:,} 가정)')
         wend = dw >= 4
         adv_txt = f'선예매 {a_latest:,}' if a_latest else '선예매 -'
         cards.append(
             f'<div class="card" style="border-color:{"#3a4a2f" if wend else "#262a36"}">'
             f'<div class="k">{d[5:]} ({DOW_NAME[dw]}){" ⭐주말" if wend else ""}</div>'
             f'<div class="v" style="font-size:19px;color:{"#4ade80" if wend else "#e7e9ee"}">약 {r(mid):,}명</div>'
-            f'<div style="font-size:11px;color:#9aa0ab;margin-top:4px">범위 {r(lo):,}~{r(hi):,} · {adv_txt}</div>'
-            f'<div style="font-size:11px;color:#c7ccd6;margin-top:2px">좌석 {seats:,}{opennote}</div></div>')
-    note = (f'직전 완료일 <b>{bdate[5:]}({DOW_NAME[bdow]}) {bfin:,}명</b> 기준, 요일 특성(평일 대비 '
-            '금 1.15·토 1.8·일 1.5배, 범위 포함)으로 환산한 <b>시나리오</b>예요. '
-            '<b style="color:#f4c89a">선예매(=이미 확보)</b>는 하한, 주말 좌석은 아직 다 안 열려 더 늘 수 있어요. '
-            '<b style="color:#7dd3fc">첫 주말 실적이 나오면 요일계수를 실제값으로 자동 교체</b>합니다. '
-            f'({bdate[5:]}이 개봉일이면 변동 큼 — 평일 실적 쌓이면 정밀화)')
-    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 🔮 향후·주말 예상 (시나리오) —</div>\n'
+            f'<div style="font-size:11px;color:#9aa0ab;margin-top:4px">범위 {r(low):,}~{r(high):,} · {adv_txt}</div>'
+            f'<div style="font-size:11px;color:#c7ccd6;margin-top:2px">좌석 {seats_now:,}{opennote}</div></div>')
+    note = (f'<b>편성 좌석 × 좌석판매율</b> 방식. 판매율 기준 = 직전 완료일 '
+            f'<b>{fb["date"][5:]}({DOW_NAME[fb["dow"]]}) {fb["fill"]*100:.1f}%</b>'
+            f'(관객 {fb["aud"]:,}÷좌석), 평일환산 {weekday_fill*100:.1f}%에 요일 판매율배수(금×1.15·토×1.55·일×1.4)를 곱함. '
+            '<b style="color:#f4c89a">최종 = 좌석(스케일) × 판매율(수요)</b> — 편성이 중심, 과거 실적이 판매율을 보정. '
+            '<b style="color:#7dd3fc">주말 좌석은 임박해 열려 지금 과소</b>라 최종좌석을 평일수준으로 투영(범위 하단=현재좌석·상단=평일좌석). '
+            '선예매는 하한. 완료일·주말 실적 쌓이면 판매율·좌석투영 자동 정밀화.')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 🔮 향후·주말 예상 (편성 좌석 × 판매율) —</div>\n'
             f'  <div class="cards">{"".join(cards)}</div>\n'
             f'  <div class="secdesc" style="margin-top:2px">{note}</div>')
 
