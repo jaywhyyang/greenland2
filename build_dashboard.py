@@ -631,6 +631,20 @@ def region_map(regions):
             '(지역별 정확한 좌석점유율은 지역 좌석 데이터가 없어 생략 — 대체로 인구 규모를 따라갑니다.)</p></div>')
 
 
+def secured_banner(pts, snaps):
+    """기확보 관객 = 누적 관람(이미 본) + 실시간 예매(앞으로 예약). 중복 없이 확보된 총 관객."""
+    book = _num(latest(pts).get("book")) if pts else None
+    cumul = _num(snaps[-1].get("누적관객수")) if snaps else None
+    if not book or not cumul:
+        return ""
+    total = cumul + book
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a3a5a">'
+            '<div class="lbl">🎯 기확보 관객 (이미 본 + 예약된 잠재까지)</div>'
+            f'<div class="big" style="color:#c084fc">약 {total:,}명</div>'
+            f'<div class="sub2">누적 관람 {cumul:,}(이미 본) + 실시간 예매 {book:,}(앞으로 예약) · '
+            '중복 없이 = 지금까지 확보된 총 관객</div></div>')
+
+
 def _member_peak(snaps):
     """오늘 스냅샷의 구간(관객수 증가) → 시간대별 실관람 증가. 마지막 날짜 기준."""
     if not snaps:
@@ -1082,7 +1096,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", "")
+            .replace("__FORECAST__", secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))

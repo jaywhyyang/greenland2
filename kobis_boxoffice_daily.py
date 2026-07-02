@@ -105,16 +105,18 @@ def collect(date_str, keyword=MOVIE_KEYWORD):
 
 
 def collect_all(date_str, top_n=25):
-    """상위 top_n편 전부를 박스오피스+좌석 병합해서 리스트로 반환."""
-    def key(name):
-        return re.sub(r"\W", "", _movie_name(name))  # 순위표시 제거 + 단어문자만
+    """상위 top_n편 전부를 박스오피스+좌석 병합. 좌석 페이지 영화명이 비어 있어
+    개봉일+관객수로 매칭(둘 다 같은 값이라 안정적)."""
+    def mkey(opendt, aud):
+        return (str(opendt).strip(), re.sub(r"[^\d]", "", str(aud)))
     box_rows = fetch_rows(BOX_URL, date_str)
     seat_rows = fetch_rows(SEAT_URL, date_str)
-    seat_by = {key(c[1]): c for c in seat_rows if len(c) >= 6}
+    # 좌석: [순위,영화명,개봉일,좌석판매율,좌석점유율,좌석수,매출,누적매출,관객수,누적관객]
+    seat_by = {mkey(s[2], s[8]): s for s in seat_rows if len(s) >= 9}
     recs = []
     for c in box_rows[:top_n]:
-        if len(c) >= 12:
-            recs.append(_build_rec(c, seat_by.get(key(c[1])), date_str))
+        if len(c) >= 12:  # 박스: ...개봉일=c[2]...관객수=c[7]
+            recs.append(_build_rec(c, seat_by.get(mkey(c[2], c[7])), date_str))
     return recs
 
 
