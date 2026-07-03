@@ -760,6 +760,48 @@ def _remaining_seats(sched, today, now_m):
 LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63}
 
 
+def status_summary(snaps, sched):
+    """폰에서 읽는 자동 '현황 한줄 요약' — 코멘트를 대시보드에 박아 넣음."""
+    dc = member_daycompare(snaps)
+    f = top_forecast(snaps, sched)
+    if not f:
+        return ""
+    now = f["now"]
+    est = int(round(f["est"] / 100.0) * 100)
+    pred = (dc or {}).get("pred")
+    ratio = pred["ratio"] if pred else None
+    yfinal = pred["yestFinal"] if pred else None
+    # 최근 완료 시간대 페이스(오늘 vs 어제)
+    pace = ""
+    if dc and dc.get("labels"):
+        L, tA, yA = dc["labels"], dc["today"], dc["yest"]
+        for i in range(len(L) - 1, -1, -1):
+            if tA[i] is not None and yA[i] is not None and i + 1 < len(L):
+                # 진행중(마지막) 제외, 직전 완료시간대
+                pass
+        comp = [(L[i], tA[i], yA[i]) for i in range(len(L))
+                if tA[i] is not None and yA[i] is not None]
+        if len(comp) >= 2:
+            lab, t_, y_ = comp[-2]  # 마지막은 진행중 → 그 앞(완료된 것)
+            pace = (f'{lab} 증가 {t_} vs 전일 {y_} — '
+                    + ('<b style="color:#4ade80">전일보다 빠름(수요 살아있음)</b>' if t_ >= y_
+                       else '<b style="color:#f4c89a">전일보다 느림</b>'))
+    # 판정 문구
+    if yfinal:
+        rr = est / yfinal
+        verdict = ("<b style='color:#4ade80'>전일 수준 유지</b>" if rr >= 0.95 else
+                   "<b style='color:#f4c89a'>전일보다 소폭 낮음</b>" if rr >= 0.83 else
+                   "<b style='color:#f87171'>전일 대비 부진</b>")
+        vs = f'예상 마감 <b>~{est:,}</b> (전일 {int(yfinal):,}, {verdict})'
+    else:
+        vs = f'예상 마감 <b>~{est:,}</b>'
+    rtxt = f' · 전일 동시각의 <b>{ratio:.2f}배</b>' if ratio else ""
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261f 0%,#1a1d27 70%);border-color:#2f5a4a">'
+            f'<div class="lbl">📱 현황 한줄 요약 (자동)</div>'
+            f'<div style="font-size:16px;font-weight:700;margin-top:4px;color:#e7e9ee">현재 {int(now):,}명{rtxt} · {vs}</div>'
+            + (f'<div class="sub2">{pace}</div>' if pace else "") + '</div>')
+
+
 def lifetime_forecast(cumul, completed_days):
     """개봉 최종 총관객 = 누적 ÷ (그 시점까지 통상 누적비율). 매우 이른 추정, 매일 정밀화.
     범위 = 비율 불확실성(레그=긴 꼬리→상단 / 페이드=이미 많이 소진→하단)."""
@@ -1742,7 +1784,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", lifetime_banner(cumul_life, completed_days) + "\n"
+            .replace("__FORECAST__", status_summary(m_snaps, m_sched) + "\n"
+                     + lifetime_banner(cumul_life, completed_days) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
