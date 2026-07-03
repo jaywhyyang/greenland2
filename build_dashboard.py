@@ -831,12 +831,16 @@ def lifetime_banner(cumul, completed_days):
     lf = lifetime_forecast(cumul, completed_days)
     if not lf:
         return ""
+    d = _load_json(AI_COMMENT)
+    cmt = ""
+    if d and d.get("lifetime"):
+        cmt = (f'<div class="sub2" style="margin-top:8px;line-height:1.6;color:#e7e9ee">'
+               f'{str(d["lifetime"]).replace(chr(10), "<br>")}</div>')
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a2f5a">'
             '<div class="lbl">🎬 개봉 최종 총관객 예상 (전체 스코어) · <b style="color:#c084fc">매우 이른 추정</b></div>'
             f'<div class="big" style="color:#c084fc">약 {lf["low"]/10000:.0f}만~{lf["high"]/10000:.0f}만명 <span style="font-size:14px;color:#9aa0ab">(중앙 ~{lf["mid"]/10000:.1f}만)</span></div>'
             f'<div class="sub2">누적 {lf["cumul"]:,}명({lf["days"]}일차 종료 기준) ÷ 통상 누적비율 {lf["frac"]*100:.0f}%. '
-            '<b style="color:#f4c89a">총합은 주말 레그/페이드에 크게 좌우</b>돼 지금은 범위가 넓어요 — '
-            '<b style="color:#7dd3fc">주말·2주차 실적 쌓이면 매일 좁혀짐.</b></div></div>')
+            '주말·2주차 실적 쌓이면 매일 좁혀짐.</div>' + cmt + '</div>')
 
 
 def top_forecast(snaps, sched=None):
@@ -1798,7 +1802,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", ai_comment_banner() + "\n" + status_summary(m_snaps, m_sched) + "\n"
+            .replace("__FORECAST__", ai_comment_banner() + "\n"
                      + lifetime_banner(cumul_life, completed_days) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
