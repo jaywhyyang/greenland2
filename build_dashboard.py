@@ -660,9 +660,23 @@ def secured_banner(pts, snaps):
             '<div class="sub2">누적관객수 = 과거 실관람 + 오늘 예매·발권 포함</div></div>')
 
 
+def _hourly_norm(day_pts):
+    """[(분, 관객)] → 정시(:00)로 선형보간한 {시:관객}과 시간당 증가 {시:그 시간대 증가}.
+    수집이 잦거나 불규칙해도 08:00·09:00·10:00… 정시 값으로 후보정 → 요일 비교가 깔끔.
+    관측 범위 안의 정시만 계산(범위 밖은 외삽 안 함)."""
+    pts = sorted(day_pts)
+    if len(pts) < 2:
+        return {}, {}
+    lo, hi = pts[0][0], pts[-1][0]
+    hours = [h for h in range(24) if lo <= h * 60 <= hi]
+    vals = {h: _interp(pts, h * 60) for h in hours}
+    incs = {h: vals[h + 1] - vals[h] for h in hours if (h + 1) in vals}  # h시 = h:00→(h+1):00
+    return vals, incs
+
+
 def member_daycompare(snaps):
-    """오늘 vs 어제 동시간대 관객 증가 비교 + 동시간 대비 예측(마감 관객).
-    이전 날짜가 현재 시각을 커버하면 예측 활성화(오늘 저녁부터/내일부터)."""
+    """오늘 vs 어제 동시간대(정시) 관객 증가 비교 + 동시간 대비 예측(마감 관객).
+    수집값을 정시로 후보정해서 요일끼리 딱 맞게 비교."""
     from collections import defaultdict
     days = defaultdict(list)
     for s in snaps:
@@ -674,18 +688,10 @@ def member_daycompare(snaps):
         return None
     dts = sorted(days)
     today, yest = dts[-1], dts[-2]
-
-    def incs(v):
-        v = sorted(v); out = {}; prev = None
-        for m, a in v:
-            if prev is not None and a - prev >= 0:
-                out[m // 30 * 30] = out.get(m // 30 * 30, 0) + (a - prev)
-            prev = a
-        return out
-
-    ti, yi = incs(days[today]), incs(days[yest])
-    buckets = sorted(set(ti) | set(yi))
-    labels = [f"{b // 60:02d}:{b % 60:02d}" for b in buckets]
+    _, ti = _hourly_norm(days[today])
+    _, yi = _hourly_norm(days[yest])
+    hours = sorted(set(ti) | set(yi))
+    labels = [f"{h:02d}시" for h in hours]
     tv, yv = sorted(days[today]), sorted(days[yest])
     now_m, now_a = tv[-1]
     pred = None
@@ -696,8 +702,10 @@ def member_daycompare(snaps):
             ratio = now_a / ya
             pred = {"ratio": round(ratio, 3), "pred": int(round(yfinal * ratio)),
                     "now": now_a, "yestNow": int(round(ya)), "yestFinal": yfinal, "yest": yest}
-    return {"labels": labels, "today": [ti.get(b) for b in buckets],
-            "yest": [yi.get(b) for b in buckets], "todayDate": today, "yestDate": yest, "pred": pred}
+    return {"labels": labels,
+            "today": [int(round(ti[h])) if h in ti else None for h in hours],
+            "yest": [int(round(yi[h])) if h in yi else None for h in hours],
+            "todayDate": today, "yestDate": yest, "pred": pred}
 
 
 def daycmp_banner(snaps):
@@ -832,21 +840,14 @@ def top_forecast_banner(snaps, sched=None):
 
 
 def _member_peak(snaps):
-    """오늘 스냅샷의 구간(관객수 증가) → 시간대별 실관람 증가. 마지막 날짜 기준."""
+    """오늘 시간대별 관객 증가(정시 후보정). h시 = h:00→(h+1):00 증가분. 마지막 날짜 기준."""
     if not snaps:
         return []
     today = max(s.get("수집시각", "")[:10] for s in snaps)
-    ts = sorted((s for s in snaps if s.get("수집시각", "")[:10] == today),
-                key=lambda s: s.get("수집시각", ""))
-    out, prev = [], None
-    for s in ts:
-        a = _num(s.get("관객수"))
-        t = s.get("수집시각", "")[11:16]
-        if prev is not None and a is not None and a - prev >= 0:
-            out.append([t, a - prev])
-        if a is not None:
-            prev = a
-    return out
+    pts = [(int(s["수집시각"][11:13]) * 60 + int(s["수집시각"][14:16]), _num(s.get("관객수")))
+           for s in snaps if s.get("수집시각", "")[:10] == today and _num(s.get("관객수")) is not None]
+    _, incs = _hourly_norm(pts)
+    return [[f"{h:02d}시", int(round(incs[h]))] for h in sorted(incs)]
 
 
 def _interp(curve, x):
@@ -1122,11 +1123,11 @@ def member_section(snaps, detail, pred=None, sched=None):
         f'  <div class="cards">{cards_html}</div>\n'
         '  <div class="panel"><h2>오늘 관객수 추이 (예매·발권 포함)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">30분마다의 "오늘 확정 관객(예매+발권)". 오르는 기울기 = <b>현매·당일예매가 붙는 속도</b>. (실제 관람 완료 수 아님)</p></div>\n'
-        '  <div class="panel"><h2>시간대별 관객 증가 (오늘, 구간별)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
-        '<p class="hint">각 구간의 확정 관객 <b>증가분</b> = 그 시간대에 예매·발권이 얼마나 붙었나. 막대 높은 구간 = 수요 피크.</p></div>\n'
+        '  <div class="panel"><h2>시간대별 관객 증가 (오늘, 정시 기준)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
+        '<p class="hint">정시 후보정 — <b>"09시" = 09:00→10:00에 붙은 관객</b>(예매·발권). 수집이 잦아도 정시 값으로 맞춰 비교가 깔끔. 막대 높은 시간대 = 수요 피크.</p></div>\n'
         '  <div class="panel"><h2 id="daycmpTitle">📊 시간대별 증가 · 오늘 vs 어제 (동시간대)</h2><div class="cbox"><canvas id="c_mem_daycmp"></canvas></div>'
-        '<p class="hint">같은 시각끼리 <b>구간 증가분</b>을 비교. 오늘 막대가 어제 선보다 높으면 <b style="color:#4ade80">그 시간대는 어제보다 빠른 페이스</b>. '
-        '(어제가 그 시각을 커버하는 구간만 겹쳐 보임 — 저녁부터 채워짐)</p></div>\n'
+        '<p class="hint">정시 기준 <b>시간당 증가</b>를 요일끼리 비교(예 "10시"=10:00→11:00). 오늘 막대가 어제보다 높으면 <b style="color:#4ade80">그 시간대는 어제보다 빠른 페이스</b>. '
+        '(오늘 수집된 시각까지만, 어제는 하루 전체)</p></div>\n'
         # 날짜 선택 (체인/극장은 날짜별)
         '  <div style="margin:14px 2px 8px;color:#c7ccd6;font-size:13px">📅 날짜 선택: '
         '<select id="dateSel" style="background:#1a1d27;color:#e7e9ee;border:1px solid #3b4252;border-radius:6px;padding:5px 10px;font-size:13px"></select>'
