@@ -1094,6 +1094,53 @@ def defense_calculator(comp_rows):
         '③경쟁작도 늘어나니 <b>여유 20~30%</b> 얹기. ④0원→노출→<b>유기 예매 전환</b>은 소규모 실험으로 측정해야 확정(가설 검증).</p></div>')
 
 
+NOVA_JSON = os.path.join(BASE, "nova_competitors.json")
+
+
+def nova_section():
+    """노바 경쟁작 편성 비교(좌석/스크린/회차, 기준일→대상일). 우리 위치·점유율·증감."""
+    d = _load_json(NOVA_JSON)
+    if not d or not d.get("films"):
+        return ""
+    b, t = d.get("baseline", ""), d.get("target", "")
+    dw = lambda s: DOW_NAME[_dow(s)] if s else ""
+    films = sorted(d["films"], key=lambda f: -(f.get("seats") or [0, 0])[1])
+    tot_t = sum((f.get("seats") or [0, 0])[1] for f in films) or 1
+    rows = ""
+    us_rank = None
+    for i, f in enumerate(films):
+        s = f.get("seats") or [0, 0]; sc = f.get("screens") or [0, 0]; sh = f.get("shows") or [0, 0]
+        chg = (s[1] / s[0] - 1) * 100 if s[0] else 0
+        share = s[1] / tot_t * 100
+        us = GKEY in f["name"]
+        if us:
+            us_rank = i + 1
+        col = "#4ade80" if chg >= 0 else "#f87171"
+        rows += (f'<tr style="{"background:#12261a" if us else ""}">'
+                 f'<td style="text-align:left">{i+1}. {"★ " if us else ""}{f["name"][:15]}</td>'
+                 f'<td>{s[1]:,}</td><td style="color:{col}">{chg:+.0f}%</td><td>{share:.1f}%</td>'
+                 f'<td class="muted">{sc[1]}</td><td class="muted">{sh[1]}</td></tr>')
+    # 인사이트: 우리 vs 도라에몽(가족영화 벤치마크)
+    def chg_of(key):
+        for f in films:
+            if key in f["name"]:
+                s = f.get("seats") or [0, 0]
+                return (s[1] / s[0] - 1) * 100 if s[0] else 0
+        return None
+    us_chg, dora = chg_of(GKEY), chg_of("도라에몽")
+    note = (f'<b>{b[5:]}({dw(b)}) → {t[5:]}({dw(t)})</b> 배급사별 편성 변화. 열 = 대상일 좌석·증감·점유율·스크린·회차. '
+            f'우리 <b style="color:{"#4ade80" if (us_chg or 0)>=0 else "#f87171"}">좌석 {us_chg:+.0f}%</b>(전국 {us_rank}위). ' if us_chg is not None else "")
+    if us_chg is not None and dora is not None:
+        note += (f'<b style="color:#f4c89a">참고:</b> 같은 가족영화 <b>도라에몽 {dora:+.0f}%</b>(주말 증편) vs 우리 {us_chg:+.0f}% — '
+                 '스크린은 유지되고 좌석·회차만 깎였으면 <b>회차 추가 요청</b>이 현실적 레버.')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f59e0b;font-size:14px;font-weight:600">— 🎬 경쟁작 편성 비교 (노바 자료) —</div>\n'
+            f'  <div class="secdesc">{note}</div>\n'
+            '  <div class="panel"><table><thead><tr><th>순위·영화</th><th>좌석(대상일)</th><th>증감</th><th>점유율</th><th>스크린</th><th>회차</th></tr></thead><tbody>'
+            + rows + '</tbody></table>'
+            f'<p class="hint">노바엔터 제공 · {d.get("updated","")} 기준. 매일 파일 넣으면 갱신. '
+            '탑작(토이·눈동자)이 주말에 +50%↑ 늘며 미드작 물량을 흡수 — 우리가 축소되면 여기서 바로 보임.</p></div>')
+
+
 def build_decomp():
     """신규 예매 수요 분해: 회원 오늘관객 증분(A=신규, 소진無) vs 실시간예매관객 순증(dP=신규−소진).
     A가 강한데 dP가 하락 = 소진이 큰데 신규가 계속 유입(좋은 신호). 경쟁작은 순증(net)만."""
@@ -1352,6 +1399,8 @@ __WEEKEND__
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 경쟁작 비교 —</div>
   <div class="secdesc">같은 날(7/1) 개봉작 중 우리 위치. 규모(예매수)보다 <b>상대적 기세(예매율·순위)</b>로 판단.</div>
 __COMP_SECTION__
+
+__NOVA__
 
 __DEFENSE__
 
@@ -1703,6 +1752,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
+            .replace("__NOVA__", nova_section())
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__WEEKEND__", weekend_scenario(
