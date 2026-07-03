@@ -756,6 +756,33 @@ def _remaining_seats(sched, today, now_m):
     return tot_seats * remain_shows / tot_shows
 
 
+# 개봉 N일차 종료 시점의 '누적 관객 ÷ 최종 총관객' 통상 비율(중형 한국영화 앞쏠림). 매일 좁혀짐.
+LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63}
+
+
+def lifetime_forecast(cumul, completed_days):
+    """개봉 최종 총관객 = 누적 ÷ (그 시점까지 통상 누적비율). 매우 이른 추정, 매일 정밀화.
+    범위 = 비율 불확실성(레그=긴 꼬리→상단 / 페이드=이미 많이 소진→하단)."""
+    f = LIFETIME_FRAC.get(completed_days)
+    if not cumul or not f:
+        return None
+    r = lambda v: int(round(v / 1000.0) * 1000)
+    return {"cumul": int(cumul), "days": completed_days, "frac": f,
+            "mid": r(cumul / f), "low": r(cumul / (f * 1.3)), "high": r(cumul / (f * 0.8))}
+
+
+def lifetime_banner(cumul, completed_days):
+    lf = lifetime_forecast(cumul, completed_days)
+    if not lf:
+        return ""
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a2f5a">'
+            '<div class="lbl">🎬 개봉 최종 총관객 예상 (전체 스코어) · <b style="color:#c084fc">매우 이른 추정</b></div>'
+            f'<div class="big" style="color:#c084fc">약 {lf["low"]/10000:.0f}만~{lf["high"]/10000:.0f}만명 <span style="font-size:14px;color:#9aa0ab">(중앙 ~{lf["mid"]/10000:.1f}만)</span></div>'
+            f'<div class="sub2">누적 {lf["cumul"]:,}명({lf["days"]}일차 종료 기준) ÷ 통상 누적비율 {lf["frac"]*100:.0f}%. '
+            '<b style="color:#f4c89a">총합은 주말 레그/페이드에 크게 좌우</b>돼 지금은 범위가 넓어요 — '
+            '<b style="color:#7dd3fc">주말·2주차 실적 쌓이면 매일 좁혀짐.</b></div></div>')
+
+
 def top_forecast(snaps, sched=None):
     """오늘 최종 관객 예상(맨 위 히어로). 신뢰도 3단:
     ① 어제 동시간 보정(daycmp) + ② 당일 곡선(predict_eod_curve) → 되면 평균(정밀)
@@ -1649,6 +1676,13 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
         "daycmp": member_daycompare(m_snaps),
     }, ensure_ascii=False)
     fc_html = forecast_banner(forecast_eod(pts))
+    # 개봉 최종 총관객(전체 스코어) — 누적(실시간, 전일까지 확정) + 경과일수
+    cumul_life = _num((latest(pts) or {}).get("cumul"))
+    try:
+        completed_days = (datetime.date.fromisoformat(last.get("date")) -
+                          datetime.date.fromisoformat(last.get("open"))).days
+    except Exception:
+        completed_days = None
     html = (HTML
             .replace("__MOVIE__", movie)
             .replace("__OPEN__", last.get("open", "-") or "-")
@@ -1659,7 +1693,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
+            .replace("__FORECAST__", lifetime_banner(cumul_life, completed_days) + "\n"
+                     + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
