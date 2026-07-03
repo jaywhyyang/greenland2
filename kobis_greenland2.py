@@ -171,6 +171,10 @@ def save_competitors(html, now):
 
 
 def publish_to_github(now):
+    # 루프가 수집기를 여러 개 돌린 뒤 한 번만 푸시하고 싶을 때(NO_PUBLISH=1) 개별 푸시 생략
+    if os.environ.get("NO_PUBLISH") == "1":
+        print("publish 생략: NO_PUBLISH(루프가 일괄 푸시)")
+        return
     # GitHub Actions(클라우드)에서는 워크플로가 커밋/푸시를 담당하므로 여기선 생략
     if os.environ.get("GITHUB_ACTIONS") == "true":
         print("publish 생략: CI(워크플로가 커밋/푸시)")
