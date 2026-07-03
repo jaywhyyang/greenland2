@@ -674,6 +674,23 @@ def _hourly_norm(day_pts):
     return vals, incs
 
 
+def _incs_to(day_pts, now_m):
+    """정시 경계 + 현재 진행시각(now_m)까지 시간당 증가 {시작시:증가}.
+    마지막 시간대는 now_m까지 부분값(진행중) → '다음 정시 필요'로 인한 1시간 지연 제거. 외삽 안 함."""
+    pts = sorted(day_pts)
+    if len(pts) < 2:
+        return {}
+    lo, hi = pts[0][0], pts[-1][0]
+    now_m = min(now_m, hi)
+    bounds = [h * 60 for h in range(24) if lo <= h * 60 <= now_m]
+    if not bounds:
+        return {}
+    if bounds[-1] < now_m:
+        bounds.append(now_m)  # 진행 중인 현재 시각
+    return {bounds[i - 1] // 60: _interp(pts, bounds[i]) - _interp(pts, bounds[i - 1])
+            for i in range(1, len(bounds))}
+
+
 def member_daycompare(snaps):
     """오늘 vs 어제 동시간대(정시) 관객 증가 비교 + 동시간 대비 예측(마감 관객).
     수집값을 정시로 후보정해서 요일끼리 딱 맞게 비교."""
@@ -688,12 +705,12 @@ def member_daycompare(snaps):
         return None
     dts = sorted(days)
     today, yest = dts[-1], dts[-2]
-    _, ti = _hourly_norm(days[today])
-    _, yi = _hourly_norm(days[yest])
-    hours = sorted(set(ti) | set(yi))
-    labels = [f"{h:02d}시" for h in hours]
     tv, yv = sorted(days[today]), sorted(days[yest])
     now_m, now_a = tv[-1]
+    ti = _incs_to(days[today], now_m)   # 오늘: 진행 중 시각까지
+    yi = _incs_to(days[yest], now_m)    # 어제: 같은 시각까지(동일 경계) → 공정 비교
+    hours = sorted(set(ti) | set(yi))
+    labels = [f"{h:02d}시" for h in hours]
     pred = None
     if yv[0][0] <= now_m <= yv[-1][0]:
         ya = _interp(yv, now_m)
@@ -844,9 +861,11 @@ def _member_peak(snaps):
     if not snaps:
         return []
     today = max(s.get("수집시각", "")[:10] for s in snaps)
-    pts = [(int(s["수집시각"][11:13]) * 60 + int(s["수집시각"][14:16]), _num(s.get("관객수")))
-           for s in snaps if s.get("수집시각", "")[:10] == today and _num(s.get("관객수")) is not None]
-    _, incs = _hourly_norm(pts)
+    pts = sorted((int(s["수집시각"][11:13]) * 60 + int(s["수집시각"][14:16]), _num(s.get("관객수")))
+                 for s in snaps if s.get("수집시각", "")[:10] == today and _num(s.get("관객수")) is not None)
+    if len(pts) < 2:
+        return []
+    incs = _incs_to(pts, pts[-1][0])  # 진행 중 시간대까지 포함(지연 제거)
     return [[f"{h:02d}시", int(round(incs[h]))] for h in sorted(incs)]
 
 
@@ -1196,7 +1215,7 @@ def member_section(snaps, detail, pred=None, sched=None):
         '  <div class="panel"><h2>오늘 관객수 추이 (예매·발권 포함)</h2><div class="cbox"><canvas id="c_mem_aud"></canvas></div>'
         '<p class="hint">30분마다의 "오늘 확정 관객(예매+발권)". 오르는 기울기 = <b>현매·당일예매가 붙는 속도</b>. (실제 관람 완료 수 아님)</p></div>\n'
         '  <div class="panel"><h2>시간대별 관객 증가 (오늘, 정시 기준)</h2><div class="cbox"><canvas id="c_mem_peak"></canvas></div>'
-        '<p class="hint">정시 후보정 — <b>"09시" = 09:00→10:00에 붙은 관객</b>(예매·발권). 수집이 잦아도 정시 값으로 맞춰 비교가 깔끔. 막대 높은 시간대 = 수요 피크.</p></div>\n'
+        '<p class="hint">정시 후보정 — <b>"09시" = 09:00→10:00에 붙은 관객</b>(예매·발권). 수집이 잦아도 정시 값으로 맞춰 비교가 깔끔. <b>마지막 막대는 진행 중(정시→현재)</b>이라 시간 지나며 채워짐. 막대 높은 시간대 = 수요 피크.</p></div>\n'
         '  <div class="panel"><h2 id="daycmpTitle">📊 시간대별 증가 · 오늘 vs 어제 (동시간대)</h2><div class="cbox"><canvas id="c_mem_daycmp"></canvas></div>'
         '<p class="hint">정시 기준 <b>시간당 증가</b>를 요일끼리 비교(예 "10시"=10:00→11:00). 오늘 막대가 어제보다 높으면 <b style="color:#4ade80">그 시간대는 어제보다 빠른 페이스</b>. '
         '(오늘 수집된 시각까지만, 어제는 하루 전체)</p></div>\n'
