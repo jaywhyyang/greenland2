@@ -193,7 +193,7 @@ def publish_to_github(now):
                "member_snapshots.csv", "member_detail.json", "schedule.json",
                "schedule_history.json", "member_detail_history.json",
                "future_advance_log.json", "schedule_capacity_log.json",
-               "nova_competitors.json"):
+               "nova_competitors.json", "ai_comment.json"):
         if os.path.exists(os.path.join(repo, fn)):
             git("add", fn)
     # 변경사항 없으면 커밋 스킵

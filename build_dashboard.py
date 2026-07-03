@@ -760,6 +760,20 @@ def _remaining_seats(sched, today, now_m):
 LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63}
 
 
+AI_COMMENT = os.path.join(BASE, "ai_comment.json")
+
+
+def ai_comment_banner():
+    """30분마다 갱신되는 서술형 코멘트(ai_comment.json). 폰에서 읽는 '의견'."""
+    d = _load_json(AI_COMMENT)
+    if not d or not d.get("text"):
+        return ""
+    txt = str(d["text"]).replace("\n", "<br>")
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#241a33 0%,#1a1d27 70%);border-color:#4a3a6a">'
+            f'<div class="lbl">💬 코멘트 · {d.get("updated","")}</div>'
+            f'<div style="font-size:14px;line-height:1.65;margin-top:6px;color:#e7e9ee">{txt}</div></div>')
+
+
 def status_summary(snaps, sched):
     """폰에서 읽는 자동 '현황 한줄 요약' — 코멘트를 대시보드에 박아 넣음."""
     dc = member_daycompare(snaps)
@@ -1784,7 +1798,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", status_summary(m_snaps, m_sched) + "\n"
+            .replace("__FORECAST__", ai_comment_banner() + "\n" + status_summary(m_snaps, m_sched) + "\n"
                      + lifetime_banner(cumul_life, completed_days) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
