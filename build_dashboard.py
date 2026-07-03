@@ -1048,6 +1048,78 @@ def defense_calculator(comp_rows):
         '③경쟁작도 늘어나니 <b>여유 20~30%</b> 얹기. ④0원→노출→<b>유기 예매 전환</b>은 소규모 실험으로 측정해야 확정(가설 검증).</p></div>')
 
 
+def build_decomp():
+    """신규 예매 수요 분해: 회원 오늘관객 증분(A=신규, 소진無) vs 실시간예매관객 순증(dP=신규−소진).
+    A가 강한데 dP가 하락 = 소진이 큰데 신규가 계속 유입(좋은 신호). 경쟁작은 순증(net)만."""
+    from collections import defaultdict
+    snaps, _ = load_member()
+    days = defaultdict(list)
+    for s in snaps:
+        ts = s.get("수집시각", ""); a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            days[ts[:10]].append((int(ts[11:13]) * 60 + int(ts[14:16]), a))
+    memA = {d: _hourly_norm(v)[1] for d, v in days.items()}  # {date:{hour:증분}}
+
+    def hourly_P(path, movie_key=None):
+        out = defaultdict(dict)
+        if not os.path.exists(path):
+            return out
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                ts = r.get("수집시각", "")
+                if len(ts) < 16 or ts[14:16] != "00":
+                    continue
+                if movie_key and movie_key not in r.get("영화명", ""):
+                    continue
+                p = _num(r.get("예매관객수"))
+                if p is not None:
+                    out[ts[:10]][int(ts[11:13])] = p
+        return out
+
+    rtP = hourly_P(os.path.join(BASE, "greenland2_hourly.csv"))
+
+    def dP(d):
+        h = rtP.get(d, {})
+        return {k: h[k + 1] - h[k] for k in h if (k + 1) in h}
+
+    dates = sorted(set(memA) | set(rtP))
+    today = dates[-1] if dates else None
+    yest = dates[-2] if len(dates) >= 2 else None
+
+    def series(d):
+        if not d:
+            return None
+        A = memA.get(d, {}); dp = dP(d)
+        hrs = sorted(set(A) | set(dp))
+        return {"labels": [f"{h:02d}시" for h in hrs],
+                "A": [int(round(A[h])) if h in A else None for h in hrs],
+                "dP": [int(round(dp[h])) if h in dp else None for h in hrs]}
+
+    # 경쟁작 시간당 순증(net, 오늘) — 상위 6편
+    comp = defaultdict(dict)
+    cp = os.path.join(BASE, "competitors_hourly.csv")
+    if os.path.exists(cp):
+        with open(cp, encoding="utf-8-sig", newline="") as f:
+            for r in csv.DictReader(f):
+                ts = r.get("수집시각", "")
+                if len(ts) >= 16 and ts[14:16] == "00" and ts[:10] == today:
+                    p = _num(r.get("예매관객수"))
+                    if p is not None:
+                        comp[r.get("영화명", "")][int(ts[11:13])] = p
+    compnet = []
+    for nm, h in comp.items():
+        dp = {k: h[k + 1] - h[k] for k in h if (k + 1) in h}
+        if dp:
+            hrs = sorted(dp)
+            compnet.append({"name": nm, "g": GKEY in nm,
+                            "labels": [f"{x:02d}시" for x in hrs],
+                            "net": [int(round(dp[x])) for x in hrs],
+                            "last": dp[max(hrs)]})
+    compnet.sort(key=lambda x: (not x["g"], -x["last"]))
+    return {"today": series(today), "todayDate": today,
+            "yest": series(yest), "yestDate": yest, "comp": compnet[:6]}
+
+
 def manual_defense(detail):
     """수동 입력 체인별 예매율 방어 계산기(인터랙티브).
     한 체인 안에서 N = 우리예매관객 × (모아나율/우리율 − 1). 앱에서 본 예매율 입력."""
@@ -1237,6 +1309,14 @@ __COMP_SECTION__
 
 __DEFENSE__
 
+  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
+  <div class="secdesc">실시간 예매관객수는 <b>(신규 유입 − 상영 소진)</b>이라, 하락해도 신규가 강할 수 있어요. <b style="color:#4ade80">회원 오늘관객 증분(소진 안 됨)</b>으로 순수 신규 수요를 분리해서 봅니다.</div>
+  <div class="panel"><h2 id="decompTitle">우리: 신규 수요 vs 실시간 순증 (정시)</h2><div class="cbox"><canvas id="c_decomp"></canvas></div>
+    <p class="hint"><b style="color:#4ade80">초록 막대=신규 수요(A)</b>(회원 오늘관객 증분, 소진無) · <b style="color:#f59e0b">주황 선=실시간 예매 순증(dP)</b>(신규−소진) · <b style="color:#9aa0ab">회색 점선=어제 신규</b>. '
+    '<b>A는 높은데 dP가 낮으면 = 소진이 큰데 신규가 계속 유입(좋음).</b> A까지 꺼지면 진짜 수요 하락.</p></div>
+  <div class="panel"><h2>경쟁작 시간당 순증 (net · 소진 포함)</h2><div class="cbox short"><canvas id="c_compnet"></canvas></div>
+    <p class="hint">경쟁작은 회원데이터가 없어 <b>순증(net)만</b> 보여요(신규·소진 분리 불가). ★=우리. 우리 net이 마이너스여도 위 신규(A)는 살아있을 수 있음 — net끼리만 동일 비교.</p></div>
+
   <div style="border-top:1px solid #262a36;margin:30px 0 18px;padding-top:6px;color:#6ea8fe;font-size:14px;font-weight:600">— 우리 영화 예매(미래 수요) 추이 —</div>
   <div class="secdesc">앞으로의 예약 상황. 실제 관객은 위 '오늘 관객 현황' 섹션, 여기는 <b>앞으로 얼마나 예약됐나(미래 수요)</b>를 봅니다.</div>
   <div class="panel"><h2>순위 변동 추이 (위=상위)</h2><div class="cbox short"><canvas id="c_rank"></canvas></div>
@@ -1412,6 +1492,36 @@ if (MEM.aud && MEM.aud.length) {
       datalabels:{ display:ctx=>ctx.dataIndex===MEM.aud.length-1, align:'top', color:'#4ade80', font:{weight:'bold',size:13}, formatter:won } }] },
     options:base() });
 }
+// ===== 신규 예매 수요 분해 =====
+const DECOMP = __DECOMP_JSON__;
+if (DECOMP && DECOMP.today && DECOMP.today.labels.length) {
+  const t = DECOMP.today;
+  const dt = document.getElementById('decompTitle');
+  if (dt) dt.textContent = `우리: 신규 수요 vs 실시간 순증 · 오늘(${DECOMP.todayDate?.slice(5)})`;
+  // 어제 신규(A)를 오늘 라벨(시각)에 맞춰 정렬
+  let yA = [];
+  if (DECOMP.yest) { const map={}; DECOMP.yest.labels.forEach((l,i)=>map[l]=DECOMP.yest.A[i]); yA = t.labels.map(l=>map[l]??null); }
+  new Chart(c_decomp, { data:{ labels:t.labels, datasets:[
+    { type:'bar', label:'신규 수요(A·소진無)', data:t.A, backgroundColor:'#4ade80', order:3, datalabels:{display:false} },
+    { type:'line', label:'실시간 예매 순증(dP)', data:t.dP, borderColor:'#f59e0b', backgroundColor:'#f59e0b', tension:.3, pointRadius:2, spanGaps:true, order:1, datalabels:{display:false} },
+    { type:'line', label:'어제 신규', data:yA, borderColor:'#9aa0ab', borderDash:[5,4], pointRadius:0, tension:.3, spanGaps:true, order:2, datalabels:{display:false} } ] },
+    options:{ ...base(), plugins:{ ...base().plugins, legend:{display:true, labels:{color:'#c7ccd6'}} },
+      scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick} } } });
+}
+if (DECOMP && DECOMP.comp && DECOMP.comp.length) {
+  const pal = ['#f59e0b','#60a5fa','#f472b6','#a78bfa','#fb7185','#22d3ee'];
+  let ci=0;
+  const ds = DECOMP.comp.map(c => {
+    const nm = c.name.length>10 ? c.name.slice(0,9)+'…' : c.name;
+    return { label:(c.g?'★ ':'')+nm, data:c.net, borderColor: c.g?'#4ade80':pal[(ci++)%pal.length],
+      borderWidth:c.g?3:1.5, pointRadius:0, tension:.3, spanGaps:true, datalabels:{display:false} };
+  });
+  // 라벨은 가장 긴 시리즈 기준
+  const lab = DECOMP.comp.reduce((a,c)=>c.labels.length>a.length?c.labels:a, []);
+  new Chart(c_compnet, { type:'line', data:{ labels:lab, datasets:ds },
+    options:{ ...base(), plugins:{ ...base().plugins, legend:{display:true, labels:{color:'#c7ccd6',font:{size:10}}} },
+      scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick} } } });
+}
 // ===== 경쟁작 비교 =====
 const COMP = __COMP_JSON__;
 if (COMP.latest && COMP.latest.length) {
@@ -1538,6 +1648,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
             .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
+            .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__WEEKEND__", weekend_scenario(
