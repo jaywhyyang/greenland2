@@ -39,8 +39,9 @@ def _clean(html_cell):
 
 
 def _movie_name(raw):
-    """박스오피스 영화명 끝에 붙는 순위변동 표시(동일/상승/하락/신규+숫자) 제거."""
-    return re.sub(r"\s*(신규|상승|하락|동일)\s*\d*\s*$", "", raw).strip()
+    """박스오피스 영화명 끝 순위변동 표시 제거. 실제 형식은 '<등락폭>상승/하락'(예 '11상승'),
+    '동일', '신규', 'New'. 제목 속 숫자(예 '토이 스토리 5')는 보존."""
+    return re.sub(r"\s*(\d+(상승|하락)|동일|신규|New)\s*$", "", raw).strip()
 
 
 def fetch_rows(url, date_str):
