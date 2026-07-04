@@ -55,7 +55,8 @@ def fetch_rows(url, date_str):
     token = m.group(1) if m else ""
     data = urllib.parse.urlencode({
         "CSRFToken": token, "loadEnd": "0", "searchType": "",
-        "sSearchFrom": date_str, "sSearchTo": date_str,
+        "sSearchFrom": date_str, "sSearchTo": date_str,     # 박스오피스 페이지 날짜
+        "startDate": date_str, "endDate": date_str,          # 좌석 페이지 날짜(이름 다름)
         "sMultiMovieYn": "", "sRepNationCd": "", "sWideAreaCd": "",
         "sMovName": "", "sMovLang": "ko",
     }).encode()
