@@ -535,6 +535,31 @@ def load_member():
 
 
 def load_schedule():
+    """오늘 편성을 반환. schedule.json은 낡을 수 있어 SCHED_HIST[오늘]을 우선 사용하고,
+    date/bands(오전·오후·저녁)를 today 기준으로 합성해 모든 소비처가 항상 당일 기준이 되게 한다.
+    오늘이 이력에 없으면(예: 아직 미수집) schedule.json으로 폴백."""
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    hist = _load_json(SCHED_HIST)
+    e = hist.get(today) if isinstance(hist, dict) else None
+    if e and e.get("total_seats"):
+        hourly = e.get("hourly") or {}
+        def band_sum(lo, hi):
+            s = 0
+            for k, v in hourly.items():
+                try:
+                    h = int(k)
+                except (TypeError, ValueError):
+                    continue
+                if lo <= h < hi:
+                    s += v or 0
+            return s
+        # 오전 6~11 / 오후 12~16 / 저녁 17~23(+심야 0~5는 저녁으로 합산)
+        bands = {"오전": band_sum(6, 12), "오후": band_sum(12, 17),
+                 "저녁": band_sum(17, 24) + band_sum(0, 6)}
+        return {"date": today, "total_shows": e.get("total_shows"),
+                "total_seats": e.get("total_seats"), "total_screens": e.get("total_screens"),
+                "bands": bands, "chains": e.get("chains", {}),
+                "hourly": hourly, "regions": e.get("regions", [])}
     if os.path.exists(SCHED_JSON):
         try:
             return json.load(open(SCHED_JSON, encoding="utf-8"))
