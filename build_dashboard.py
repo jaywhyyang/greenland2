@@ -763,6 +763,16 @@ LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63}
 AI_COMMENT = os.path.join(BASE, "ai_comment.json")
 
 
+def _ai_cmt(field):
+    """ai_comment.json의 섹션별 코멘트(weekend/decomp 등)를 패널에 붙일 div로."""
+    d = _load_json(AI_COMMENT)
+    if not d or not d.get(field):
+        return ""
+    return ('<div class="secdesc" style="border-left:3px solid #4a3a6a;padding-left:10px;'
+            f'color:#e7e9ee;margin-top:6px">💬 {str(d[field]).replace(chr(10), "<br>")}'
+            f' <span class="muted" style="font-size:11px">({d.get("updated","")})</span></div>')
+
+
 def ai_comment_banner():
     """30분마다 갱신되는 서술형 코멘트(ai_comment.json). 폰에서 읽는 '의견'."""
     d = _load_json(AI_COMMENT)
@@ -1101,7 +1111,7 @@ def weekend_scenario(current_day):
             '선예매는 하한. 완료일·주말 실적 쌓이면 판매율·좌석투영 자동 정밀화.')
     return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 🔮 향후·주말 예상 (편성 좌석 × 판매율) —</div>\n'
             f'  <div class="cards">{"".join(cards)}</div>\n'
-            f'  <div class="secdesc" style="margin-top:2px">{note}</div>')
+            f'  <div class="secdesc" style="margin-top:2px">{note}</div>\n  ' + _ai_cmt("weekend"))
 
 
 def defense_calculator(comp_rows):
@@ -1341,8 +1351,6 @@ def member_section(snaps, detail, pred=None, sched=None):
     cards_html = "".join(f'<div class="card"><div class="k">{k}</div><div class="v">{v}</div></div>' for k, v in cards)
     updated = (detail or {}).get("updated", last.get("수집시각", ""))
     return (
-        eod_banner(snaps) + "\n"
-        + daycmp_banner(snaps) + "\n"
         f'  <div class="sub" style="margin-top:4px">회원통계 기준 · {updated} · '
         '이 관객수엔 오늘 밤 예매분까지 포함 — 여기서 더 늘면 현매(현장)/막판 당일예매</div>\n'
         f'  <div class="cards">{cards_html}</div>\n'
@@ -1365,10 +1373,9 @@ def member_section(snaps, detail, pred=None, sched=None):
         '<div class="cbox xtall"><canvas id="c_theater"></canvas></div><div id="theaterBox"></div>'
         '<p class="hint">색 = 체인(<b style="color:#ef4444">CGV</b> · <b style="color:#a855f7">메가</b> · '
         '<b style="color:#3b82f6">롯데</b>). 관객÷상영관 = 지점 효율.</p></div>\n'
-        '  <div class="panel"><h2 id="hourlyTitle">🕒 시간대별 편성 (회차)</h2><div class="cbox short"><canvas id="c_hourly"></canvas></div>'
-        '<p class="hint">선택 날짜의 <b>상영 회차가 몇 시에 몰려 있나</b>(시간표 기준, 전 극장 합). 저녁 피크가 수요와 맞는지 확인용.</p></div>\n'
-        '  <div class="panel"><h2 id="regionTitle">🗺️ 지역별 편성 (좌석)</h2><div class="cbox short"><canvas id="c_region"></canvas></div>'
-        '<p class="hint">권역별 편성 <b>좌석 규모</b>(시간표 기준). 어느 권역에 물량이 실렸는지.</p></div>')
+        '  <div class="panel"><h2 id="hourlyTitle">🕒 시간대별 편성 (회차) · 오늘 vs 어제</h2><div class="cbox short"><canvas id="c_hourly"></canvas></div>'
+        '<p class="hint">선택 날짜의 <b>상영 회차 분포</b>(시간표, 전 극장 합) — <b style="color:#22d3ee">오늘</b> 막대 vs <b style="color:#f59e0b">어제</b> 선. '
+        '<b>관객 추이가 좋아 보여도 그 시간대 회차가 어제보다 적으면 착시</b>일 수 있어요. 회차가 어제와 같은데 관객 증가가 높으면 = 진짜 수요 강세.</p></div>')
 
 
 HTML = r"""<!DOCTYPE html>
@@ -1466,6 +1473,7 @@ __DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
   <div class="secdesc">실시간 예매관객수는 <b>(신규 유입 − 상영 소진)</b>이라, 하락해도 신규가 강할 수 있어요. <b style="color:#4ade80">회원 오늘관객 증분(소진 안 됨)</b>으로 순수 신규 수요를 분리해서 봅니다.</div>
+__DECOMP_CMT__
   <div class="panel"><h2 id="decompTitle">우리: 신규 수요 vs 실시간 순증 (정시)</h2><div class="cbox"><canvas id="c_decomp"></canvas></div>
     <p class="hint"><b style="color:#4ade80">초록 막대=신규 수요(A)</b>(회원 오늘관객 증분, 소진無) · <b style="color:#f59e0b">주황 선=실시간 예매 순증(dP)</b>(신규−소진) · <b style="color:#9aa0ab">회색 점선=어제 신규</b>. '
     '<b>A는 높은데 dP가 낮으면 = 소진이 큰데 신규가 계속 유입(좋음).</b> A까지 꺼지면 진짜 수요 하락.</p></div>
@@ -1484,15 +1492,6 @@ __DEFENSE__
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 개봉 후 경쟁력 (좌석판매율) —</div>
   <div class="secdesc"><b>좌석판매율 = 관객 ÷ 좌석</b> — 스크린을 많이 깔았든 적게 깔았든 "깔린 좌석이 얼마나 팔렸나". 공급량과 무관한 순수 수요강도라, 개봉작 진짜 경쟁력 지표. (좌석점유율=전체 대비 점유 share와는 다른 개념. KOBIS 확정 집계, 7/2~)</div>
 __BOX_SECTION__
-
-  <div class="panel"><h2>📅 일자별 요약</h2>
-    <table>
-      <thead><tr><th>날짜</th><th>수집수</th><th>시작</th><th>종료</th><th>증가</th><th>최고 시간당</th><th>평균예매율</th></tr></thead>
-      <tbody>
-__DAILY__
-      </tbody>
-    </table>
-  </div>
 
   <div class="foot">데이터 출처: 영화관입장권 통합전산망(KOBIS) · 자동 수집 · 총 __N__개 시점</div>
 </div>
@@ -1567,35 +1566,22 @@ function renderMemberDate(date){
   const dtl = document.getElementById('theaterTitle'); if(dtl) dtl.textContent = '🏢 극장(지점)별 관객 TOP50 · '+date;
   const dtc = document.getElementById('chainTitle'); if(dtc) dtc.textContent = '🎦 체인별 편성·성적 · '+date;
   drawTheater(d.theaters);
-  drawHourly(d.hourly, date);
-  drawRegion(d.regions, date);
+  drawHourly(d.hourly, prev?prev.hourly:null, date, prev?dts[dts.indexOf(date)-1]:null);
 }
-let hourlyChart=null, regionChart=null;
-function drawHourly(hourly, date){
+let hourlyChart=null;
+function drawHourly(hourly, prevHourly, date, prevDate){
   const el=document.getElementById('c_hourly'); if(!el) return;
-  const t=document.getElementById('hourlyTitle'); if(t) t.textContent='🕒 시간대별 편성 (회차) · '+date;
-  const hrs=Object.keys(hourly||{}).map(Number).sort((a,b)=>a-b);
+  const t=document.getElementById('hourlyTitle'); if(t) t.textContent=`🕒 시간대별 편성 (회차) · 오늘(${date?.slice(5)}) vs 어제(${prevDate?prevDate.slice(5):'-'})`;
+  const hrs=Array.from(new Set([...Object.keys(hourly||{}),...Object.keys(prevHourly||{})].map(Number))).sort((a,b)=>a-b);
   if(hourlyChart) hourlyChart.destroy();
   if(!hrs.length){ return; }
-  hourlyChart=new Chart(el,{ type:'bar',
-    data:{ labels:hrs.map(h=>h+'시'), datasets:[{ label:'상영 회차', data:hrs.map(h=>hourly[h]),
+  const ds=[{ type:'bar', label:'오늘 회차', data:hrs.map(h=>(hourly||{})[h]??null),
       backgroundColor:hrs.map(h=>h>=17?'#f59e0b':h>=12?'#22d3ee':'#60a5fa'),
-      datalabels:{ anchor:'end',align:'end',color:'#e7e9ee',font:{size:9,weight:'bold'},formatter:won } }] },
-    options:{ ...base(), plugins:{...base().plugins}, scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
-}
-function drawRegion(regions, date){
-  const el=document.getElementById('c_region'); if(!el) return;
-  const t=document.getElementById('regionTitle'); if(t) t.textContent='🗺️ 지역별 편성 (좌석) · '+date;
-  const rg=(regions||[]).slice().sort((a,b)=>(b[4]||0)-(a[4]||0));
-  if(regionChart) regionChart.destroy();
-  if(!rg.length){ return; }
-  regionChart=new Chart(el,{ type:'bar',
-    data:{ labels:rg.map(r=>r[0]), datasets:[{ label:'편성 좌석', data:rg.map(r=>r[4]),
-      backgroundColor:'#a855f7',
-      datalabels:{ anchor:'end',align:'end',color:'#e7e9ee',font:{size:9,weight:'bold'},formatter:won } }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false, layout:{padding:{right:44}},
-      plugins:{ legend:{display:false}, datalabels:{} },
-      scales:{ x:{grid,ticks:tick,beginAtZero:true}, y:{grid:{display:false},ticks:{color:'#c7ccd6',font:{size:11},autoSkip:false}} } } });
+      datalabels:{ anchor:'end',align:'end',color:'#e7e9ee',font:{size:8,weight:'bold'},formatter:won } }];
+  if(prevHourly&&Object.keys(prevHourly).length) ds.push({ type:'line', label:'어제 회차', data:hrs.map(h=>prevHourly[h]??null),
+      borderColor:'#9aa0ab', borderDash:[4,3], pointRadius:2, tension:.3, spanGaps:true, datalabels:{display:false} });
+  hourlyChart=new Chart(el,{ data:{ labels:hrs.map(h=>h+'시'), datasets:ds },
+    options:{ ...base(), plugins:{...base().plugins, legend:{display:true,labels:{color:'#c7ccd6'}}}, scales:{ x:{grid,ticks:tick}, y:{grid,ticks:tick,beginAtZero:true} } } });
 }
 (function(){
   const sel = document.getElementById('dateSel'); if(!sel) return;
@@ -1806,7 +1792,6 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
                      + lifetime_banner(cumul_life, completed_days) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
-            .replace("__DAILY__", build_daily_table(pts))
             .replace("__N__", str(len(pts)))
             .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))
             .replace("__BOX_JSON__", box_json)
@@ -1814,6 +1799,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__NOVA__", nova_section())
+            .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
             .replace("__WEEKEND__", weekend_scenario(
