@@ -1,0 +1,8 @@
+{
+  "_note": "확정된 마케팅/프로모 이벤트. tickets>0이면 총관객 예측에 정량 부양분으로 합산(설정일이 미정산 누적일보다 미래일 때만). tickets=0은 정성 부양(마케팅)으로 표시만.",
+  "events": [
+    {"date": "2026-07-06", "type": "marketing", "tickets": 0, "chain": "롯데+메가", "label": "스페셜 포스터 증정 이벤트 마케팅 개시(메일링+SNS)"},
+    {"date": "2026-07-07", "type": "marketing", "tickets": 0, "chain": "메가", "label": "메가박스 포스터 증정 SNS 노출"},
+    {"date": "2026-07-08", "type": "promo", "tickets": 5000, "chain": "롯데", "label": "무비싸다구 티켓프로모션(0원 4천+2천원 1천)"}
+  ]
+}

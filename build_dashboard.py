@@ -19,6 +19,7 @@ MEMBER_DETAIL = os.path.join(BASE, "member_detail.json")  # 회원통계 극장/
 SCHED_JSON = os.path.join(BASE, "schedule.json")          # 배급 편성(시간대별 회차/좌석)
 MEMBER_HIST = os.path.join(BASE, "member_detail_history.json")  # 날짜별 상세 이력
 SCHED_HIST = os.path.join(BASE, "schedule_history.json")        # 날짜별 편성 이력
+EVENTS_JSON = os.path.join(BASE, "events.json")                 # 확정 마케팅/프로모 이벤트
 
 
 def _load_json(path):
@@ -851,6 +852,21 @@ def status_summary(snaps, sched):
             + (f'<div class="sub2">{pace}</div>' if pace else "") + '</div>')
 
 
+def load_events():
+    d = _load_json(EVENTS_JSON)
+    return d.get("events", []) if isinstance(d, dict) else []
+
+
+def future_event_boost(settled_date):
+    """미정산 누적일(settled_date) 이후 예정된 이벤트만 집계.
+    반환: (정량 부양 관객수 합, 미래 이벤트 목록). 아직 누적에 안 잡힌 것만 더함(중복 방지)."""
+    evs = [e for e in load_events()
+           if e.get("date") and (not settled_date or e["date"] > settled_date)]
+    evs.sort(key=lambda e: e["date"])
+    tickets = sum(int(e.get("tickets") or 0) for e in evs)
+    return tickets, evs
+
+
 def lifetime_forecast(cumul, completed_days):
     """개봉 최종 총관객 = 누적 ÷ (그 시점까지 통상 누적비율). 매우 이른 추정, 매일 정밀화.
     범위 = 비율 불확실성(레그=긴 꼬리→상단 / 페이드=이미 많이 소진→하단)."""
@@ -862,10 +878,25 @@ def lifetime_forecast(cumul, completed_days):
             "mid": r(cumul / f), "low": r(cumul / (f * 1.3)), "high": r(cumul / (f * 0.8))}
 
 
-def lifetime_banner(cumul, completed_days):
+def lifetime_banner(cumul, completed_days, settled_date=None):
     lf = lifetime_forecast(cumul, completed_days)
     if not lf:
         return ""
+    boost, evs = future_event_boost(settled_date)
+    # 유기적 전망 + 알려진 이벤트 정량 부양분(중복 방지: 미정산 미래 이벤트만)
+    lo, mid, hi = lf["low"] + boost, lf["mid"] + boost, lf["high"] + boost
+    evline = ""
+    if evs:
+        items = []
+        for e in evs:
+            tk = int(e.get("tickets") or 0)
+            tag = f'+{tk/10000:.1f}만' if tk else '정성 부양'
+            items.append(f'{e["date"][5:]} {e.get("label","")}({tag})')
+        base = (f'유기적 ~{lf["mid"]/10000:.1f}만'
+                + (f' + 확정 프로모 {boost:,}명 → <b style="color:#c084fc">조정 ~{mid/10000:.1f}만</b>' if boost else ''))
+        evline = (f'<div class="sub2" style="margin-top:6px;color:#c7ccd6">📌 반영 이벤트: '
+                  + ' · '.join(items) + f'<br>{base} '
+                  + ('(0원 티켓은 상당수 증분 가정, 일부 견인효과 포함)' if boost else '') + '</div>')
     d = _load_json(AI_COMMENT)
     cmt = ""
     if d and d.get("lifetime"):
@@ -873,9 +904,9 @@ def lifetime_banner(cumul, completed_days):
                f'{str(d["lifetime"]).replace(chr(10), "<br>")}</div>')
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1e3a 0%,#1a1d27 70%);border-color:#4a2f5a">'
             '<div class="lbl">🎬 개봉 최종 총관객 예상 (전체 스코어) · <b style="color:#c084fc">매우 이른 추정</b></div>'
-            f'<div class="big" style="color:#c084fc">약 {lf["low"]/10000:.0f}만~{lf["high"]/10000:.0f}만명 <span style="font-size:14px;color:#9aa0ab">(중앙 ~{lf["mid"]/10000:.1f}만)</span></div>'
+            f'<div class="big" style="color:#c084fc">약 {lo/10000:.0f}만~{hi/10000:.0f}만명 <span style="font-size:14px;color:#9aa0ab">(중앙 ~{mid/10000:.1f}만)</span></div>'
             f'<div class="sub2">누적 {lf["cumul"]:,}명({lf["days"]}일차 종료 기준) ÷ 통상 누적비율 {lf["frac"]*100:.0f}%. '
-            '주말·2주차 실적 쌓이면 매일 좁혀짐.</div>' + cmt + '</div>')
+            '주말·2주차 실적 쌓이면 매일 좁혀짐.</div>' + evline + cmt + '</div>')
 
 
 def _hoi_factor(today, yest, now_m):
@@ -1844,7 +1875,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
             .replace("__FORECAST__", ai_comment_banner() + "\n"
-                     + lifetime_banner(cumul_life, completed_days) + "\n"
+                     + lifetime_banner(cumul_life, completed_days, last.get("date")) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + secured_banner(pts, m_snaps))
             .replace("__CARDS__", build_cards(pts))
             .replace("__N__", str(len(pts)))
