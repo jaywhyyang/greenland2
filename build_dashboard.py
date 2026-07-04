@@ -853,11 +853,28 @@ def lifetime_banner(cumul, completed_days):
             '주말·2주차 실적 쌓이면 매일 좁혀짐.</div>' + cmt + '</div>')
 
 
+def _hoi_factor(today, yest, now_m):
+    """오늘 남은 회차 vs 전일 남은 회차 → 잔여 증가분 편성 보정계수(선제적).
+    회차가 전일보다 적으면 잔여 증가분을 미리 깎음. 단 저 fill이라 완전 비례는 아니어서
+    √ 댐핑(회차 반토막→계수 0.71). 회차 0이면 잔여도 0."""
+    sh = _load_json(SCHED_HIST)
+    th = (sh.get(today) or {}).get("hourly") or {}
+    yh = (sh.get(yest) or {}).get("hourly") or {}
+    if not th or not yh:
+        return 1.0
+    now_h = now_m / 60.0
+    trem = sum(v for h, v in th.items() if int(h) >= now_h)
+    yrem = sum(v for h, v in yh.items() if int(h) >= now_h)
+    if yrem <= 0:
+        return 1.0
+    return max(0.15, min(1.2, (trem / yrem) ** 0.5))
+
+
 def top_forecast(snaps, sched=None):
     """오늘 최종 관객 예상(맨 위 히어로). 신뢰도 3단:
     ① 어제 동시간 보정(daycmp) + ② 당일 곡선(predict_eod_curve) → 되면 평균(정밀)
     ③ 둘 다 안되면 당일 추세 슬로프로 마감 시각(23:30)까지 외삽(잠정).
-    + 시간표 있으면 '현재 + 남은좌석' 물리 상한으로 캡."""
+    + 남은 회차 편성 보정(오늘 남은회차 vs 전일) + '현재 + 남은좌석' 물리 상한 캡."""
     from collections import defaultdict
     days = defaultdict(list)
     for s in snaps:
@@ -867,15 +884,19 @@ def top_forecast(snaps, sched=None):
             days[ts[:10]].append((int(ts[11:13]) * 60 + int(ts[14:16]), a))
     if not days:
         return None
-    today = max(days)
+    dts = sorted(days)
+    today = dts[-1]
+    yest = dts[-2] if len(dts) >= 2 else None
     tv = sorted(days[today])
     now_m, now_a = tv[-1]
 
     remain = _remaining_seats(sched, today, now_m)
     cap = (now_a + remain) if remain is not None else None
+    hoi = _hoi_factor(today, yest, now_m) if yest else 1.0  # 남은 회차 편성 보정
 
-    def capped(v):
-        return min(v, cap) if cap is not None else v
+    def fin(v):  # 잔여 증가분에 회차 보정 → 물리 상한 캡
+        adj = now_a + (v - now_a) * hoi
+        return min(adj, cap) if cap is not None else adj
 
     dc = member_daycompare(snaps)
     ratio_est = dc["pred"]["pred"] if dc and dc.get("pred") else None
@@ -885,14 +906,14 @@ def top_forecast(snaps, sched=None):
 
     END = 23 * 60 + 30  # 마감 기준 시각(관객수 확정이 대체로 이 무렵)
     base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
-            "remain": (int(round(remain)) if remain is not None else None)}
+            "remain": (int(round(remain)) if remain is not None else None),
+            "hoi": round(hoi, 2)}
     if ests:
         vals = [e for e, _ in ests]
         est = sum(vals) / len(vals)
-        capped_est = capped(est)
-        return {**base, "est": capped_est, "low": capped(min(vals)), "high": capped(max(vals)),
+        return {**base, "est": fin(est), "low": fin(min(vals)), "high": fin(max(vals)),
                 "method": " + ".join(l for _, l in ests), "conf": "정밀",
-                "capped": capped_est < est, "detail": [(l, e) for e, l in ests]}
+                "capped": fin(est) < est, "detail": [(l, e) for e, l in ests]}
     # 잠정: 최근 구간 기울기로 마감까지 외삽
     if now_m >= END or len(tv) < 3:
         return {**base, "est": now_a, "low": now_a, "high": now_a,
@@ -902,8 +923,8 @@ def top_forecast(snaps, sched=None):
     slope = (recent[-1][1] - recent[0][1]) / span if span > 0 else 0
     # 저녁엔 예매·발권 속도가 둔화(어제 저녁 관측) → 남은 증가분에 감속계수 0.7
     raw = now_a + max(0, slope) * (END - now_m) * 0.7
-    est = capped(raw)
-    return {**base, "est": est, "low": capped(est * 0.85), "high": capped(est * 1.15),
+    est = fin(raw)
+    return {**base, "est": est, "low": fin(raw * 0.85), "high": fin(raw * 1.15),
             "method": "당일 추세 외삽", "conf": "잠정", "capped": est < raw}
 
 
@@ -918,6 +939,13 @@ def top_forecast_banner(snaps, sched=None):
         capnote = f' · 남은 좌석 {f["remain"]:,}석(상한 {f["cap"]:,})'
         if f.get("capped"):
             capnote += ' <b style="color:#fbbf24">← 좌석 상한 적용</b>'
+    hoi = f.get("hoi")
+    if hoi is not None and abs(hoi - 1) >= 0.03:
+        arrow = "낮춤" if hoi < 1 else "높임"
+        col = "#f4c89a" if hoi < 1 else "#4ade80"
+        capnote += (f' · <b style="color:{col}">🎬 남은 회차 편성 보정 ×{hoi:.2f}</b>'
+                    f'(오늘 남은 회차가 전일 대비 적어 잔여 증가분 선제 {arrow})' if hoi < 1
+                    else f' · <b style="color:{col}">🎬 회차 편성 보정 ×{hoi:.2f}</b>')
     # 편성 기반 참고치: 오늘 좌석 × (직전 완료일 판매율, 요일 보정)
     schedref = ""
     if sched and sched.get("total_seats") and sched.get("date"):
