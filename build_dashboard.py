@@ -741,10 +741,10 @@ def daycmp_banner(snaps):
             f'어제 최종 {p["yestFinal"]:,} × {p["ratio"]:.2f} = 예상 {est:,}. (관객수엔 예매 포함)</div></div>')
 
 
-def _remaining_seats(sched, today, now_m):
+def _remaining_seats(sched, now_m):
     """시간표(hourly)로 현재시각 이후 아직 시작 안 한 회차의 좌석 합.
-    최종 관객수의 물리적 상한(=현재 + 남은좌석) 계산용. 오늘 편성일 때만."""
-    if not sched or sched.get("date") != today:
+    sched = 해당 날짜 편성(hourly/total_seats/total_shows). 낡음 방지 위해 SCHED_HIST에서 조회."""
+    if not sched:
         return None
     hourly = sched.get("hourly") or {}
     tot_shows = sched.get("total_shows") or 0
@@ -890,13 +890,16 @@ def top_forecast(snaps, sched=None):
     tv = sorted(days[today])
     now_m, now_a = tv[-1]
 
-    remain = _remaining_seats(sched, today, now_m)
-    cap = (now_a + remain) if remain is not None else None
-    hoi = _hoi_factor(today, yest, now_m) if yest else 1.0  # 남은 회차 편성 보정
+    # 오늘 편성은 SCHED_HIST에서(schedule.json은 낡을 수 있음). 남은 회차 좌석 × 현실 최대판매율로 상한.
+    # 저 fill이면 남은 좌석이 넉넉해 상한이 안 걸림(수요를 따라감). 편성이 정말 얇을 때만 제한.
+    today_sched = _load_json(SCHED_HIST).get(today) if today else None
+    remain = _remaining_seats(today_sched, now_m)
+    MAX_FILL = 0.6  # 남은 회차가 도달 가능한 현실적 최대 좌석판매율
+    cap = (now_a + remain * MAX_FILL) if remain is not None else None
+    hoi = _hoi_factor(today, yest, now_m) if yest else None  # 참고용(남은 회차 오늘/전일 비)
 
-    def fin(v):  # 잔여 증가분에 회차 보정 → 물리 상한 캡
-        adj = now_a + (v - now_a) * hoi
-        return min(adj, cap) if cap is not None else adj
+    def fin(v):  # 물리적 용량 상한만 적용(일괄 할인 없음 → 실제 수요를 따라감)
+        return min(v, cap) if cap is not None else v
 
     dc = member_daycompare(snaps)
     ratio_est = dc["pred"]["pred"] if dc and dc.get("pred") else None
@@ -936,16 +939,15 @@ def top_forecast_banner(snaps, sched=None):
     est, lo, hi = r(f["est"]), r(f["low"]), r(f["high"])
     capnote = ""
     if f.get("remain") is not None:
-        capnote = f' · 남은 좌석 {f["remain"]:,}석(상한 {f["cap"]:,})'
+        capnote = f' · 남은 좌석 여유 {int(f["remain"]*0.6):,}석'
         if f.get("capped"):
-            capnote += ' <b style="color:#fbbf24">← 좌석 상한 적용</b>'
+            capnote += ' <b style="color:#fbbf24">← 편성 좌석 상한 적용(예측 제한)</b>'
+        else:
+            capnote += ' <span class="muted">(좌석 넉넉 → 수요 따라감)</span>'
     hoi = f.get("hoi")
-    if hoi is not None and abs(hoi - 1) >= 0.03:
-        arrow = "낮춤" if hoi < 1 else "높임"
-        col = "#f4c89a" if hoi < 1 else "#4ade80"
-        capnote += (f' · <b style="color:{col}">🎬 남은 회차 편성 보정 ×{hoi:.2f}</b>'
-                    f'(오늘 남은 회차가 전일 대비 적어 잔여 증가분 선제 {arrow})' if hoi < 1
-                    else f' · <b style="color:{col}">🎬 회차 편성 보정 ×{hoi:.2f}</b>')
+    if hoi is not None and hoi < 0.92:
+        capnote += (' · <span style="color:#9aa0ab">🎬 오늘 남은 회차가 전일보다 적음 — '
+                    '단 좌석 여유 커서 예측은 실제 수요를 따라감(회차 적어도 꽉 차면 예측 오름)</span>')
     # 편성 기반 참고치: 오늘 좌석 × (직전 완료일 판매율, 요일 보정)
     schedref = ""
     if sched and sched.get("total_seats") and sched.get("date"):
