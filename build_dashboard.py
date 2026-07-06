@@ -1330,6 +1330,47 @@ def _chain_color(nm):
     return "#9aa0ab", "기타"
 
 
+def chain_ranking():
+    """MEMBER_HIST 일자별 체인 통계([체인, 스크린, 좌석, 관객])를 누적 → 체인별 누적 관객·최근 스크린."""
+    mh = _load_json(MEMBER_HIST)
+    if not mh:
+        return None
+    agg = {}
+    last_screens = {}
+    for dt in sorted(mh):
+        for row in (mh[dt].get("chains") or []):
+            if not row or len(row) < 4:
+                continue
+            nm = str(row[0]).strip()
+            aud = _num(row[3]) or 0
+            agg[nm] = agg.get(nm, 0) + aud
+            last_screens[nm] = _num(row[1]) or 0   # 최근일자 스크린수로 덮어씀
+    ranked = sorted(agg.items(), key=lambda x: -x[1])
+    return ranked, last_screens
+
+
+def chain_summary_html():
+    r = chain_ranking()
+    if not r:
+        return ""
+    ranked, screens = r
+    tot = sum(a for _, a in ranked) or 1
+    rows = ""
+    for nm, aud in ranked:
+        if nm == "기타":
+            continue
+        col, _ = _chain_color(nm)
+        sc = screens.get(nm, 0)
+        per = aud / sc if sc else 0
+        rows += (f'<tr><td style="text-align:left"><span style="color:{col};font-size:11px">●</span> <b>{nm}</b></td>'
+                 f'<td><b>{int(aud):,}</b></td><td>{aud/tot*100:.0f}%</td>'
+                 f'<td class="muted">{int(sc)}</td><td>{per:.0f}</td></tr>')
+    return ('  <div class="secdesc" style="margin-top:4px">■ 체인별 누적 관객 (회원 기준). '
+            '<b>관객/스크린</b> = 스크린당 효율(적은 관으로도 꽉 채우는 체인이 높음).</div>\n'
+            '  <div class="panel"><table><thead><tr><th>체인</th><th>누적 관객</th><th>점유</th><th>스크린</th><th>관객/스크린</th></tr></thead><tbody>'
+            + rows + '</tbody></table></div>\n')
+
+
 def theater_ranking_section():
     r = theater_ranking()
     if not r:
@@ -1343,8 +1384,9 @@ def theater_ranking_section():
                  f'<span style="color:{col};font-size:10px">●</span> {nm[:16]}</td>'
                  f'<td><b>{int(v["aud"]):,}</b></td><td class="muted">{int(v["shows"]):,}</td>'
                  f'<td>{per:.1f}</td><td class="muted">{v["days"]}일</td></tr>')
-    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#34d399;font-size:14px;font-weight:600">— 🏆 극장별 누적 관객 순위 (회원 기준) —</div>\n'
-            '  <div class="secdesc">개봉일부터 <b>일자별 회원 관객을 극장별로 누적</b>한 순위입니다. 단일 시점 스냅샷의 노이즈를 제거해 <b>실제로 잘 드는 지점</b>을 보여줘요. '
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#34d399;font-size:14px;font-weight:600">— 🏆 체인·극장별 누적 관객 (회원 기준) —</div>\n'
+            + chain_summary_html()
+            + '  <div class="secdesc">개봉일부터 <b>일자별 회원 관객을 극장별로 누적</b>한 순위입니다. 단일 시점 스냅샷의 노이즈를 제거해 <b>실제로 잘 드는 지점</b>을 보여줘요. '
             '<b>회당</b>=누적관객÷누적회차(높을수록 회차를 꽉 채우는 지점). 편성 협상·프로모 지점 선정의 근거로 쓰세요.</div>\n'
             '  <div class="panel"><table><thead><tr><th>순위·극장</th><th>누적 관객</th><th>누적 회차</th><th>회당</th><th>집계</th></tr></thead><tbody>'
             + rows + '</tbody></table>'
