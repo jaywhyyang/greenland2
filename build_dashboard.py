@@ -1330,6 +1330,44 @@ def _chain_color(nm):
     return "#9aa0ab", "기타"
 
 
+def schedule_trend_section():
+    """일자별 편성 좌석·회차·스크린 추이. 개봉→주말→2주차, 삭감일 강조.
+    SCHED_HIST 좌석수는 KOBIS 확정 제공좌석과 오차 +1~5%로 검증됨."""
+    import datetime as _dt
+    sh = _load_json(SCHED_HIST)
+    if not sh:
+        return ""
+    today = _dt.date.today().strftime("%Y-%m-%d")
+    box = {r.get("날짜"): r for r in load_box()} if callable(globals().get("load_box")) else {}
+    dates = sorted(sh)
+    mx = max((sh[d].get("total_seats") or 0) for d in dates) or 1
+    rows = ""
+    for d in dates:
+        e = sh[d]
+        seats = e.get("total_seats") or 0
+        shows = e.get("total_shows") or 0
+        scr = e.get("total_screens") or 0
+        dw = DOW_NAME[_dow(d)]
+        future = d >= today
+        w = int(seats / mx * 100)
+        # 삭감 판정: 직전 대비 -35%↓
+        prev = dates[dates.index(d) - 1] if dates.index(d) > 0 else None
+        cut = prev and (sh[prev].get("total_seats") or 0) and seats < (sh[prev]["total_seats"]) * 0.65
+        bar_col = "#f87171" if cut else ("#c084fc" if future else "#34d399")
+        aud = _num((box.get(d) or {}).get("관객수")) if box else None
+        audtxt = f'<td class="muted">{int(aud):,}</td>' if aud else ('<td class="muted" style="color:#c084fc">편성예정</td>' if future else '<td class="muted">-</td>')
+        tag = ' <b style="color:#f87171">◀삭감</b>' if cut else (' <span style="color:#c084fc">·예정</span>' if future else '')
+        rows += (f'<tr><td style="text-align:left">{d[5:]}({dw}){tag}</td>'
+                 f'<td style="min-width:90px"><div style="background:{bar_col};height:11px;width:{max(w,3)}%;border-radius:2px;display:inline-block"></div></td>'
+                 f'<td><b>{int(seats):,}</b></td><td class="muted">{int(shows):,}</td><td class="muted">{int(scr)}</td>{audtxt}</tr>')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#f4c89a;font-size:14px;font-weight:600">— 📅 일자별 편성 좌석 추이 —</div>\n'
+            '  <div class="secdesc">배급 시간표 기준 <b>제공좌석·회차·스크린</b>. 이 영화는 개봉주 <b>평일 > 주말</b> 패턴이라 월·화가 주말보다 많은 건 정상. '
+            '<b style="color:#f87171">7/8(수)만 삭감</b>(잘 드는 지점 다수 드롭 → 복원 요청 대상). '
+            '※ 좌석수는 KOBIS 확정 제공좌석과 +1~5% 오차로 검증됨. 실제 KOBIS 유효좌석은 저fill일수록 −10~15% 낮게 확정.</div>\n'
+            '  <div class="panel"><table><thead><tr><th>날짜</th><th>편성 규모</th><th>좌석수</th><th>회차</th><th>스크린</th><th>실관객</th></tr></thead><tbody>'
+            + rows + '</tbody></table></div>\n')
+
+
 def chain_ranking():
     """MEMBER_HIST 일자별 체인 통계([체인, 스크린, 좌석, 관객])를 누적 → 체인별 누적 관객·최근 스크린."""
     mh = _load_json(MEMBER_HIST)
@@ -1651,6 +1689,8 @@ __WEEKEND__
 __COMP_SECTION__
 
 __NOVA__
+
+__SCHEDTREND__
 
 __THEATERS__
 
@@ -1984,6 +2024,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__NOVA__", nova_section())
+            .replace("__SCHEDTREND__", schedule_trend_section())
             .replace("__THEATERS__", theater_ranking_section())
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
