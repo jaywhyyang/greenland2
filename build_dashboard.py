@@ -1297,6 +1297,61 @@ def nova_section():
             '탑작(토이·눈동자)이 주말에 +50%↑ 늘며 미드작 물량을 흡수 — 우리가 축소되면 여기서 바로 보임.</p></div>')
 
 
+def theater_ranking(top_n=20):
+    """MEMBER_HIST 일자별 극장 top50를 누적 → 극장별 누적 관객·회차·출현일수 랭킹.
+    회원 상위 극장 기준이라 하위 극장은 일부 누락될 수 있으나 상위권은 안정적."""
+    mh = _load_json(MEMBER_HIST)
+    if not mh:
+        return None
+    agg = {}
+    for dt in sorted(mh):
+        for row in (mh[dt].get("theaters") or []):
+            if not row:
+                continue
+            nm = str(row[0]).strip()
+            aud = _num(row[1]) or 0
+            shows = (_num(row[2]) if len(row) > 2 else 0) or 0
+            a = agg.setdefault(nm, {"aud": 0, "shows": 0, "days": 0, "last": 0})
+            a["aud"] += aud
+            a["shows"] += shows
+            a["days"] += 1
+            a["last"] = aud
+    ranked = sorted(agg.items(), key=lambda x: -x[1]["aud"])
+    return ranked[:top_n], len(agg)
+
+
+def _chain_color(nm):
+    if "CGV" in nm:
+        return "#e11d48", "CGV"
+    if "롯데" in nm:
+        return "#f59e0b", "롯데"
+    if "메가" in nm:
+        return "#6366f1", "메가"
+    return "#9aa0ab", "기타"
+
+
+def theater_ranking_section():
+    r = theater_ranking()
+    if not r:
+        return ""
+    ranked, total = r
+    rows = ""
+    for i, (nm, v) in enumerate(ranked):
+        col, ch = _chain_color(nm)
+        per = v["aud"] / v["shows"] if v["shows"] else 0
+        rows += (f'<tr><td style="text-align:left"><span style="color:{col};font-weight:700">{i+1}</span> '
+                 f'<span style="color:{col};font-size:10px">●</span> {nm[:16]}</td>'
+                 f'<td><b>{int(v["aud"]):,}</b></td><td class="muted">{int(v["shows"]):,}</td>'
+                 f'<td>{per:.1f}</td><td class="muted">{v["days"]}일</td></tr>')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#34d399;font-size:14px;font-weight:600">— 🏆 극장별 누적 관객 순위 (회원 기준) —</div>\n'
+            '  <div class="secdesc">개봉일부터 <b>일자별 회원 관객을 극장별로 누적</b>한 순위입니다. 단일 시점 스냅샷의 노이즈를 제거해 <b>실제로 잘 드는 지점</b>을 보여줘요. '
+            '<b>회당</b>=누적관객÷누적회차(높을수록 회차를 꽉 채우는 지점). 편성 협상·프로모 지점 선정의 근거로 쓰세요.</div>\n'
+            '  <div class="panel"><table><thead><tr><th>순위·극장</th><th>누적 관객</th><th>누적 회차</th><th>회당</th><th>집계</th></tr></thead><tbody>'
+            + rows + '</tbody></table>'
+            f'<p class="hint">회원 통계 상위 극장 기준(일자별 top50 누적, 전체 {total}개 극장). '
+            '회원 관객은 전체의 일부라 절대치보다 <b>상대 순위</b>로 보세요. 매 갱신마다 누적됩니다.</p></div>')
+
+
 def build_decomp():
     """신규 예매 수요 분해: 회원 오늘관객 증분(A=신규, 소진無) vs 실시간예매관객 순증(dP=신규−소진).
     A가 강한데 dP가 하락 = 소진이 큰데 신규가 계속 유입(좋은 신호). 경쟁작은 순증(net)만."""
@@ -1554,6 +1609,8 @@ __WEEKEND__
 __COMP_SECTION__
 
 __NOVA__
+
+__THEATERS__
 
 __DEFENSE__
 
@@ -1885,6 +1942,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__NOVA__", nova_section())
+            .replace("__THEATERS__", theater_ranking_section())
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))
