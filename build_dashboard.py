@@ -1330,6 +1330,50 @@ def _chain_color(nm):
     return "#9aa0ab", "기타"
 
 
+REACTION_LOG = os.path.join(BASE, "reaction_log.json")
+REACTION_SRC = [
+    ("cgv", "CGV 에그지수", "%", "#e11d48"),
+    ("naver", "네이버 평점", "", "#22c55e"),
+    ("naver_cnt", "네이버 관람평", "개", "#22c55e"),
+    ("mega", "메가박스", "", "#6366f1"),
+    ("lotte", "롯데시네마", "", "#f59e0b"),
+    ("muko", "무코", "", "#a855f7"),
+    ("extmovie", "익스트림무비", "", "#38bdf8"),
+]
+
+
+def reaction_section():
+    log = _load_json(REACTION_LOG)
+    dates = sorted(log) if isinstance(log, dict) else []
+    latest = log.get(dates[-1]) if dates else None
+    prev = log.get(dates[-2]) if len(dates) >= 2 else {}
+    if not latest:
+        return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#a855f7;font-size:14px;font-weight:600">— 💬 온라인 반응 집계 (평점·화제성) —</div>\n'
+                '  <div class="secdesc">극장 3사·네이버·무코는 봇 차단이라 <b>수동 입력</b>(하루 1번 숫자만), 익스트림무비는 언급량 자동. 날짜별로 기록해 평점·화제성 추이를 봅니다.</div>\n'
+                '  <div class="panel"><p class="hint" style="color:#c084fc">아직 입력된 반응이 없어요. 소스 숫자를 채팅으로 주시면 날짜별로 기록·추이가 쌓입니다.</p></div>\n')
+    cards = ""
+    for key, label, unit, col in REACTION_SRC:
+        if key not in latest or latest[key] in (None, ""):
+            continue
+        v = latest[key]
+        arrow = ""
+        if prev and isinstance(v, (int, float)) and isinstance(prev.get(key), (int, float)):
+            dv = round(v - prev[key], 1)
+            if dv > 0:
+                arrow = f' <span style="color:#4ade80;font-size:11px">▲{dv:g}</span>'
+            elif dv < 0:
+                arrow = f' <span style="color:#f87171;font-size:11px">▼{abs(dv):g}</span>'
+        vtxt = f'{v:g}{unit}' if isinstance(v, (int, float)) else str(v)
+        cards += (f'<div style="flex:1;min-width:110px;background:#12151d;border:1px solid #262a36;border-radius:10px;padding:12px">'
+                  f'<div style="font-size:11px;color:{col};font-weight:600">{label}</div>'
+                  f'<div style="font-size:20px;font-weight:700;color:#e7e9ee;margin-top:3px">{vtxt}{arrow}</div></div>')
+    note = f' · 메모: {latest.get("note")}' if latest.get("note") else ''
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#a855f7;font-size:14px;font-weight:600">— 💬 온라인 반응 집계 (평점·화제성) —</div>\n'
+            '  <div class="secdesc">극장 3사·네이버·무코는 봇 차단이라 <b>수동 입력</b>(하루 1번 숫자만), 익스트림무비는 언급량 자동. 날짜별로 기록해 평점·화제성 추이를 봅니다.</div>\n'
+            f'  <div class="panel"><div style="display:flex;flex-wrap:wrap;gap:8px">{cards}</div>'
+            f'<p class="hint">{dates[-1][5:]} 기준{note} · 화살표=전일 대비</p></div>\n')
+
+
 FUTURE_ADV = os.path.join(BASE, "future_advance_log.json")
 
 
@@ -1790,6 +1834,8 @@ __SCHEDTREND__
 
 __ADVSPLIT__
 
+__REACTION__
+
 __THEATERS__
 
 __THEATERDRILL__
@@ -2127,6 +2173,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__NOVA__", nova_section())
             .replace("__SCHEDTREND__", schedule_trend_section())
             .replace("__ADVSPLIT__", advance_split_section())
+            .replace("__REACTION__", reaction_section())
             .replace("__THEATERS__", theater_ranking_section())
             .replace("__THEATERDRILL__", theater_drill_section())
             .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
