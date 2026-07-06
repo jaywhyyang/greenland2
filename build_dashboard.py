@@ -1330,6 +1330,52 @@ def _chain_color(nm):
     return "#9aa0ab", "기타"
 
 
+FUTURE_ADV = os.path.join(BASE, "future_advance_log.json")
+
+
+def advance_split_section():
+    """일별 사전예매(D-1까지) vs 당일 유입(현장+당일예매) 분해. future_advance_log + box."""
+    import datetime as _dt
+    fut = _load_json(FUTURE_ADV)
+    if not fut:
+        return ""
+    box = {r.get("날짜"): r for r in load_box()}
+    rows = ""
+    any_row = False
+    for d in sorted(box):
+        b = box[d]
+        aud = _num(b.get("관객수"))
+        if not aud:
+            continue
+        dm1 = (_dt.date.fromisoformat(d) - _dt.timedelta(days=1)).isoformat()
+        adv = None
+        if d in fut and dm1 in fut[d]:
+            adv = _num(fut[d][dm1].get("aud"))
+        if adv is None:
+            continue
+        any_row = True
+        adv = min(adv, aud)
+        field = aud - adv
+        ap, fp = adv / aud * 100, field / aud * 100
+        dw = DOW_NAME[_dow(d)]
+        today = _dt.date.today().strftime("%Y-%m-%d")
+        note = ' <span style="color:#c084fc;font-size:10px">진행중</span>' if d >= today else ''
+        rows += (f'<tr><td style="text-align:left">{d[5:]}({dw}){note}</td>'
+                 f'<td style="min-width:120px"><div style="display:flex;height:15px;border-radius:3px;overflow:hidden">'
+                 f'<div style="background:#38bdf8;width:{ap:.0f}%"></div><div style="background:#34d399;width:{fp:.0f}%"></div></div></td>'
+                 f'<td style="color:#38bdf8">{int(adv):,}<br><span style="font-size:10px">{ap:.0f}%</span></td>'
+                 f'<td style="color:#34d399">{int(field):,}<br><span style="font-size:10px">{fp:.0f}%</span></td>'
+                 f'<td><b>{int(aud):,}</b></td></tr>')
+    if not any_row:
+        return ""
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#38bdf8;font-size:14px;font-weight:600">— 📈 일별 사전예매 vs 당일 유입 —</div>\n'
+            '  <div class="secdesc"><b style="color:#38bdf8">사전</b>=상영 전날(D-1)까지 예매된 관객 · <b style="color:#34d399">당일</b>=당일 현장구매+당일예매(총관객−사전). '
+            '평일은 사전(계획관람) 비중이 높고, 주말은 당일 유입(현장)이 큰 게 일반적 패턴이에요.</div>\n'
+            '  <div class="panel"><table><thead><tr><th>날짜</th><th>구성</th><th>사전</th><th>당일</th><th>총관객</th></tr></thead><tbody>'
+            + rows + '</tbody></table>'
+            '<p class="hint">사전예매 데이터 수집 시작(7/3) 이후만 표시. 회원 통계 기준.</p></div>\n')
+
+
 def theater_daily_json():
     """MEMBER_HIST 일자별 극장 관객을 {극장:{chain,total,series:{날짜:[관객,회차]}}}로. 드릴다운용."""
     mh = _load_json(MEMBER_HIST)
@@ -1742,6 +1788,8 @@ __NOVA__
 
 __SCHEDTREND__
 
+__ADVSPLIT__
+
 __THEATERS__
 
 __THEATERDRILL__
@@ -2078,6 +2126,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__NOVA__", nova_section())
             .replace("__SCHEDTREND__", schedule_trend_section())
+            .replace("__ADVSPLIT__", advance_split_section())
             .replace("__THEATERS__", theater_ranking_section())
             .replace("__THEATERDRILL__", theater_drill_section())
             .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
