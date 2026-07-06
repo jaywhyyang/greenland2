@@ -1330,6 +1330,56 @@ def _chain_color(nm):
     return "#9aa0ab", "기타"
 
 
+def theater_daily_json():
+    """MEMBER_HIST 일자별 극장 관객을 {극장:{chain,total,series:{날짜:[관객,회차]}}}로. 드릴다운용."""
+    mh = _load_json(MEMBER_HIST)
+    if not mh:
+        return {"dates": [], "theaters": {}}
+    dates = sorted(mh)
+    data = {}
+    for dt in dates:
+        for row in (mh[dt].get("theaters") or []):
+            if not row:
+                continue
+            nm = str(row[0]).strip()
+            aud = int(_num(row[1]) or 0)
+            shows = int(_num(row[2]) or 0) if len(row) > 2 else 0
+            d = data.setdefault(nm, {"chain": _chain_color(nm)[1], "total": 0, "series": {}})
+            d["total"] += aud
+            d["series"][dt] = [aud, shows]
+    return {"dates": dates, "theaters": data}
+
+
+def theater_drill_section():
+    if not _load_json(MEMBER_HIST):
+        return ""
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#38bdf8;font-size:14px;font-weight:600">— 🎬 극장별 일별 관객 (극장 선택) —</div>\n'
+            '  <div class="secdesc">극장을 선택하면 <b>개봉일부터 일자별 회원 관객수</b>가 막대로 보여요. 누적 순으로 정렬돼 있습니다. (회원 통계 상위 극장 기준)</div>\n'
+            '  <div class="panel">\n'
+            '    <select id="thSel" style="width:100%;max-width:360px;padding:8px 10px;background:#1a1d27;color:#e7e9ee;border:1px solid #3a3f4b;border-radius:8px;font-size:14px;margin-bottom:12px"></select>\n'
+            '    <div id="thInfo" style="font-size:13px;color:#9aa0ab;margin-bottom:8px"></div>\n'
+            '    <div id="thBars"></div>\n'
+            '  </div>\n'
+            '  <script>(function(){\n'
+            '    var D=window.THEATER_DAILY||{dates:[],theaters:{}};\n'
+            '    var sel=document.getElementById("thSel"),info=document.getElementById("thInfo"),bars=document.getElementById("thBars");\n'
+            '    if(!sel)return;\n'
+            '    var names=Object.keys(D.theaters).sort(function(a,b){return D.theaters[b].total-D.theaters[a].total});\n'
+            '    var cc={"CGV":"#e11d48","롯데":"#f59e0b","메가":"#6366f1"};\n'
+            '    function col(ch){return cc[ch]||"#38bdf8";}\n'
+            '    names.forEach(function(n,i){var t=D.theaters[n];var o=document.createElement("option");o.value=n;o.text=(i+1)+". "+n+" (누적 "+t.total.toLocaleString()+")";sel.appendChild(o);});\n'
+            '    function render(n){var t=D.theaters[n];if(!t)return;var mx=1;D.dates.forEach(function(d){var v=(t.series[d]||[0])[0];if(v>mx)mx=v;});\n'
+            '      info.innerHTML="<b style=\\"color:"+col(t.chain)+"\\">"+n+"</b> · 누적 관객 <b>"+t.total.toLocaleString()+"</b>명 (회원 기준)";\n'
+            '      var h="";D.dates.forEach(function(d){var s=t.series[d]||[0,0];var v=s[0];var w=Math.max(v/mx*100,1);var dw=["월","화","수","목","금","토","일"][(new Date(d).getDay()+6)%7];\n'
+            '        h+="<div style=\\"display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12px\\"><span style=\\"width:60px;color:#9aa0ab\\">"+d.slice(5)+"("+dw+")</span>"+\n'
+            '        "<div style=\\"flex:1;background:#12151d;border-radius:3px\\"><div style=\\"background:"+col(t.chain)+";height:16px;width:"+w+"%;border-radius:3px;min-width:2px\\"></div></div>"+\n'
+            '        "<span style=\\"width:52px;text-align:right;color:#e7e9ee\\">"+v.toLocaleString()+"</span><span style=\\"width:44px;text-align:right;color:#6b7280\\">"+s[1]+"회</span></div>";});\n'
+            '      bars.innerHTML=h;}\n'
+            '    sel.addEventListener("change",function(){render(sel.value);});\n'
+            '    if(names.length){sel.value=names[0];render(names[0]);}\n'
+            '  })();</script>\n')
+
+
 def schedule_trend_section():
     """일자별 편성 좌석·회차·스크린 추이. 개봉→주말→2주차, 삭감일 강조.
     SCHED_HIST 좌석수는 KOBIS 확정 제공좌석과 오차 +1~5%로 검증됨."""
@@ -1694,6 +1744,9 @@ __SCHEDTREND__
 
 __THEATERS__
 
+__THEATERDRILL__
+<script>window.THEATER_DAILY = __THEATERDAILY__;</script>
+
 __DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
@@ -2026,6 +2079,8 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__NOVA__", nova_section())
             .replace("__SCHEDTREND__", schedule_trend_section())
             .replace("__THEATERS__", theater_ranking_section())
+            .replace("__THEATERDRILL__", theater_drill_section())
+            .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
             .replace("__MEMBER_SECTION__", member_section(m_snaps, m_detail, m_pred, m_sched))

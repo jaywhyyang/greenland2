@@ -34,6 +34,7 @@ def save_detail_history(detail, date_str):
         except Exception:
             hist = {}
     hist[date_str] = {"chains": detail.get("chains"), "theaters": detail.get("theaters"),
+                      "regions": detail.get("regions"), "slots": detail.get("slots"),
                       "total": detail.get("total"), "updated": detail.get("updated")}
     json.dump(hist, open(DETAIL_HISTORY, "w", encoding="utf-8"), ensure_ascii=False)
 
