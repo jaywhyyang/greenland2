@@ -1501,6 +1501,53 @@ def theater_drill_section():
             '  })();</script>\n')
 
 
+def theater_slot_section():
+    """지점 × 회차(1~7회) 관객 히트맵. 회원 상세의 theater_slots(2026-07-08 수집분부터 적재)를
+    읽어 어느 지점이 어느 회차에 관객이 몰리는지 시각화. 데이터 없으면 빈 문자열(회귀 없음)."""
+    md = _load_json(MEMBER_DETAIL) or {}
+    ts = md.get("theater_slots")
+    src_date = (md.get("updated") or "")[:10]
+    if not ts:  # 최신 스냅에 없으면 이력에서 폴백
+        hist = _load_json(MEMBER_HIST) or {}
+        for d in sorted(hist, reverse=True):
+            if hist[d].get("theater_slots"):
+                ts = hist[d]["theater_slots"]; src_date = d; break
+    if not ts:
+        return ""
+    rows_data = [(n, s) for n, s in ts.items() if sum(s) > 0]
+    rows_data.sort(key=lambda kv: sum(kv[1]), reverse=True)
+    rows_data = rows_data[:15]
+    if not rows_data:
+        return ""
+    mx = max((max(s) for _, s in rows_data), default=1) or 1
+
+    def cc(n):
+        return ("#e11d48" if "CGV" in n else "#f59e0b" if "롯데" in n
+                else "#6366f1" if "메가" in n else "#38bdf8")
+    head = "".join(f"<td style='text-align:center;color:#9aa0ab;font-size:11px;padding:2px 4px'>{i+1}회</td>"
+                   for i in range(7))
+    body = ""
+    for n, s in rows_data:
+        cells = ""
+        for v in s:
+            a = (v / mx) if mx else 0
+            bg = (f"rgba(56,189,248,{0.10 + a*0.80:.2f})" if v else "#12151d")
+            cells += (f"<td style='text-align:center;background:{bg};font-size:11px;"
+                      f"padding:4px;border-radius:2px'>{v or ''}</td>")
+        body += (f"<tr><td style='color:{cc(n)};font-size:12px;white-space:nowrap;"
+                 f"padding-right:8px'>{n}</td>{cells}"
+                 f"<td style='text-align:right;font-size:12px;color:#e7e9ee;padding-left:8px'>{sum(s):,}</td></tr>")
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#38bdf8;font-size:14px;font-weight:600">— 🔥 지점 × 회차 관객 히트맵 —</div>\n'
+            f'  <div class="secdesc">지점별로 <b>몇 번째 회차(1~7회)</b>에 관객이 몰리는지 색 진하기로 보여줘요. 회원 통계 상위 지점 기준, 관객 많은 회차일수록 진하게. (수집 시작 {src_date} · 이전엔 지점×회차 크로스가 저장되지 않아 소급 불가)</div>\n'
+            '  <div class="panel" style="overflow-x:auto">\n'
+            '    <table style="width:100%;border-collapse:separate;border-spacing:2px;min-width:420px">\n'
+            f'      <tr><td style="color:#9aa0ab;font-size:11px">지점</td>{head}<td style="text-align:right;color:#9aa0ab;font-size:11px">합</td></tr>\n'
+            f'      {body}\n'
+            '    </table>\n'
+            '    <div class="sub2" style="margin-top:8px">회차는 상영 순번(각 지점의 1번째·2번째… 상영). 실제 시각은 배급 시간표의 지점별 편성과 대조해 해석. 매 회원 수집마다 갱신.</div>\n'
+            '  </div>\n')
+
+
 def schedule_trend_section():
     """일자별 편성 좌석·회차·스크린 추이. 개봉→주말→2주차, 삭감일 강조.
     SCHED_HIST 좌석수는 KOBIS 확정 제공좌석과 오차 +1~5%로 검증됨."""
@@ -1873,6 +1920,8 @@ __THEATERS__
 __THEATERDRILL__
 <script>window.THEATER_DAILY = __THEATERDAILY__;</script>
 
+__THEATERSLOTS__
+
 __DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
@@ -2208,6 +2257,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__ADVSPLIT__", advance_split_section())
             .replace("__THEATERS__", theater_ranking_section())
             .replace("__THEATERDRILL__", theater_drill_section())
+            .replace("__THEATERSLOTS__", theater_slot_section())
             .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
