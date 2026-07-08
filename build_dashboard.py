@@ -1026,7 +1026,7 @@ def chain_cut_table():
             '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:3px">'
             f'{head}{rows}</table>'
             '<div class="sub2">기준=직전 최대편성일. 메가는 1주차 최다관객 체인인데 삭감폭 최대. '
-            '롯데 좌석이 프로모 물량(5,000장)보다 적으면 소화 병목.</div></div>')
+            '롯데 프로모 5,000장은 수~일 5일 적용이라 일자 분산 소화(병목 아님) — 오히려 롱테일 방어에 유리.</div></div>')
 
 
 def upcoming_schedule_banner():
