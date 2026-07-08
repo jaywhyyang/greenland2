@@ -987,6 +987,48 @@ def top_forecast(snaps, sched=None):
             "method": "당일 추세 외삽", "conf": "잠정", "capped": est < raw}
 
 
+def chain_cut_table():
+    """체인별 편성(관 배분) 추이. 직전 평상 최대편성일을 기준으로 롯데/CGV/메가 좌석이
+    날짜별로 얼마나 삭감됐는지 한눈에. '어느 체인 관을 짜증나게 잘랐나'를 시각화."""
+    sh = _load_json(SCHED_HIST)
+    if not sh:
+        return ""
+    dates = sorted(sh)
+    if not dates:
+        return ""
+    base = max(dates[-8:], key=lambda d: sh[d].get("total_seats") or 0)
+    show = [d for d in dates if d >= base][:6]
+    bt = sh[base].get("total_seats") or 1
+    CH = [("롯데", "롯데시네마"), ("CGV", "CGV"), ("메가", "메가박스")]
+    head = ("<tr style='color:#9aa0ab'><td>날짜</td>"
+            + "".join(f"<td style='text-align:right'>{n}</td>" for n, _ in CH)
+            + "<td style='text-align:right'>총좌석</td><td style='text-align:right'>기준대비</td></tr>")
+    rows = ""
+    for d in show:
+        e = sh[d]
+        ch = e.get("chains", {})
+        tot = e.get("total_seats") or 0
+        pct = (tot / bt - 1) * 100 if d != base else 0
+        cutcell = "기준" if d == base else f"{pct:+.0f}%"
+        dcol = "#f87171" if (d != base and pct <= -75) else "#e7e9ee"
+        tds = ""
+        for _, k in CH:
+            v = (ch.get(k, {}) or {}).get("좌석") or 0
+            bv = (sh[base].get("chains", {}).get(k, {}) or {}).get("좌석") or 0
+            cpct = (v / bv - 1) * 100 if (bv and d != base) else 0
+            cellcol = "#f87171" if (d != base and cpct <= -75) else "#c7ccd6"
+            tds += f"<td style='text-align:right;color:{cellcol}'>{int(v):,}</td>"
+        rows += (f"<tr><td style='color:{dcol}'>{d[5:]}({DOW_NAME[_dow(d)]})</td>{tds}"
+                 f"<td style='text-align:right'><b>{int(tot):,}</b></td>"
+                 f"<td style='text-align:right;color:{dcol}'>{cutcell}</td></tr>")
+    return ('<div style="margin-top:8px;border-top:1px solid #2f4a5a;padding-top:6px">'
+            '<div class="lbl" style="font-size:12px">🎬 체인별 편성 (관 배분 · 삭감 추이)</div>'
+            '<table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:3px">'
+            f'{head}{rows}</table>'
+            '<div class="sub2">기준=직전 최대편성일. 메가는 1주차 최다관객 체인인데 삭감폭 최대. '
+            '롯데 좌석이 프로모 물량(5,000장)보다 적으면 소화 병목.</div></div>')
+
+
 def upcoming_schedule_banner():
     """다가올(미래) 편성 좌석 병기 배너. 매일 시간표 올리면 내일·모레·… 좌석/회차가 상단에 뜬다.
     제공좌석 + KOBIS 유효좌석 추정(저fill −12%)을 함께 표기."""
@@ -1016,7 +1058,8 @@ def upcoming_schedule_banner():
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1a2230 0%,#1a1d27 70%);border-color:#2f4a5a">'
             '<div class="lbl">📅 다가올 편성 좌석 (배급 시간표)</div>'
             f'<div style="font-size:13px;margin-top:5px;line-height:1.8">{items}</div>'
-            '<div class="sub2">제공좌석 기준 · 유효=KOBIS 집계 추정(저fill −12%). 매일 시간표 갱신 시 자동 반영.</div></div>')
+            '<div class="sub2">제공좌석 기준 · 유효=KOBIS 집계 추정(저fill −12%). 매일 시간표 갱신 시 자동 반영.</div>'
+            f'{chain_cut_table()}</div>')
 
 
 def top_forecast_banner(snaps, sched=None):
