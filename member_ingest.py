@@ -34,6 +34,7 @@ def save_detail_history(detail, date_str):
         except Exception:
             hist = {}
     hist[date_str] = {"chains": detail.get("chains"), "theaters": detail.get("theaters"),
+                      "theater_slots": detail.get("theater_slots"),
                       "regions": detail.get("regions"), "slots": detail.get("slots"),
                       "total": detail.get("total"), "updated": detail.get("updated")}
     json.dump(hist, open(DETAIL_HISTORY, "w", encoding="utf-8"), ensure_ascii=False)
@@ -86,6 +87,7 @@ def aggregate_detail(cellrows):
     """상세 셀행(list of cell-lists) → 극장/지역/체인/회차 집계."""
     by_theater, by_region, by_screen = {}, {}, {}
     by_slot = [0] * 7  # 1회~7회 관객 합
+    by_theater_slot = {}  # 극장 → [1회~7회 관객] (지점×시간대 크로스; 과거엔 미보존이라 오늘부터 적재)
     total = 0
     for d in cellrows:
         if len(d) < 22 or not re.match(r"^\d{4}", str(d[0])):  # 20260701 / 2026-07-01 둘다
@@ -100,8 +102,11 @@ def aggregate_detail(cellrows):
         s = by_screen.setdefault(key, {"관객": 0, "좌석": seats or 0, "region": region})
         s["관객"] += aud_total
         # 회차별 관객: col9,11,13,15,17,19,21 = 1~7회 관객수
+        tslot = by_theater_slot.setdefault(theater, [0] * 7)
         for i, col in enumerate(range(9, 22, 2)):
-            by_slot[i] += _num(d[col]) or 0
+            v = _num(d[col]) or 0
+            by_slot[i] += v
+            tslot[i] += v            # 지점별 회차 관객 크로스 보존
     # 체인별 집계 (상영관수/좌석수/관객) — 상영관 단위로 중복 없이
     def chain_of(name):
         if "CGV" in name:
@@ -133,6 +138,8 @@ def aggregate_detail(cellrows):
         scr_per_theater[th] = scr_per_theater.get(th, 0) + 1
     top_theaters = [[name, aud, scr_per_theater.get(name, 0)]
                     for name, aud in sorted(by_theater.items(), key=lambda x: x[1], reverse=True)[:50]]
+    # 지점×시간대 크로스: 상위 극장에 한해 [1회~7회] 관객 (히트맵용)
+    theater_slots = {name: by_theater_slot.get(name, [0] * 7) for name, _, _ in top_theaters}
     # regions: [지역, 관객, 좌석, 좌석점유율%]
     regions = sorted(
         ([r, by_region[r], region_seats.get(r, 0),
@@ -142,6 +149,7 @@ def aggregate_detail(cellrows):
     return {
         "total": total,
         "theaters": top_theaters,
+        "theater_slots": theater_slots,
         "regions": regions,
         "chains": chains,
         "slots": by_slot,
