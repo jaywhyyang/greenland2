@@ -1582,6 +1582,91 @@ def theater_slot_section():
             '  </div>\n')
 
 
+_METRO_KW = ("서울 강남 홍대 용산 건대 왕십리 영등포 목동 신촌 수유 미아 노원 상봉 구로 신도림 여의도 종로 "
+             "충무로 명동 성수 잠실 천호 불광 수색 상암 월드컵 은평 중랑 강동 송파 서초 동작 관악 금천 양천 마포 "
+             "경기 인천 수원 성남 분당 판교 일산 고양 부천 안양 평촌 산본 의정부 안산 시흥 김포 하남 광명 남양주 "
+             "구리 화성 동탄 오산 군포 용인 기흥 파주 양주 포천 이천 여주 안성 송도 청라 계양 부평 검단 영종 "
+             "스타필드 현대아울렛 수지 죽전 광교 북수원 인계").split()
+_PROV_KW = ("부산 해운대 서면 센텀 광복 사상 동래 남포 기장 정관 대구 동성로 수성 칠곡 현풍 대전 둔산 유성 관저 "
+            "광주 충장 첨단 수완 상무 울산 삼산 창원 김해 진주 양산 마산 거제 통영 전주 효자 군산 익산 청주 천안 "
+            "아산 포항 구미 경주 경산 안동 춘천 원주 강릉 속초 제주 서귀포 여수 순천 목포 광양 세종 충주 제천 당진 "
+            "서산 정읍 남원 사천 밀양 엠비씨네").split()
+_PROV_GROUP = [("부산", "부산 해운대 서면 센텀 광복 사상 동래 남포 기장 정관".split()),
+               ("대구", "대구 동성로 수성 칠곡 현풍".split()), ("대전", "대전 둔산 유성 관저".split()),
+               ("광주", "광주 충장 첨단 수완 상무".split()), ("울산", "울산 삼산".split()),
+               ("경남", "창원 김해 진주 양산 마산 거제 통영 사천 밀양 엠비씨네".split()),
+               ("경북", "포항 구미 경주 경산 안동".split()), ("전북", "전주 효자 군산 익산 정읍 남원".split()),
+               ("전남", "여수 순천 목포 광양".split()), ("충북", "청주 충주 제천".split()),
+               ("충남", "천안 아산 당진 서산 세종".split()), ("강원", "춘천 원주 강릉 속초".split()),
+               ("제주", "제주 서귀포".split())]
+
+
+def _venue_region(name):
+    if any(k in name for k in _METRO_KW):
+        return "수도권"
+    for g, kws in _PROV_GROUP:
+        if any(k in name for k in kws):
+            return g
+    return "기타"
+
+
+def local_venue_section():
+    """지방 알짜 지점 트래커. 지역·일관성(등장일수)·최근3일 실적·회당 효율로 지방 상위관을 랭킹하고,
+    '누적 높은데 최근 드롭'은 복원후보로 플래그. 서울은 호프 개봉 시 양보, 지방 핀포인트 전략용.
+    (회원 상위 50관 이력 기준 · 매 수집마다 자동)"""
+    mdh = _load_json(MEMBER_HIST)
+    if not mdh:
+        return ""
+    days = sorted(mdh)
+    if len(days) < 3:
+        return ""
+    series, scr = {}, {}
+    for d in days:
+        for t in (mdh[d].get("theaters") or []):
+            if len(t) < 2:
+                continue
+            series.setdefault(t[0], {})[d] = t[1]
+            scr[t[0]] = t[2] if len(t) > 2 else 0
+    recent = days[-3:]
+    rows = []
+    for n, s in series.items():
+        reg = _venue_region(n)
+        if reg in ("수도권", "기타"):
+            continue
+        appear = len(s)
+        cum = sum(s.values())
+        recavg = sum(s.get(d, 0) for d in recent) / len(recent)
+        sc = scr.get(n, 0) or 1
+        rows.append({"name": n, "reg": reg, "ap": appear, "cum": cum,
+                     "rec": recavg, "sc": sc, "eff": recavg / sc})
+    if not rows:
+        return ""
+    rows.sort(key=lambda r: (r["ap"], r["rec"]), reverse=True)
+    body = ""
+    for r in rows[:16]:
+        drop = r["cum"] >= 180 and r["rec"] == 0
+        flag = ('<b style="color:#fbbf24">💤복원후보</b>' if drop
+                else ('<b style="color:#4ade80">✅유지</b>' if r["rec"] > 0 else ''))
+        nm = r["name"].replace("롯데시네마", "롯데").replace("메가박스", "메가")
+        effcol = "#4ade80" if r["eff"] >= 25 else "#e7e9ee"
+        body += (f'<tr><td style="font-size:12px;white-space:nowrap">{nm[:16]}</td>'
+                 f'<td style="text-align:center;font-size:11px;color:#9aa0ab">{r["reg"]}</td>'
+                 f'<td style="text-align:center;font-size:12px">{r["ap"]}/{len(days)}</td>'
+                 f'<td style="text-align:right;font-size:12px">{int(r["cum"]):,}</td>'
+                 f'<td style="text-align:right;font-size:12px">{r["rec"]:.0f}</td>'
+                 f'<td style="text-align:right;font-size:12px;color:{effcol}">{r["eff"]:.0f}</td>'
+                 f'<td style="text-align:center">{flag}</td></tr>')
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#fb923c;font-size:14px;font-weight:600">— 📍 지방 알짜 지점 트래커 (핀포인트 전략) —</div>\n'
+            '  <div class="secdesc">지방 상위관을 <b>일관성(등장일수)·최근3일 평균·회당 효율</b>로 랭킹. 등장일수 높고 최근·회당이 좋을수록 "빼박" 알짜. 누적 높은데 최근 0이면 편성서 빠진 <b>복원후보</b>. (회원 상위 50관 기준 · 매 수집 자동)</div>\n'
+            '  <div class="panel" style="overflow-x:auto">\n'
+            '    <table style="width:100%;border-collapse:collapse;min-width:440px">\n'
+            '      <tr style="color:#9aa0ab;font-size:11px"><td>지점</td><td style="text-align:center">지역</td><td style="text-align:center">등장</td><td style="text-align:right">누적</td><td style="text-align:right">최근평균</td><td style="text-align:right">회당</td><td style="text-align:center">상태</td></tr>\n'
+            f'      {body}\n'
+            '    </table>\n'
+            '    <div class="sub2" style="margin-top:8px">회당=최근3일 평균÷스크린(단일관 효율). 최근평균 숫자는 실관객(회원). 표본 작아 참고용 — 편성 협상 근거로 활용.</div>\n'
+            '  </div>\n')
+
+
 def venue_retention_section():
     """미래 편성일 vs 지난주 같은 요일 '관 유지' 분석(bottom-up). 지난주 같은 요일에 잘 든 관이
     이번에도 열려 있으면 그 수요가 유지된다는 근거. 회원통계 이력은 상위 50관만이라 상위관 기준."""
@@ -2008,6 +2093,8 @@ __THEATERSLOTS__
 
 __VENUERET__
 
+__LOCALVENUE__
+
 __DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
@@ -2345,6 +2432,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__THEATERDRILL__", theater_drill_section())
             .replace("__THEATERSLOTS__", theater_slot_section())
             .replace("__VENUERET__", venue_retention_section())
+            .replace("__LOCALVENUE__", local_venue_section())
             .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)
