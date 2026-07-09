@@ -2284,7 +2284,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))
             .replace("__BOX_JSON__", box_json)
             .replace("__COMP_SECTION__", comp_section(comp))
-            .replace("__DEFENSE__", manual_defense(m_detail) + "\n" + defense_calculator(load_competitors()))
+            .replace("__DEFENSE__", "")  # 예매율 방어 계산기 제거(2주차 이후 의미 없음) — 함수는 보존
             .replace("__DECOMP_JSON__", json.dumps(build_decomp(), ensure_ascii=False))
             .replace("__NOVA__", nova_section())
             .replace("__SCHEDTREND__", schedule_trend_section())
