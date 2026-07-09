@@ -957,10 +957,32 @@ def top_forecast(snaps, sched=None):
     def fin(v):  # 물리적 용량 상한만 적용(일괄 할인 없음 → 실제 수요를 따라감)
         return min(v, cap) if cap is not None else v
 
-    dc = member_daycompare(snaps)
-    ratio_est = dc["pred"]["pred"] if dc and dc.get("pred") else None
-    cv = predict_eod_curve(snaps)
-    curve_est = cv["pred"] if cv else None
+    # 선예매(프로모 등)로 당일 개장 시점 관객이 이미 큰 경우, 그 값을 '오전 페이스'로 오해해
+    # 시간대 외삽이 과대추정된다. 각 날짜의 개장 베이스라인(최저=최초 관측)을 빼 '유기적 증가분'만
+    # 추정한 뒤 오늘 베이스라인을 더한다. 평상시 베이스라인은 심야 소량이라 영향 미미.
+    day_open = {}
+    for s in snaps:
+        ts = s.get("수집시각", "")
+        a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            d = ts[:10]
+            if d not in day_open or a < day_open[d]:
+                day_open[d] = a
+    base0 = day_open.get(today, 0) or 0
+    adj_snaps = []
+    for s in snaps:
+        ts = s.get("수집시각", "")
+        a = _num(s.get("관객수"))
+        if len(ts) >= 16 and a is not None:
+            s2 = dict(s)
+            s2["관객수"] = max(0, a - day_open.get(ts[:10], 0))
+            adj_snaps.append(s2)
+    dc = member_daycompare(adj_snaps)
+    ratio_org = dc["pred"]["pred"] if dc and dc.get("pred") else None
+    cv = predict_eod_curve(adj_snaps)
+    curve_org = cv["pred"] if cv else None
+    ratio_est = (ratio_org + base0) if ratio_org is not None else None
+    curve_est = (curve_org + base0) if curve_org is not None else None
     ests = [(e, lbl) for e, lbl in ((ratio_est, "어제 동시간 보정"), (curve_est, "당일 곡선 보정")) if e]
 
     END = 23 * 60 + 30  # 마감 기준 시각(관객수 확정이 대체로 이 무렵)
