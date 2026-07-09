@@ -1546,7 +1546,8 @@ def theater_slot_section():
     def cc(n):
         return ("#e11d48" if "CGV" in n else "#f59e0b" if "롯데" in n
                 else "#6366f1" if "메가" in n else "#38bdf8")
-    head = "".join(f"<td style='text-align:center;color:#9aa0ab;font-size:11px;padding:2px 4px'>{i+1}회</td>"
+    SLOT_LABELS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"]  # KOBIS 상세 7개 시간대(이른→심야 순), 정확한 시각경계는 원본 헤더 확보 시 라벨
+    head = "".join(f"<td style='text-align:center;color:#9aa0ab;font-size:11px;padding:2px 4px'>{SLOT_LABELS[i]}</td>"
                    for i in range(7))
     body = ""
     for n, s in rows_data:
@@ -1559,14 +1560,14 @@ def theater_slot_section():
         body += (f"<tr><td style='color:{cc(n)};font-size:12px;white-space:nowrap;"
                  f"padding-right:8px'>{n}</td>{cells}"
                  f"<td style='text-align:right;font-size:12px;color:#e7e9ee;padding-left:8px'>{sum(s):,}</td></tr>")
-    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#38bdf8;font-size:14px;font-weight:600">— 🔥 지점 × 회차 관객 히트맵 —</div>\n'
-            f'  <div class="secdesc">지점별로 <b>몇 번째 회차(1~7회)</b>에 관객이 몰리는지 색 진하기로 보여줘요. 회원 통계 상위 지점 기준, 관객 많은 회차일수록 진하게. (수집 시작 {src_date} · 이전엔 지점×회차 크로스가 저장되지 않아 소급 불가)</div>\n'
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#38bdf8;font-size:14px;font-weight:600">— 🔥 지점 × 시간대 관객 히트맵 —</div>\n'
+            f'  <div class="secdesc">지점별로 <b>어느 시간대(①이른 → ⑦심야 순)</b>에 관객이 몰리는지 색 진하기로 보여줘요. 회원 통계 상위 지점 기준, 관객 많은 시간대일수록 진하게. (수집 시작 {src_date} · 이전엔 지점×시간대 크로스가 저장되지 않아 소급 불가)</div>\n'
             '  <div class="panel" style="overflow-x:auto">\n'
             '    <table style="width:100%;border-collapse:separate;border-spacing:2px;min-width:420px">\n'
             f'      <tr><td style="color:#9aa0ab;font-size:11px">지점</td>{head}<td style="text-align:right;color:#9aa0ab;font-size:11px">합</td></tr>\n'
             f'      {body}\n'
             '    </table>\n'
-            '    <div class="sub2" style="margin-top:8px">회차는 상영 순번(각 지점의 1번째·2번째… 상영). 실제 시각은 배급 시간표의 지점별 편성과 대조해 해석. 매 회원 수집마다 갱신.</div>\n'
+            '    <div class="sub2" style="margin-top:8px">①~⑦은 KOBIS 상세 통계의 7개 시간대 구간(이른→심야 순). 정확한 시각 경계는 원본 헤더 확보 시 라벨링 예정. 매 회원 수집마다 갱신.</div>\n'
             '  </div>\n')
 
 
