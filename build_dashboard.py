@@ -1582,6 +1582,56 @@ def theater_slot_section():
             '  </div>\n')
 
 
+def venue_retention_section():
+    """미래 편성일 vs 지난주 같은 요일 '관 유지' 분석(bottom-up). 지난주 같은 요일에 잘 든 관이
+    이번에도 열려 있으면 그 수요가 유지된다는 근거. 회원통계 이력은 상위 50관만이라 상위관 기준."""
+    import datetime as _dt
+    sh = _load_json(SCHED_HIST)
+    mdh = _load_json(MEMBER_HIST)
+    if not sh or not mdh:
+        return ""
+    today = _dt.date.today().isoformat()
+    fut = [d for d in sorted(sh) if d > today and sh[d].get("theaters")]
+    if not fut:
+        return ""
+    target = fut[0]
+    lastweek = (_dt.date.fromisoformat(target) - _dt.timedelta(days=7)).isoformat()
+    ref = (mdh.get(lastweek) or {}).get("theaters")
+    if not ref:
+        return ""
+
+    def _norm(s):
+        return s.replace("롯데시네마", "롯데").replace("메가박스", "메가").strip()
+    open_set = {_norm(k) for k in sh[target]["theaters"]}
+    rows_ref = [(t[0], t[1]) for t in ref if len(t) > 1 and t[1]]
+    total_ref = sum(a for _, a in rows_ref) or 1
+    kept = sorted([(n, a) for n, a in rows_ref if _norm(n) in open_set], key=lambda x: x[1], reverse=True)
+    dropped = sorted([(n, a) for n, a in rows_ref if _norm(n) not in open_set], key=lambda x: x[1], reverse=True)
+    kept_aud = sum(a for _, a in kept)
+    ret = kept_aud / total_ref * 100
+    dw = DOW_NAME[_dow(target)]
+    lw = DOW_NAME[_dow(lastweek)]
+
+    def _chips(items, color):
+        return "".join(
+            f'<span style="display:inline-block;margin:2px 8px 2px 0;font-size:12px;color:{color}">'
+            f'{n.replace("롯데시네마","롯데").replace("메가박스","메가")[:13]} <b>{a}</b></span>'
+            for n, a in items[:8])
+    bar = int(round(ret))
+    return ('  <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#4ade80;font-size:14px;font-weight:600">— 🔁 관 유지 분석 (지난주 같은 요일 대비) —</div>\n'
+            f'  <div class="secdesc">{target[5:]}({dw}) 편성이, 지난주 {lastweek[5:]}({lw})에 관객이 든 상위 관들을 얼마나 유지했나. 유지율이 높을수록 그 요일 수요가 보존됨. (회원 상위 50관 기준 · 매 시간표 갱신 시 자동)</div>\n'
+            '  <div class="panel">\n'
+            f'    <div style="font-size:15px;font-weight:700;color:#e7e9ee">상위관 유지율 <b style="color:{"#4ade80" if bar>=60 else "#f4c89a" if bar>=45 else "#f87171"}">{bar}%</b> '
+            f'<span class="muted" style="font-size:12px">(지난 {lw} 상위관 관객의 {bar}%가 {dw}에도 열림)</span></div>\n'
+            f'    <div style="background:#12151d;border-radius:4px;height:10px;margin:6px 0 10px"><div style="background:{"#4ade80" if bar>=60 else "#f4c89a" if bar>=45 else "#f87171"};height:10px;width:{bar}%;border-radius:4px"></div></div>\n'
+            f'    <div style="font-size:12px;color:#9aa0ab;margin-bottom:3px">✅ 유지된 상위관 (지난 {lw} 관객)</div>\n'
+            f'    <div style="margin-bottom:8px">{_chips(kept, "#93c5a8")}</div>\n'
+            f'    <div style="font-size:12px;color:#9aa0ab;margin-bottom:3px">✖ 드롭된 상위관</div>\n'
+            f'    <div>{_chips(dropped, "#c98b8b")}</div>\n'
+            '    <div class="sub2" style="margin-top:8px">잘 든 상위관이 유지되면 그 요일 수요가 편성 컷 비율보다 덜 빠짐. 숫자는 지난주 같은 요일 실관객.</div>\n'
+            '  </div>\n')
+
+
 def schedule_trend_section():
     """일자별 편성 좌석·회차·스크린 추이. 개봉→주말→2주차, 삭감일 강조.
     SCHED_HIST 좌석수는 KOBIS 확정 제공좌석과 오차 +1~5%로 검증됨."""
@@ -1956,6 +2006,8 @@ __THEATERDRILL__
 
 __THEATERSLOTS__
 
+__VENUERET__
+
 __DEFENSE__
 
   <div style="border-top:1px solid #262a36;margin:30px 0 10px;padding-top:6px;color:#22d3ee;font-size:14px;font-weight:600">— 🔬 신규 예매 수요 분해 (소진 제거) —</div>
@@ -2292,6 +2344,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__THEATERS__", theater_ranking_section())
             .replace("__THEATERDRILL__", theater_drill_section())
             .replace("__THEATERSLOTS__", theater_slot_section())
+            .replace("__VENUERET__", venue_retention_section())
             .replace("__THEATERDAILY__", json.dumps(theater_daily_json(), ensure_ascii=False))
             .replace("__DECOMP_CMT__", _ai_cmt("decomp"))
             .replace("__COMP_JSON__", comp_json)

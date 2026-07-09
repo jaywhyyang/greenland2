@@ -83,9 +83,30 @@ def parse(path, date_str=None):
 
     hourly = _parse_hourly(rows)
     regions = _parse_regions(rows)
+    theaters = _parse_theaters(rows)
     return {"date": date_str, "sheet": sheet, "total_shows": total_shows,
             "total_seats": total_seats, "total_screens": total_screens,
-            "bands": bands, "chains": chains, "hourly": hourly, "regions": regions}
+            "bands": bands, "chains": chains, "hourly": hourly, "regions": regions,
+            "theaters": theaters}
+
+
+def _parse_theaters(rows):
+    """극장 상세행 → {극장명: 좌석수합}. '지난주 같은 요일 대비 관 유지' 분석용(미래 편성)."""
+    out = {}
+    in_sec = False
+    for r in rows:
+        cells = [("" if c is None else c) for c in r]
+        c3 = str(cells[3]).strip() if len(cells) > 3 else ""
+        if c3 == "극장명":
+            in_sec = True
+            continue
+        if not in_sec or len(cells) < 7:
+            continue
+        name = str(cells[3]).strip()
+        seats = _num(cells[6])
+        if name and seats and _num(name) is None:
+            out[name] = out.get(name, 0) + seats
+    return out
 
 
 def _parse_hourly(rows):
@@ -173,7 +194,8 @@ def main():
                 if d.get("total_seats"):
                     hist[ds] = {"chains": d["chains"], "total_seats": d["total_seats"],
                                 "total_shows": d["total_shows"], "total_screens": d.get("total_screens"),
-                                "hourly": d.get("hourly", {}), "regions": d.get("regions", [])}
+                                "hourly": d.get("hourly", {}), "regions": d.get("regions", []),
+                                "theaters": d.get("theaters", {})}
                     cap.setdefault(ds, {})[asof] = {
                         "seats": d["total_seats"], "shows": d["total_shows"],
                         "screens": d.get("total_screens")}
