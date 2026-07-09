@@ -783,7 +783,12 @@ def _remaining_seats(sched, now_m):
 
 
 # 개봉 N일차 종료 시점의 '누적 관객 ÷ 최종 총관객' 통상 비율(중형 한국영화 앞쏠림). 매일 좁혀짐.
-LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63}
+# 2주차 이후까지 확장(장기 꼬리) — 표가 끊기면 예측이 None으로 깨지므로 30일까지 채움.
+LIFETIME_FRAC = {1: 0.11, 2: 0.20, 3: 0.29, 4: 0.42, 5: 0.52, 6: 0.58, 7: 0.63,
+                 8: 0.67, 9: 0.71, 10: 0.75, 11: 0.78, 12: 0.81, 13: 0.83, 14: 0.85,
+                 15: 0.87, 16: 0.885, 17: 0.90, 18: 0.91, 19: 0.92, 20: 0.93, 21: 0.94,
+                 22: 0.945, 23: 0.95, 24: 0.955, 25: 0.96, 26: 0.965, 27: 0.97,
+                 28: 0.975, 29: 0.98, 30: 0.982}
 
 
 AI_COMMENT = os.path.join(BASE, "ai_comment.json")
@@ -871,6 +876,10 @@ def lifetime_forecast(cumul, completed_days):
     """개봉 최종 총관객 = 누적 ÷ (그 시점까지 통상 누적비율). 매우 이른 추정, 매일 정밀화.
     범위 = 비율 불확실성(레그=긴 꼬리→상단 / 페이드=이미 많이 소진→하단)."""
     f = LIFETIME_FRAC.get(completed_days)
+    if f is None and completed_days and LIFETIME_FRAC:
+        mk = max(LIFETIME_FRAC)  # 표 범위 밖(30일+)이면 최장 꼬리 비율로 캡
+        if completed_days > mk:
+            f = LIFETIME_FRAC[mk]
     if not cumul or not f:
         return None
     r = lambda v: int(round(v / 1000.0) * 1000)
