@@ -1011,7 +1011,13 @@ def top_forecast(snaps, sched=None):
     cap = (now_a + remain * MAX_FILL) if remain is not None else None
     hoi = _hoi_factor(today, yest, now_m) if yest else None  # 참고용(남은 회차 오늘/전일 비)
 
-    def fin(v):  # 물리적 용량 상한만 적용(일괄 할인 없음 → 실제 수요를 따라감)
+    def hadj(v):  # 회차 감소 반영: 남은(미래) 증가분에 hoi(√댐핑) 적용. 회차 반토막→계수 0.71
+        if hoi is not None and hoi < 1 and v > now_a:
+            return now_a + (v - now_a) * (hoi ** 0.5)
+        return v
+
+    def fin(v):  # 회차 보정 후 물리적 용량 상한 적용
+        v = hadj(v)
         return min(v, cap) if cap is not None else v
 
     # 선예매(프로모 등)로 당일 개장 시점 관객이 이미 큰 경우, 그 값을 '오전 페이스'로 오해해
@@ -1049,9 +1055,10 @@ def top_forecast(snaps, sched=None):
     if ests:
         vals = [e for e, _ in ests]
         est = sum(vals) / len(vals)
+        method = " + ".join(l for _, l in ests) + (" + 회차보정" if (hoi is not None and hoi < 1) else "")
         return {**base, "est": fin(est), "low": fin(min(vals)), "high": fin(max(vals)),
-                "method": " + ".join(l for _, l in ests), "conf": "정밀",
-                "capped": fin(est) < est, "detail": [(l, e) for e, l in ests]}
+                "method": method, "conf": "정밀",
+                "capped": fin(est) < hadj(est), "detail": [(l, e) for e, l in ests]}
     # 잠정: 최근 구간 기울기로 마감까지 외삽
     if now_m >= END or len(tv) < 3:
         return {**base, "est": now_a, "low": now_a, "high": now_a,
@@ -1063,7 +1070,8 @@ def top_forecast(snaps, sched=None):
     raw = now_a + max(0, slope) * (END - now_m) * 0.7
     est = fin(raw)
     return {**base, "est": est, "low": fin(raw * 0.85), "high": fin(raw * 1.15),
-            "method": "당일 추세 외삽", "conf": "잠정", "capped": est < raw}
+            "method": "당일 추세 외삽" + (" + 회차보정" if (hoi is not None and hoi < 1) else ""),
+            "conf": "잠정", "capped": est < hadj(raw)}
 
 
 def chain_cut_table():
@@ -1156,8 +1164,8 @@ def top_forecast_banner(snaps, sched=None):
             capnote += ' <span class="muted">(좌석 넉넉 → 수요 따라감)</span>'
     hoi = f.get("hoi")
     if hoi is not None and hoi < 0.92:
-        capnote += (' · <span style="color:#9aa0ab">🎬 오늘 남은 회차가 전일보다 적음 — '
-                    '단 좌석 여유 커서 예측은 실제 수요를 따라감(회차 적어도 꽉 차면 예측 오름)</span>')
+        capnote += (f' · <span style="color:#9aa0ab">🎬 오늘 남은 회차가 전일의 {hoi*100:.0f}% — '
+                    f'회차 감소를 예측에 반영(√댐핑, 미래 증가분 ×{hoi**0.5:.2f})</span>')
     # 편성 기반 참고치: 오늘 좌석 × (직전 완료일 판매율, 요일 보정)
     schedref = ""
     if sched and sched.get("total_seats") and sched.get("date"):
