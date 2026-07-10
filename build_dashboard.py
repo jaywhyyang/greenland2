@@ -805,6 +805,52 @@ def _ai_cmt(field):
             f' <span class="muted" style="font-size:11px">({d.get("updated","")})</span></div>')
 
 
+def sixtyk_countdown():
+    """6만 돌파 D-day 카운트다운. 현재 누적 + 남은 일별 페이스(주말↑·3주차 호프 개봉 삭감↓)로
+    돌파 예상일을 추정. 매 빌드(30분)마다 현재 누적으로 재계산. 실무 참고 + 재미용."""
+    import datetime as _dt
+    snaps = load_member()[0]
+    if not snaps:
+        return ""
+    cur = _num(snaps[-1].get("누적관객수"))
+    if not cur:
+        return ""
+    today = _dt.date.today()
+    TARGET = 60000
+    if cur >= TARGET:
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 70%);border-color:#2f5a42">'
+                '<div class="lbl">🎯 6만 돌파 카운트다운</div>'
+                f'<div class="big" style="color:#4ade80">돌파 달성 · 현재 {int(cur):,}명</div></div>')
+
+    def _daily(d, i):
+        dow = d.weekday()  # 0=월 … 5=토 6=일
+        b = 4000 if dow == 5 else 3600 if dow == 6 else 3000 if dow == 4 else 2000
+        b *= max(0.45, 1 - i * 0.045)               # 시간 경과 감쇠
+        if d >= _dt.date(2026, 7, 15):              # 호프(나홍진) 개봉 이후 좌석 삭감
+            b *= 0.62
+        return int(max(b, 400))
+
+    acc, cross = cur, None
+    for i in range(1, 45):
+        d = today + _dt.timedelta(days=i)
+        acc += _daily(d, i)
+        if acc >= TARGET:
+            cross = d
+            break
+    if not cross:
+        return ""
+    dleft = (cross - today).days
+    remain = TARGET - cur
+    dws = "월화수목금토일"[cross.weekday()]
+    hof = " · 호프 개봉 주간" if cross >= _dt.date(2026, 7, 15) else ""
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1a33 0%,#1a1d27 70%);border-color:#5a3a6a">'
+            '<div class="lbl">🎯 6만 돌파 카운트다운 (현재 페이스 기준)</div>'
+            f'<div class="big" style="color:#c084fc">D-{dleft} · {cross.strftime("%-m/%-d") if os.name != "nt" else "%d/%d" % (cross.month, cross.day)}({dws}) 예상</div>'
+            f'<div class="sub2">현재 누적 <b>{int(cur):,}</b>명 · 6만까지 <b>{int(remain):,}</b>명. '
+            f'남은 일별 페이스(주말 ~3.6~4천·평일 ~2천, 7/15 호프 개봉 후 −38%)로 채우면 {cross.month}/{cross.day}({dws}){hof} 도달. '
+            '매 30분 현재 누적으로 재계산.</div></div>')
+
+
 def ai_comment_banner():
     """30분마다 갱신되는 서술형 코멘트(ai_comment.json). 폰에서 읽는 '의견'."""
     d = _load_json(AI_COMMENT)
@@ -2414,7 +2460,7 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", ai_comment_banner() + "\n"
+            .replace("__FORECAST__", sixtyk_countdown() + "\n" + ai_comment_banner() + "\n"
                      + lifetime_banner(cumul_life, completed_days, last.get("date")) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + upcoming_schedule_banner()
                      + "\n" + secured_banner(pts, m_snaps))
