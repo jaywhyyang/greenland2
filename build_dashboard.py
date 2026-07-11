@@ -796,10 +796,14 @@ def _remaining_seats(sched, now_m):
 # 일반 추정표 대신 실제 유사작 '상자 속의 양'(개봉규모 판박이·종영완료, 최종 62,031)의
 # 실측 누적곡선으로 교정 — 우리 영화 곡선에 맞는 데이터 기반 비율. (일반표는 1일차 0.11이
 # 너무 낮아 78k로 과대출발→매일 급감하는 아티팩트를 유발했음)
-LIFETIME_FRAC = {1: 0.141, 2: 0.233, 3: 0.308, 4: 0.406, 5: 0.488, 6: 0.525, 7: 0.574,
-                 8: 0.634, 9: 0.692, 10: 0.747, 11: 0.800, 12: 0.842, 13: 0.877, 14: 0.908,
-                 15: 0.921, 16: 0.928, 17: 0.937, 18: 0.949, 19: 0.960, 20: 0.967, 21: 0.976,
-                 22: 0.978, 23: 0.983, 24: 0.986, 25: 0.992, 26: 0.998, 27: 1.0}
+# 개봉 후 N일차까지 통상 누적비율(=누적÷최종). KOBIS 일자별 실측 재보정(2026-07-11):
+# 최근접 비교작 '너자2'(개봉 2/25 수, 최종 59,179 — 6만 미달작) 실측 곡선 기준.
+# 그린랜드2는 1주차 토(D4)가 너자2와 거의 동일(7,949 vs 7,981)했으나 2주차 토(D11)에 아래로
+# 이탈(우리 ~2,100 vs 너자2 2,894) — 즉 너자2보다 빠르게 식는 중이라, 너자2 프랙션 대입 시
+# 최종이 자연히 그 아래(~56~57k)로 나온다. (직전 '상자속의양' 기준(67,801, 롱테일)은 과낙관이었음)
+LIFETIME_FRAC = {1: 0.171, 2: 0.270, 3: 0.332, 4: 0.466, 5: 0.589, 6: 0.706, 7: 0.737,
+                 8: 0.780, 9: 0.820, 10: 0.851, 11: 0.900, 12: 0.965, 13: 0.973, 14: 0.981,
+                 15: 0.988, 16: 0.993, 17: 0.997, 18: 1.0}
 
 
 AI_COMMENT = os.path.join(BASE, "ai_comment.json")
@@ -816,8 +820,9 @@ def _ai_cmt(field):
 
 
 def sixtyk_countdown():
-    """6만 돌파 D-day 카운트다운. 현재 누적 + 남은 일별 페이스(주말↑·3주차 호프 개봉 삭감↓)로
-    돌파 예상일을 추정. 매 빌드(30분)마다 현재 누적으로 재계산. 실무 참고 + 재미용."""
+    """상단 히어로: '최종 총관객 예측 + 6만 돌파 소요일수'. KOBIS 실측(너자2) 재보정 최종 전망을
+    표시하고, 현재 추세로 6만 도달이 보이면 🎉 폭죽 상태로 토글(도달일=돌파일수). 안 보이면 담백하게
+    최종 예측+부족분+미달 전망. 매 빌드(30분)마다 현재 누적으로 재점검 — 상태는 자동 반복 토글."""
     import datetime as _dt
     snaps = load_member()[0]
     if not snaps:
@@ -825,40 +830,72 @@ def sixtyk_countdown():
     cur = _num(snaps[-1].get("누적관객수"))
     if not cur:
         return ""
+    OPEN = _dt.date(2026, 7, 1)
     today = _dt.date.today()
-    TARGET = 60000
-    if cur >= TARGET:
-        return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 70%);border-color:#2f5a42">'
-                '<div class="lbl">🎯 6만 돌파 카운트다운</div>'
-                f'<div class="big" style="color:#4ade80">돌파 달성 · 현재 {int(cur):,}명</div></div>')
-
-    def _daily(d, i):
-        dow = d.weekday()  # 0=월 … 5=토 6=일
-        b = 4000 if dow == 5 else 3600 if dow == 6 else 3000 if dow == 4 else 2000
-        b *= max(0.45, 1 - i * 0.045)               # 시간 경과 감쇠
-        if d >= _dt.date(2026, 7, 15):              # 호프(나홍진) 개봉 이후 좌석 삭감
-            b *= 0.62
-        return int(max(b, 400))
-
-    acc, cross = cur, None
-    for i in range(1, 45):
-        d = today + _dt.timedelta(days=i)
-        acc += _daily(d, i)
-        if acc >= TARGET:
-            cross = d
+    completed = max(1, (today - OPEN).days)         # 오늘이 D(completed+1) 진행중
+    # 마지막 '완료일'(어제) 누적으로 최종 전망(진행중 오늘의 부분치 이중계상 방지)
+    settled = cur
+    for s in reversed(snaps):
+        ts = s.get("수집시각", "")
+        if ts[:10] < today.isoformat():
+            settled = _num(s.get("누적관객수")) or settled
             break
-    if not cross:
-        return ""
-    dleft = (cross - today).days
+    lf = lifetime_forecast(settled, completed)
+    final_mid = lf["mid"] if lf else None
+    final_lo = lf["low"] if lf else None
+    final_hi = lf["high"] if lf else None
+    TARGET = 60000
+
+    # 이미 달성
+    if cur >= TARGET:
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#0e2e18 0%,#1a1d27 70%);border-color:#3ba55d">'
+                '<div class="lbl">🎉🎆 6만 돌파 달성! 🎆🎉</div>'
+                f'<div class="big" style="color:#4ade80">현재 누적 {int(cur):,}명 · 6만 돌파</div>'
+                f'<div class="sub2">최종 전망 {final_lo:,}~{final_hi:,}명(중앙 {final_mid:,}).</div></div>') if lf else ""
+
+    # 현재 추세로 6만 도달 여부 + 도달일 추정(현실 재보정 일별 페이스)
+    def _daily(d, i):
+        dow = d.weekday()  # 0=월…5=토 6=일
+        b = 2200 if dow == 5 else 2000 if dow == 6 else 1300 if dow == 4 else 1100
+        b *= max(0.4, 1 - i * 0.05)
+        if d >= _dt.date(2026, 7, 15):      # 호프(나홍진) 개봉 후 좌석 삭감
+            b *= 0.6
+        return int(max(b, 250))
     remain = TARGET - cur
-    dws = "월화수목금토일"[cross.weekday()]
-    hof = " · 호프 개봉 주간" if cross >= _dt.date(2026, 7, 15) else ""
-    return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1a33 0%,#1a1d27 70%);border-color:#5a3a6a">'
-            '<div class="lbl">🎯 6만 돌파 카운트다운 (현재 페이스 기준)</div>'
-            f'<div class="big" style="color:#c084fc">D-{dleft} · {cross.strftime("%-m/%-d") if os.name != "nt" else "%d/%d" % (cross.month, cross.day)}({dws}) 예상</div>'
-            f'<div class="sub2">현재 누적 <b>{int(cur):,}</b>명 · 6만까지 <b>{int(remain):,}</b>명. '
-            f'남은 일별 페이스(주말 ~3.6~4천·평일 ~2천, 7/15 호프 개봉 후 −38%)로 채우면 {cross.month}/{cross.day}({dws}){hof} 도달. '
-            '매 30분 현재 누적으로 재계산.</div></div>')
+    # 폭죽(6만 가능) 판정은 '재보정된 최종 전망'이 6만 이상일 때만 — 누적페이스 모델의 무한 꼬리로
+    # 인한 헛폭죽 방지. 최종이 6만 이상이면 그때만 도달일(cross)을 페이스 모델로 추정해 표시.
+    reachable = final_mid is not None and final_mid >= TARGET
+    cross = None
+    if reachable:
+        acc = cur
+        for i in range(1, 60):
+            d = today + _dt.timedelta(days=i)
+            acc += _daily(d, i)
+            if acc >= TARGET:
+                cross = d
+                break
+
+    if reachable and cross is not None:
+        # 🎉 폭죽 상태 — 6만 가능성 재점화
+        dleft = (cross - today).days
+        dws = "월화수목금토일"[cross.weekday()]
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#132e3a 0%,#1a1d27 65%);border-color:#3ba5c2;box-shadow:0 0 0 1px #3ba5c255">'
+                '<div class="lbl">🎉🎆 6만 돌파 가능성 재점화! 🎆🎉</div>'
+                f'<div class="big" style="color:#38bdf8">6만까지 D-{dleft} · {cross.month}/{cross.day}({dws}) 예상</div>'
+                f'<div class="sub2">최종 전망 <b>{final_lo:,}~{final_hi:,}</b>명(중앙 {final_mid:,}) · 현재 누적 {int(cur):,} · 6만까지 {int(remain):,}. '
+                '재점검마다 상태 자동 갱신.</div></div>')
+
+    # 담백 상태 — 현 추세 6만 미달
+    days_left_room = max(1, 30 - completed)  # 실질 잔여 흥행기간(대략)
+    need_avg = int(remain / days_left_room) if days_left_room else 0
+    ff = (f'{final_lo:,}~{final_hi:,}명 (중앙 {final_mid:,})' if lf else '산출 중')
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a1f14 0%,#1a1d27 70%);border-color:#6a4a2f">'
+            '<div class="lbl">🎬 개봉 최종 총관객 예측 (KOBIS 실측·너자2 기준 재보정)</div>'
+            f'<div class="big" style="color:#f4b06a">{ff}</div>'
+            f'<div class="sub2">현재 누적 {int(cur):,}명 · 6만까지 {int(remain):,}명 부족. '
+            f'<b style="color:#f4c89a">현 추세로는 6만 미달 전망</b>(가장 근접했던 너자2도 59,179로 미달). '
+            f'6만을 넘기려면 남은 기간 일평균 약 {need_avg:,}명이 필요합니다. '
+            '재점검 때 6만 도달이 보이면 🎉 폭죽 표시로 자동 전환.</div></div>')
 
 
 def ai_comment_banner():
