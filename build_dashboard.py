@@ -730,7 +730,13 @@ def member_daycompare(snaps):
     if len(days) < 2:
         return None
     dts = sorted(days)
-    today, yest = dts[-1], dts[-2]
+    today = dts[-1]
+    # 같은 요일유형(주말↔주말 / 평일↔평일)의 가장 최근 과거일을 기준으로 잡는다.
+    # 주말은 오후·저녁에 관객이 몰려 평일과 당일 곡선 모양이 달라, 요일유형이 다른 날을
+    # 기준으로 마감을 외삽하면 크게 왜곡된다(주말을 전날 평일에 대면 과소추정). 없으면 직전일 폴백.
+    _wend = _dow(today) in (5, 6)
+    _cand = [d for d in dts[:-1] if (_dow(d) in (5, 6)) == _wend]
+    yest = _cand[-1] if _cand else dts[-2]
     tv, yv = sorted(days[today]), sorted(days[yest])
     now_m, now_a = tv[-1]
     ti = _incs_to(days[today], now_m)   # 오늘: 진행 중 시각까지
@@ -1046,7 +1052,7 @@ def top_forecast(snaps, sched=None):
     curve_org = cv["pred"] if cv else None
     ratio_est = (ratio_org + base0) if ratio_org is not None else None
     curve_est = (curve_org + base0) if curve_org is not None else None
-    ests = [(e, lbl) for e, lbl in ((ratio_est, "어제 동시간 보정"), (curve_est, "당일 곡선 보정")) if e]
+    ests = [(e, lbl) for e, lbl in ((ratio_est, "동일요일유형 동시간 보정"), (curve_est, "당일 곡선 보정")) if e]
 
     END = 23 * 60 + 30  # 마감 기준 시각(관객수 확정이 대체로 이 무렵)
     base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
@@ -1187,7 +1193,7 @@ def top_forecast_banner(snaps, sched=None):
         dt = " · ".join(f"{l} {r(e):,}" for l, e in f["detail"])
         band = f"{lo:,}~{hi:,}명 범위" if lo != hi else ""
         return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 65%);border-color:#2f5a42">'
-                '<div class="lbl">🎯 오늘 최종 관객 예상 · 어제 추이 보정 (정밀)</div>'
+                '<div class="lbl">🎯 오늘 최종 관객 예상 · 동일 요일유형 추이 보정 (정밀)</div>'
                 f'<div class="big" style="color:#4ade80">약 {est:,}명</div>'
                 f'<div class="sub2">현재 확정 {f["now"]:,} → {dt}. {band}{capnote} '
                 '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div>'
