@@ -717,9 +717,11 @@ def _incs_to(day_pts, now_m):
             for i in range(1, len(bounds))}
 
 
-def member_daycompare(snaps):
-    """오늘 vs 어제 동시간대(정시) 관객 증가 비교 + 동시간 대비 예측(마감 관객).
-    수집값을 정시로 후보정해서 요일끼리 딱 맞게 비교."""
+def member_daycompare(snaps, ref_mode="prev"):
+    """오늘 vs 기준일 동시간대(정시) 관객 증가 비교 + 동시간 대비 예측(마감 관객).
+    ref_mode="prev": 기준일 = 실제 직전일(어제). '어제 동시간 대비' 차트/배너용.
+    ref_mode="sameweekday": 기준일 = 같은 요일의 최근 과거일(없으면 같은 주말/평일 유형, 없으면 직전일).
+      마감 예측용 — 주말은 오후·저녁 몰림이라 요일유형이 다른 날로 외삽하면 왜곡되기 때문."""
     from collections import defaultdict
     days = defaultdict(list)
     for s in snaps:
@@ -731,12 +733,14 @@ def member_daycompare(snaps):
         return None
     dts = sorted(days)
     today = dts[-1]
-    # 같은 요일유형(주말↔주말 / 평일↔평일)의 가장 최근 과거일을 기준으로 잡는다.
-    # 주말은 오후·저녁에 관객이 몰려 평일과 당일 곡선 모양이 달라, 요일유형이 다른 날을
-    # 기준으로 마감을 외삽하면 크게 왜곡된다(주말을 전날 평일에 대면 과소추정). 없으면 직전일 폴백.
-    _wend = _dow(today) in (5, 6)
-    _cand = [d for d in dts[:-1] if (_dow(d) in (5, 6)) == _wend]
-    yest = _cand[-1] if _cand else dts[-2]
+    if ref_mode == "sameweekday":
+        same = [d for d in dts[:-1] if _dow(d) == _dow(today)]        # 정확히 같은 요일
+        if not same:
+            _wend = _dow(today) in (5, 6)
+            same = [d for d in dts[:-1] if (_dow(d) in (5, 6)) == _wend]  # 같은 주말/평일 유형
+        yest = same[-1] if same else dts[-2]
+    else:
+        yest = dts[-2]  # 실제 어제
     tv, yv = sorted(days[today]), sorted(days[yest])
     now_m, now_a = tv[-1]
     ti = _incs_to(days[today], now_m)   # 오늘: 진행 중 시각까지
@@ -1046,7 +1050,7 @@ def top_forecast(snaps, sched=None):
             s2 = dict(s)
             s2["관객수"] = max(0, a - day_open.get(ts[:10], 0))
             adj_snaps.append(s2)
-    dc = member_daycompare(adj_snaps)
+    dc = member_daycompare(adj_snaps, ref_mode="sameweekday")
     ratio_org = dc["pred"]["pred"] if dc and dc.get("pred") else None
     cv = predict_eod_curve(adj_snaps)
     curve_org = cv["pred"] if cv else None
