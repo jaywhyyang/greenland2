@@ -1299,9 +1299,11 @@ def upcoming_schedule_banner():
     if not sh:
         return ""
     today = _dt.date.today().strftime("%Y-%m-%d")
-    fut = [d for d in sorted(sh) if d > today][:4]
+    fut = [d for d in sorted(sh) if d >= today][:5]   # 오늘 포함
     if not fut:
         return ""
+    # 삭감 비교용: fut 첫날의 직전 기준은 스케줄상 '오늘 이전 마지막 날'
+    past = [d for d in sorted(sh) if d < fut[0]]
     items = ""
     for i, d in enumerate(fut):
         e = sh[d]
@@ -1309,13 +1311,14 @@ def upcoming_schedule_banner():
         shows = e.get("total_shows") or 0
         dw = DOW_NAME[_dow(d)]
         eff = int(seats * 0.88)  # KOBIS 유효좌석 추정(저fill 기준 -12%)
-        prev = fut[i - 1] if i > 0 else today
+        prev = fut[i - 1] if i > 0 else (past[-1] if past else None)
         pseats = (sh.get(prev) or {}).get("total_seats") or 0
         cut = pseats and seats < pseats * 0.65
         col = "#f87171" if cut else "#e7e9ee"
         tag = ' <b style="color:#f87171">◀삭감</b>' if cut else ''
+        todaytag = ' <b style="color:#7dd3fc">(오늘)</b>' if d == today else ''
         items += (f'<span style="display:inline-block;margin-right:16px">'
-                  f'<b style="color:{col}">{d[5:]}({dw})</b> {int(seats):,}석·{int(shows)}회{tag} '
+                  f'<b style="color:{col}">{d[5:]}({dw})</b>{todaytag} {int(seats):,}석·{int(shows)}회{tag} '
                   f'<span class="muted">(유효 ~{eff:,})</span></span>')
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1a2230 0%,#1a1d27 70%);border-color:#2f4a5a">'
             '<div class="lbl">📅 다가올 편성 좌석 (배급 시간표)</div>'
