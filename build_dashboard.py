@@ -863,22 +863,21 @@ def precise_forecast():
         if today - _dt.timedelta(days=8) <= dd < today and d in daily:
             lastweek[dd.weekday()] = daily[d]
 
-    # 당주 유지율 캘리브레이션: 오늘(진행중) vs 지난주 동일요일, 같은 시각까지의 관객 비율
-    def _cur_at(datestr, mmax):
-        c = [x for x in rows_all if x[0].startswith(datestr) and x[0][11:16] <= mmax]
-        return _num(c[-1][2]) if c else None
+    # 당주 유지율 캘리브레이션: 오늘(진행중) vs 지난주 동일요일 — 반드시 '양쪽 다 데이터가 있는
+    # 최신 공통 시각'으로 비교(지난주 수집 공백에 오늘 최신값을 대면 유지율이 과대되는 버그 방지).
     r_cur = 0.45
     if fut:
         tstr = fut[0]
-        tnow = [x for x in rows_all if x[0].startswith(tstr)]
-        if tnow:
-            mmax = tnow[-1][0][11:16]
-            a_t = _num(tnow[-1][2])
-            a_l = _cur_at((D(tstr) - _dt.timedelta(days=7)).isoformat(), mmax)
+        lstr = (D(tstr) - _dt.timedelta(days=7)).isoformat()
+        cur_t = {x[0][11:16]: _num(x[2]) for x in rows_all if x[0].startswith(tstr)}
+        cur_l = {x[0][11:16]: _num(x[2]) for x in rows_all if x[0].startswith(lstr)}
+        common = sorted(set(cur_t) & set(cur_l))
+        if common:
+            mm = common[-1]
+            a_t, a_l = cur_t[mm], cur_l[mm]
             if a_t and a_l and a_l > 0:
-                # 오늘 동일요일 대비 비율. 단 아침 비율은 과대되기 쉬워 상한 0.52로 보수화(whiplash 방지).
                 r_cur = max(0.30, min(0.52, a_t / a_l))
-    r_next = max(0.28, r_cur * 0.60)                        # 다음 주부터 감쇠
+    r_next = max(0.26, r_cur * 0.58)                        # 다음 주부터 감쇠
 
     # 호프(나홍진) 7/15 개봉 → 3주차 편성 삭감. 배급 확인상 '서울 관 통째 소멸'.
     # 서울은 우리 관객의 ~42%였으므로, 호프 이후 일별은 (서울 상실 + 자연감쇠)로 ×0.50.
