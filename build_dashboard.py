@@ -821,15 +821,135 @@ def _ai_cmt(field):
             f' <span class="muted" style="font-size:11px">({d.get("updated","")})</span></div>')
 
 
+def precise_forecast():
+    """정밀 최종 예측 — 남은 일자를 하루하루 적산. 중앙값/넓은 범위가 아니라 단일 숫자.
+    방법: 마지막 완료일 누적에서 시작해, 각 미래일 = 지난주 동일요일 실측 × 유지율(당주는 높게·이후
+    주는 낮게 감쇠) × 호프(7/15~) 편성삭감 계수. 오늘의 '지난주 동일요일 동시각 대비 비율'로 당주
+    유지율을 캘리브레이션. 반환: {final, settled, completed, cross(6만도달일), rows:[(date,val)]}"""
+    import datetime as _dt, csv as _csv
+    path = os.path.join(BASE, "member_snapshots.csv")
+    if not os.path.exists(path):
+        return None
+    by_date = {}
+    rows_all = []
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        rd = _csv.reader(f)
+        hdr = next(rd, None)
+        for x in rd:
+            if len(x) > 3 and x[1].count("-") == 2:
+                by_date[x[1]] = _num(x[3])           # 누적(끝값=마감)
+                rows_all.append(x)
+    if len(by_date) < 3:
+        return None
+    dts = sorted(by_date)
+    D = _dt.date.fromisoformat
+    today = _dt.date.today()
+    fut = [d for d in dts if D(d) >= today]
+    past = [d for d in dts if D(d) < today]
+    if not past:
+        return None
+    settled_date = past[-1]
+    cum = by_date[settled_date]
+    completed = (D(settled_date) - _dt.date(2026, 7, 1)).days + 1
+    daily = {}
+    prev = None
+    for d in dts:
+        if prev is not None and by_date[d] is not None and by_date[prev] is not None:
+            daily[d] = by_date[d] - by_date[prev]
+        prev = d
+    lastweek = {}
+    for d in dts:
+        dd = D(d)
+        if today - _dt.timedelta(days=8) <= dd < today and d in daily:
+            lastweek[dd.weekday()] = daily[d]
+
+    # 당주 유지율 캘리브레이션: 오늘(진행중) vs 지난주 동일요일, 같은 시각까지의 관객 비율
+    def _cur_at(datestr, mmax):
+        c = [x for x in rows_all if x[0].startswith(datestr) and x[0][11:16] <= mmax]
+        return _num(c[-1][2]) if c else None
+    r_cur = 0.45
+    if fut:
+        tstr = fut[0]
+        tnow = [x for x in rows_all if x[0].startswith(tstr)]
+        if tnow:
+            mmax = tnow[-1][0][11:16]
+            a_t = _num(tnow[-1][2])
+            a_l = _cur_at((D(tstr) - _dt.timedelta(days=7)).isoformat(), mmax)
+            if a_t and a_l and a_l > 0:
+                # 오늘 동일요일 대비 비율. 단 아침 비율은 과대되기 쉬워 상한 0.52로 보수화(whiplash 방지).
+                r_cur = max(0.30, min(0.52, a_t / a_l))
+    r_next = max(0.30, r_cur * 0.68)                        # 다음 주부터 감쇠
+
+    HOFE = _dt.date(2026, 7, 15)   # 호프(나홍진) 개봉 → 3주차 편성 삭감
+    proj = {}
+    c = cum
+    rows = []
+    for i in range(0, 45):
+        d = today + _dt.timedelta(days=i)
+        wd = d.weekday()
+        ref = (d - _dt.timedelta(days=7)).isoformat()
+        base = proj.get(ref)
+        if base is None:
+            base = lastweek.get(wd, 1500)
+        r = r_cur if i < 7 else r_next
+        v = base * r
+        if d >= HOFE:
+            v *= 0.62
+        v = int(round(v))
+        if v < 70 and i > 4:
+            v = 0
+        proj[d.isoformat()] = v
+        if v > 0:
+            c += v
+            rows.append((d.isoformat(), v))
+        elif i > 7:
+            break
+    final = int(round(c / 100.0) * 100)
+    # 6만 도달일
+    cross = None
+    acc = cum
+    for ds, v in rows:
+        acc += v
+        if acc >= 60000:
+            cross = ds
+            break
+    return {"final": final, "settled": int(cum), "completed": completed,
+            "cross": cross, "rows": rows, "r_cur": round(r_cur, 2)}
+
+
 def sixtyk_countdown():
-    """상단 히어로: '최종 총관객 예측 + 6만 돌파 소요일수'. KOBIS 실측(너자2) 재보정 최종 전망을
-    표시하고, 현재 추세로 6만 도달이 보이면 🎉 폭죽 상태로 토글(도달일=돌파일수). 안 보이면 담백하게
-    최종 예측+부족분+미달 전망. 매 빌드(30분)마다 현재 누적으로 재점검 — 상태는 자동 반복 토글."""
+    """상단 히어로: 정밀 최종 예측(precise_forecast, 남은 일자 적산 단일값) 표시.
+    6만 도달이 보이면 🎉 폭죽 상태(도달일=돌파일수), 아니면 담백하게 최종+부족분.
+    매 빌드(30분)마다 재점검 — 상태 자동 반복 토글."""
     import datetime as _dt
+    pf = precise_forecast()
     snaps = load_member()[0]
     if not snaps:
         return ""
     cur = _num(snaps[-1].get("누적관객수"))
+    if pf:
+        final = pf["final"]
+        cur = cur or pf["settled"]
+        TARGET = 60000
+        if cur >= TARGET:
+            return ('  <div class="forecast" style="background:linear-gradient(135deg,#0e2e18 0%,#1a1d27 70%);border-color:#3ba55d">'
+                    '<div class="lbl">🎉🎆 6만 돌파 달성! 🎆🎉</div>'
+                    f'<div class="big" style="color:#4ade80">현재 누적 {int(cur):,}명 · 정밀 최종 예측 {final:,}명</div></div>')
+        remain = TARGET - cur
+        if final >= TARGET and pf["cross"]:
+            cd = _dt.date.fromisoformat(pf["cross"]); dleft = (cd - _dt.date.today()).days
+            dws = "월화수목금토일"[cd.weekday()]
+            return ('  <div class="forecast" style="background:linear-gradient(135deg,#132e3a 0%,#1a1d27 65%);border-color:#3ba5c2;box-shadow:0 0 0 1px #3ba5c255">'
+                    '<div class="lbl">🎉🎆 6만 돌파 가능성 재점화! 🎆🎉</div>'
+                    f'<div class="big" style="color:#38bdf8">정밀 최종 예측 {final:,}명 · 6만 D-{dleft}({cd.month}/{cd.day} {dws})</div>'
+                    f'<div class="sub2">남은 일자를 하루하루 적산한 단일 추정치 · 현재 누적 {int(cur):,} · 6만까지 {int(remain):,}. '
+                    '매 30분 재산출 — 최종이 6만 밑으로 내려가면 자동 전환.</div></div>')
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#1a2230 0%,#1a1d27 70%);border-color:#2f4a5a">'
+                '<div class="lbl">🎬 개봉 최종 총관객 정밀 예측 (남은 일자 적산)</div>'
+                f'<div class="big" style="color:#7dd3fc">약 {final:,}명</div>'
+                f'<div class="sub2">현재 누적 {int(cur):,}명 · 6만까지 {int(remain):,}명. '
+                f'{"6만 경합권(근접)" if final >= 58000 else "현 추세 6만 미달 전망"} · 남은 일자를 하루하루 적산한 단일 추정치. '
+                '재점검 때 예측이 6만 이상이면 🎉 폭죽으로 전환.</div></div>')
     if not cur:
         return ""
     OPEN = _dt.date(2026, 7, 1)
