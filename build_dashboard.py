@@ -878,9 +878,12 @@ def precise_forecast():
             if a_t and a_l and a_l > 0:
                 # 오늘 동일요일 대비 비율. 단 아침 비율은 과대되기 쉬워 상한 0.52로 보수화(whiplash 방지).
                 r_cur = max(0.30, min(0.52, a_t / a_l))
-    r_next = max(0.30, r_cur * 0.68)                        # 다음 주부터 감쇠
+    r_next = max(0.28, r_cur * 0.60)                        # 다음 주부터 감쇠
 
-    HOFE = _dt.date(2026, 7, 15)   # 호프(나홍진) 개봉 → 3주차 편성 삭감
+    # 호프(나홍진) 7/15 개봉 → 3주차 편성 삭감. 배급 확인상 '서울 관 통째 소멸'.
+    # 서울은 우리 관객의 ~42%였으므로, 호프 이후 일별은 (서울 상실 + 자연감쇠)로 ×0.50.
+    HOFE = _dt.date(2026, 7, 15)
+    HOF_FAC = 0.50
     proj = {}
     c = cum
     rows = []
@@ -894,9 +897,9 @@ def precise_forecast():
         r = r_cur if i < 7 else r_next
         v = base * r
         if d >= HOFE:
-            v *= 0.62
+            v *= HOF_FAC
         v = int(round(v))
-        if v < 70 and i > 4:
+        if v < 150 and i > 4:   # 서울 소멸 후 지방 잔여는 빠르게 소멸 → 조기 종영 반영
             v = 0
         proj[d.isoformat()] = v
         if v > 0:
@@ -937,19 +940,22 @@ def sixtyk_countdown():
                     f'<div class="big" style="color:#4ade80">현재 누적 {int(cur):,}명 · 정밀 최종 예측 {final:,}명</div></div>')
         remain = TARGET - cur
         if final >= TARGET and pf["cross"]:
+            # (자동 토글용) 예측이 다시 6만 이상으로 오르면 재점화 표시
             cd = _dt.date.fromisoformat(pf["cross"]); dleft = (cd - _dt.date.today()).days
             dws = "월화수목금토일"[cd.weekday()]
             return ('  <div class="forecast" style="background:linear-gradient(135deg,#132e3a 0%,#1a1d27 65%);border-color:#3ba5c2;box-shadow:0 0 0 1px #3ba5c255">'
                     '<div class="lbl">🎉🎆 6만 돌파 가능성 재점화! 🎆🎉</div>'
                     f'<div class="big" style="color:#38bdf8">정밀 최종 예측 {final:,}명 · 6만 D-{dleft}({cd.month}/{cd.day} {dws})</div>'
-                    f'<div class="sub2">남은 일자를 하루하루 적산한 단일 추정치 · 현재 누적 {int(cur):,} · 6만까지 {int(remain):,}. '
-                    '매 30분 재산출 — 최종이 6만 밑으로 내려가면 자동 전환.</div></div>')
-        return ('  <div class="forecast" style="background:linear-gradient(135deg,#1a2230 0%,#1a1d27 70%);border-color:#2f4a5a">'
-                '<div class="lbl">🎬 개봉 최종 총관객 정밀 예측 (남은 일자 적산)</div>'
-                f'<div class="big" style="color:#7dd3fc">약 {final:,}명</div>'
-                f'<div class="sub2">현재 누적 {int(cur):,}명 · 6만까지 {int(remain):,}명. '
-                f'{"6만 경합권(근접)" if final >= 58000 else "현 추세 6만 미달 전망"} · 남은 일자를 하루하루 적산한 단일 추정치. '
-                '재점검 때 예측이 6만 이상이면 🎉 폭죽으로 전환.</div></div>')
+                    f'<div class="sub2">남은 일자 적산 단일값 · 현재 누적 {int(cur):,} · 6만까지 {int(remain):,}. 매 30분 재산출.</div></div>')
+        # 6만 미달 확정 국면 — '현실적 최대치'를 냉정하게. 최대/기대/하방 3점 제시.
+        ceil = min(59800, int(round(final * 1.012 / 100) * 100))   # 최대치도 6만 밑으로 명확히
+        floor = int(round(final * 0.975 / 100) * 100)
+        return ('  <div class="forecast" style="background:linear-gradient(135deg,#241f16 0%,#1a1d27 70%);border-color:#5a4a2f">'
+                '<div class="lbl">🎬 개봉 최종 총관객 · 현실적 예측 (남은 일자 적산)</div>'
+                f'<div class="big" style="color:#f4b06a">약 {final:,}명</div>'
+                f'<div class="sub2">현실적 최대치 <b>{ceil:,}</b> · 기대 <b>{final:,}</b> · 하방 <b>{floor:,}</b>. '
+                f'<b style="color:#f4c89a">6만은 미달 확정적</b>(서울 관객 42%가 3주차 호프 개봉으로 소멸, 티프 미집행). '
+                f'현재 누적 {int(cur):,}명 · 6만까지 {int(remain):,}명 부족. 남은 일자를 하루하루 적산한 냉정 추정치.</div></div>')
     if not cur:
         return ""
     OPEN = _dt.date(2026, 7, 1)
