@@ -1243,6 +1243,32 @@ def top_forecast(snaps, sched=None):
             s2 = dict(s)
             s2["관객수"] = max(0, a - day_open.get(ts[:10], 0))
             adj_snaps.append(s2)
+    # 편성좌석 기반 추정: 오늘 총좌석 × 최근 완료일 좌석판매율(관객/좌석) 중앙값.
+    # 당일 스냅샷이 1~2개뿐이면(수집 재개 직후 등) 곡선/동시간 보정이 베이스라인 상쇄로 붕괴하므로 이 값으로 폴백.
+    seat_est = None
+    try:
+        _sh_t = _load_json(SCHED_HIST)
+        _seats_today = (_sh_t.get(today) or {}).get("total_seats")
+        import datetime as _dt2
+        _lastby = {}
+        for s in snaps:
+            ts = s.get("수집시각", ""); a = _num(s.get("관객수"))
+            if len(ts) >= 16 and a is not None:
+                _lastby[ts[:10]] = a           # 관객수=당일 러닝합 → 마지막값=그날 최종
+        # 요일유형(평일/주말)을 맞춰 판매율 참조: 오늘이 평일이면 최근 평일들, 주말이면 최근 주말들.
+        _iswk = _dt2.date.fromisoformat(today).weekday() >= 5
+        _cand = []
+        for d in sorted(_lastby):
+            if d < today and (_sh_t.get(d) or {}).get("total_seats"):
+                if (_dt2.date.fromisoformat(d).weekday() >= 5) == _iswk:
+                    _cand.append(_lastby[d] / _sh_t[d]["total_seats"])
+        # 판매율이 주 단위로 감쇠하므로 과거 강세일 평균은 과대 → 같은 유형 '가장 최근일'을 기준(최신 신호).
+        _fill = _cand[-1] if _cand else 0.06
+        if _seats_today:
+            seat_est = _seats_today * _fill
+    except Exception:
+        seat_est = None
+
     dc = member_daycompare(adj_snaps, ref_mode="sameweekday")
     ratio_org = dc["pred"]["pred"] if dc and dc.get("pred") else None
     cv = predict_eod_curve(adj_snaps)
@@ -1255,6 +1281,12 @@ def top_forecast(snaps, sched=None):
     base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
             "remain": (int(round(remain)) if remain is not None else None),
             "hoi": round(hoi, 2)}
+    # 당일 표본이 3개 미만이면 동시간/곡선 보정이 불안정(베이스라인 상쇄로 현재값 근처로 붕괴) →
+    # 편성좌석 기반 추정으로 대체. 단, 이미 확정된 현재값보단 크게.
+    if len(tv) < 3 and seat_est and seat_est > now_a:
+        e = fin(max(seat_est, now_a))
+        return {**base, "est": e, "low": fin(seat_est * 0.85), "high": fin(seat_est * 1.15),
+                "method": "편성좌석 기반 추정(당일 표본 부족)", "conf": "잠정", "capped": False}
     if ests:
         vals = [e for e, _ in ests]
         est = sum(vals) / len(vals)
