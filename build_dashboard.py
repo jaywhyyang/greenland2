@@ -907,13 +907,15 @@ def precise_forecast():
 
     # 오늘(진행중)은 지난주 기반 투영이 아니라 실측 진행분(top_forecast)으로 확정 — 당일이 약하면
     # 지난주 대비 크게 낮으므로 이를 반영해야 최종이 과대되지 않는다.
+    # 단, 오늘 회원 데이터가 아직 없으면(자정 직후 등) top_forecast는 '어제'를 가리키므로 쓰면 안 된다.
     today_est = None
-    try:
-        _tf = top_forecast(load_member()[0], _load_json(SCHED_JSON))
-        if _tf and _tf.get("est"):
-            today_est = _tf["est"]
-    except Exception:
-        today_est = None
+    if today.isoformat() in by_date:
+        try:
+            _tf = top_forecast(load_member()[0], _load_json(SCHED_JSON))
+            if _tf and _tf.get("est"):
+                today_est = _tf["est"]
+        except Exception:
+            today_est = None
 
     proj = {}
     c = cum
