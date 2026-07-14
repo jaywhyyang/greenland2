@@ -905,6 +905,16 @@ def precise_forecast():
     _sched_dates = sorted(_sched_seats)
     _last_sched = _sched_dates[-1] if _sched_dates else None
 
+    # 오늘(진행중)은 지난주 기반 투영이 아니라 실측 진행분(top_forecast)으로 확정 — 당일이 약하면
+    # 지난주 대비 크게 낮으므로 이를 반영해야 최종이 과대되지 않는다.
+    today_est = None
+    try:
+        _tf = top_forecast(load_member()[0], _load_json(SCHED_JSON))
+        if _tf and _tf.get("est"):
+            today_est = _tf["est"]
+    except Exception:
+        today_est = None
+
     proj = {}
     c = cum
     rows = []
@@ -916,6 +926,11 @@ def precise_forecast():
         if base is None:
             base = lastweek.get(wd, 1500)
         r = r_cur if i < 7 else r_next
+        if i == 0 and today_est is not None:
+            v = today_est                      # 오늘 = 실측 진행분 기반
+            proj[d.isoformat()] = int(round(v))
+            c += int(round(v)); rows.append((d.isoformat(), int(round(v))))
+            continue
         v = base * r
         if d >= HOFE:
             v *= HOF_FAC
@@ -1267,14 +1282,17 @@ def top_forecast(snaps, sched=None):
     base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
             "remain": (int(round(remain)) if remain is not None else None),
             "hoi": round(hoi, 2)}
-    # 편성좌석 앵커: 낮 시간대(마감 전)엔 시간대/곡선 보정이 수집공백·좁은 표본으로 현재값 근처까지
-    # 붕괴할 수 있다. 이때 편성좌석×최근 동일유형 판매율(seat_est)이 더 신뢰 가능한 바닥이므로,
-    # 시간대 보정이 그보다 크게 낮으면 seat_est로 대체(저녁엔 실측 누적이 커져 자연히 앵커 위로 올라감).
+    # 편성좌석 앵커: 당일 표본이 적거나 관측 폭이 좁으면(수집 재개 직후 등) 시간대/곡선 보정이
+    # 베이스라인 상쇄로 현재값 근처까지 붕괴한다. 이때만 편성좌석×판매율(seat_est)로 대체한다.
+    # 오후 곡선이 충분히 쌓이면(표본 3+·관측폭 150분+) 시간대 보정이 신뢰 가능하므로 그대로 쓴다
+    # (그날이 실제로 약하면 seat_est보다 낮게 나오는 게 정상 — 억지로 끌어올리지 않는다).
     LATE = 17 * 60
+    today_span = (now_m - tv[0][0]) if tv else 0
+    insufficient = len(tv) < 3 or today_span < 150
     def seat_anchor(est, lo, hi, method):
-        if seat_est and now_m < LATE and est < seat_est * 0.85 and seat_est > now_a:
+        if seat_est and now_m < LATE and insufficient and est < seat_est * 0.85 and seat_est > now_a:
             return (seat_est, seat_est * 0.85, seat_est * 1.15,
-                    "편성좌석 기반 추정(당일 시간대보정 불안정)", True)
+                    "편성좌석 기반 추정(당일 표본 부족)", True)
         return est, lo, hi, method, False
 
     if ests:
