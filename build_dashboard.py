@@ -884,6 +884,27 @@ def precise_forecast():
     # 67% 의존이라 취약. 자연감쇠까지 겹쳐 호프 이후 일별 ×0.45로 둔다(데이터 방어 가능 수준).
     HOFE = _dt.date(2026, 7, 15)
     HOF_FAC = 0.45
+
+    # 편성 좌석 상한: 종영 임박으로 편성이 급감하면 '수요'가 아니라 '깔린 좌석'이 관객 상한이 된다.
+    # 최근 완료일 좌석판매율(관객/편성좌석) 중앙값 × 편성축소 시 잔존관객 결집분(CONC)으로 미래일 상한.
+    import json as _json
+    _sched_seats = {}
+    try:
+        _sh = _json.load(open(SCHED_HIST, encoding="utf-8"))
+        _sched_seats = {k: (vv.get("total_seats") or 0) for k, vv in _sh.items()}
+    except Exception:
+        pass
+    _fills = []
+    for d in past[-6:]:
+        s = _sched_seats.get(d)
+        if s and daily.get(d):
+            _fills.append(daily[d] / s)
+    _fills = sorted(_fills)[-4:]
+    recent_fill = _fills[len(_fills) // 2] if _fills else 0.10
+    CONC = 1.3
+    _sched_dates = sorted(_sched_seats)
+    _last_sched = _sched_dates[-1] if _sched_dates else None
+
     proj = {}
     c = cum
     rows = []
@@ -898,6 +919,13 @@ def precise_forecast():
         v = base * r
         if d >= HOFE:
             v *= HOF_FAC
+        # 실제 편성 좌석으로 상한(제공 편성 이후 날짜는 마지막 편성좌석에서 하루 15%씩 감쇠 가정)
+        sd_iso = d.isoformat()
+        cap_seats = _sched_seats.get(sd_iso)
+        if cap_seats is None and _last_sched and sd_iso > _last_sched:
+            cap_seats = _sched_seats.get(_last_sched, 0) * (0.85 ** (d - D(_last_sched)).days)
+        if cap_seats:
+            v = min(v, cap_seats * recent_fill * CONC)
         v = int(round(v))
         if v < 150 and i > 4:   # 서울 소멸 후 지방 잔여는 빠르게 소멸 → 조기 종영 반영
             v = 0

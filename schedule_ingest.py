@@ -81,6 +81,14 @@ def parse(path, date_str=None):
                 total_screens = _num(cells[5]) if len(cells) > 5 else None
     total_shows = sum(bands.values())
 
+    # 종영 임박 등 총좌석이 1만 미만이라 '계' 행을 못 잡은 경우 계열사 합계로 폴백
+    if not total_seats:
+        total_seats = sum((v.get("좌석") or 0) for v in chains.values())
+    if not total_shows:
+        total_shows = sum((v.get("회차") or 0) for v in chains.values())
+    if not total_screens:
+        total_screens = sum((v.get("상영관") or 0) for v in chains.values()) or None
+
     hourly = _parse_hourly(rows)
     regions = _parse_regions(rows)
     theaters = _parse_theaters(rows)
