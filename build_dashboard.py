@@ -1243,29 +1243,15 @@ def top_forecast(snaps, sched=None):
             s2 = dict(s)
             s2["관객수"] = max(0, a - day_open.get(ts[:10], 0))
             adj_snaps.append(s2)
-    # 편성좌석 기반 추정: 오늘 총좌석 × 최근 완료일 좌석판매율(관객/좌석) 중앙값.
-    # 당일 스냅샷이 1~2개뿐이면(수집 재개 직후 등) 곡선/동시간 보정이 베이스라인 상쇄로 붕괴하므로 이 값으로 폴백.
+    # 편성좌석 기반 추정: 오늘 총좌석 × 직전 완료일 좌석판매율(요일 보정). 카드 하단 '📐 편성 기반 참고'와
+    # 동일 공식(_fill_baseline+DOW_FILL)이라 헤드라인=참고값. 당일 시간대 보정이 붕괴할 때 앵커로 사용.
     seat_est = None
     try:
-        _sh_t = _load_json(SCHED_HIST)
-        _seats_today = (_sh_t.get(today) or {}).get("total_seats")
-        import datetime as _dt2
-        _lastby = {}
-        for s in snaps:
-            ts = s.get("수집시각", ""); a = _num(s.get("관객수"))
-            if len(ts) >= 16 and a is not None:
-                _lastby[ts[:10]] = a           # 관객수=당일 러닝합 → 마지막값=그날 최종
-        # 요일유형(평일/주말)을 맞춰 판매율 참조: 오늘이 평일이면 최근 평일들, 주말이면 최근 주말들.
-        _iswk = _dt2.date.fromisoformat(today).weekday() >= 5
-        _cand = []
-        for d in sorted(_lastby):
-            if d < today and (_sh_t.get(d) or {}).get("total_seats"):
-                if (_dt2.date.fromisoformat(d).weekday() >= 5) == _iswk:
-                    _cand.append(_lastby[d] / _sh_t[d]["total_seats"])
-        # 판매율이 주 단위로 감쇠하므로 과거 강세일 평균은 과대 → 같은 유형 '가장 최근일'을 기준(최신 신호).
-        _fill = _cand[-1] if _cand else 0.06
-        if _seats_today:
-            seat_est = _seats_today * _fill
+        _seats_today = (_load_json(SCHED_HIST).get(today) or {}).get("total_seats")
+        _fb = _fill_baseline(today)
+        if _seats_today and _fb:
+            _wf = _fb["fill"] / DOW_FILL[_fb["dow"]][1]        # 평일 환산 판매율
+            seat_est = _seats_today * _wf * DOW_FILL[_dow(today)][1]
     except Exception:
         seat_est = None
 
@@ -1281,21 +1267,29 @@ def top_forecast(snaps, sched=None):
     base = {"now": now_a, "cap": (int(round(cap)) if cap is not None else None),
             "remain": (int(round(remain)) if remain is not None else None),
             "hoi": round(hoi, 2)}
-    # 당일 표본이 3개 미만이면 동시간/곡선 보정이 불안정(베이스라인 상쇄로 현재값 근처로 붕괴) →
-    # 편성좌석 기반 추정으로 대체. 단, 이미 확정된 현재값보단 크게.
-    if len(tv) < 3 and seat_est and seat_est > now_a:
-        e = fin(max(seat_est, now_a))
-        return {**base, "est": e, "low": fin(seat_est * 0.85), "high": fin(seat_est * 1.15),
-                "method": "편성좌석 기반 추정(당일 표본 부족)", "conf": "잠정", "capped": False}
+    # 편성좌석 앵커: 낮 시간대(마감 전)엔 시간대/곡선 보정이 수집공백·좁은 표본으로 현재값 근처까지
+    # 붕괴할 수 있다. 이때 편성좌석×최근 동일유형 판매율(seat_est)이 더 신뢰 가능한 바닥이므로,
+    # 시간대 보정이 그보다 크게 낮으면 seat_est로 대체(저녁엔 실측 누적이 커져 자연히 앵커 위로 올라감).
+    LATE = 17 * 60
+    def seat_anchor(est, lo, hi, method):
+        if seat_est and now_m < LATE and est < seat_est * 0.85 and seat_est > now_a:
+            return (seat_est, seat_est * 0.85, seat_est * 1.15,
+                    "편성좌석 기반 추정(당일 시간대보정 불안정)", True)
+        return est, lo, hi, method, False
+
     if ests:
         vals = [e for e, _ in ests]
         est = sum(vals) / len(vals)
         method = " + ".join(l for _, l in ests) + (" + 회차보정" if (hoi is not None and hoi < 1) else "")
-        return {**base, "est": fin(est), "low": fin(min(vals)), "high": fin(max(vals)),
-                "method": method, "conf": "정밀",
+        est, lo, hi, method, anchored = seat_anchor(est, min(vals), max(vals), method)
+        return {**base, "est": fin(est), "low": fin(lo), "high": fin(hi),
+                "method": method, "conf": ("잠정" if anchored else "정밀"), "anchored": anchored,
                 "capped": fin(est) < hadj(est), "detail": [(l, e) for e, l in ests]}
-    # 잠정: 최근 구간 기울기로 마감까지 외삽
+    # 표본 부족·마감 이후: 슬로프 외삽 또는 좌석 앵커
     if now_m >= END or len(tv) < 3:
+        if seat_est and now_m < LATE and seat_est > now_a:
+            return {**base, "est": fin(seat_est), "low": fin(seat_est * 0.85), "high": fin(seat_est * 1.15),
+                    "method": "편성좌석 기반 추정(당일 표본 부족)", "conf": "잠정", "anchored": True, "capped": False}
         return {**base, "est": now_a, "low": now_a, "high": now_a,
                 "method": "현재 확정치", "conf": "floor", "capped": False}
     recent = tv[-6:]
@@ -1303,10 +1297,11 @@ def top_forecast(snaps, sched=None):
     slope = (recent[-1][1] - recent[0][1]) / span if span > 0 else 0
     # 저녁엔 예매·발권 속도가 둔화(어제 저녁 관측) → 남은 증가분에 감속계수 0.7
     raw = now_a + max(0, slope) * (END - now_m) * 0.7
-    est = fin(raw)
-    return {**base, "est": est, "low": fin(raw * 0.85), "high": fin(raw * 1.15),
-            "method": "당일 추세 외삽" + (" + 회차보정" if (hoi is not None and hoi < 1) else ""),
-            "conf": "잠정", "capped": est < hadj(raw)}
+    est, lo, hi, method, anchored = seat_anchor(
+        raw, raw * 0.85, raw * 1.15,
+        "당일 추세 외삽" + (" + 회차보정" if (hoi is not None and hoi < 1) else ""))
+    return {**base, "est": fin(est), "low": fin(lo), "high": fin(hi),
+            "method": method, "conf": "잠정", "anchored": anchored, "capped": fin(est) < hadj(est)}
 
 
 def chain_cut_table():
@@ -1412,10 +1407,13 @@ def top_forecast_banner(snaps, sched=None):
             wf = fb["fill"] / DOW_FILL[fb["dow"]][1]
             dw = _dow(sched["date"])
             ref = int(round(sched["total_seats"] * wf * DOW_FILL[dw][1] / 100.0) * 100)
+            note = ('시간대 보정이 표본 부족으로 낮아, 이 편성좌석 기반값을 헤드라인으로 사용.'
+                    if f.get("anchored") else
+                    '오늘 헤드라인은 실시간 누적이 더 정확해 그 값을 사용.')
             schedref = (f'<div style="font-size:11px;color:#c7ccd6;margin-top:4px">📐 편성 기반 참고: '
                         f'좌석 {sched["total_seats"]:,} × 판매율 {wf*DOW_FILL[dw][1]*100:.1f}% ≈ '
                         f'<b>{ref:,}명</b> (직전 {fb["date"][5:]} {fb["fill"]*100:.1f}% 기준). '
-                        f'오늘 헤드라인은 실시간 누적이 더 정확해 그 값을 사용.</div>')
+                        f'{note}</div>')
     if f["conf"] == "floor":
         return ('  <div class="forecast" style="background:linear-gradient(135deg,#2a2410 0%,#1a1d27 70%);border-color:#5a4a2f">'
                 '<div class="lbl">🎯 오늘 최종 관객 예상</div>'
@@ -1431,11 +1429,19 @@ def top_forecast_banner(snaps, sched=None):
                 '(관객수엔 예매·발권 포함 — 여기에 남은 현매/당일예매가 더해진 최종 추정)</div>'
                 + schedref + '</div>')
     # 잠정
+    if f.get("anchored"):
+        lbl = '🎯 오늘 최종 관객 예상 · 편성좌석 기반 (잠정)'
+        desc = (f'현재 확정 {f["now"]:,} → 당일 표본이 적어 시간대 보정이 불안정하므로, '
+                f'<b>오늘 편성 좌석 × 직전 완료일 판매율</b>로 추정한 <b>잠정치</b>{capnote}. '
+                '<b style="color:#7dd3fc">당일 데이터가 쌓이면 실측 기반 예측으로 자동 승급</b>. (관객수엔 예매 포함)')
+    else:
+        lbl = '🎯 오늘 최종 관객 예상 · 당일 추세 (잠정)'
+        desc = (f'현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>{capnote}. '
+                '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)')
     return ('  <div class="forecast" style="background:linear-gradient(135deg,#1e2a3a 0%,#1a1d27 70%);border-color:#2f4a5a">'
-            '<div class="lbl">🎯 오늘 최종 관객 예상 · 당일 추세 (잠정)</div>'
+            f'<div class="lbl">{lbl}</div>'
             f'<div class="big" style="color:#60a5fa">약 {est:,}명 <span style="font-size:14px;color:#9aa0ab">({lo:,}~{hi:,})</span></div>'
-            f'<div class="sub2">현재 확정 {f["now"]:,} → 지금 증가 속도를 밤(23:30)까지 이어 붙인 <b>잠정치</b>{capnote}. '
-            '<b style="color:#7dd3fc">어제 동시간 데이터가 겹치는 저녁부터 "정밀 예측"으로 자동 승급</b>. (관객수엔 예매 포함)</div>'
+            f'<div class="sub2">{desc}</div>'
             + schedref + '</div>')
 
 
