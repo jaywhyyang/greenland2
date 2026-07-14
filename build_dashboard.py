@@ -1290,7 +1290,9 @@ def top_forecast(snaps, sched=None):
     # (그날이 실제로 약하면 seat_est보다 낮게 나오는 게 정상 — 억지로 끌어올리지 않는다).
     LATE = 17 * 60
     today_span = (now_m - tv[0][0]) if tv else 0
-    insufficient = len(tv) < 3 or today_span < 150
+    # 새벽(오전 장 시작 전)엔 선예매만 평평하게 찍혀 시간대 투영이 그 값(≈선예매)으로 붕괴 →
+    # 관측폭이 길어도 편성좌석 앵커를 유지해야 한다.
+    insufficient = len(tv) < 3 or today_span < 150 or now_m < 600
     def seat_anchor(est, lo, hi, method):
         if seat_est and now_m < LATE and insufficient and est < seat_est * 0.85 and seat_est > now_a:
             return (seat_est, seat_est * 0.85, seat_est * 1.15,
