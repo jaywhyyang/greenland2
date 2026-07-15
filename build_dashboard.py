@@ -65,6 +65,10 @@ def build_membydate():
 GKEY = "그린랜드 2"  # 그린랜드2 식별 키워드
 OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하는 이름
 
+# 실시간 추적 종료: True면 상단 관객수 대시보드 + 갱신시간 + 작별 인사만 있는 간단한 페이지를 낸다.
+# (OS 수집 작업이 다시 빌드해도 이 모드가 유지되도록 build_dashboard 자체에 둔다. 다시 켜려면 False.)
+FAREWELL_MODE = True
+
 MA_WINDOW = 6          # 이동평균 윈도우(시간)
 SPIKE_MULT = 2.0       # 스파이크 기준: 직전 평균의 N배
 SPIKE_MIN_ABS = 100    # 스파이크 최소 절대 증가분(소소한 변화 무시)
@@ -2700,7 +2704,87 @@ new Chart(c_book, { type:'line', data:{ labels, datasets:bookDs }, options:base(
 """
 
 
+FAREWELL_HTML = """<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>그린랜드 2: 마이그레이션 — 관객 현황</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{min-height:100vh;display:flex;align-items:center;justify-content:center;
+    font-family:'Apple SD Gothic Neo','Malgun Gothic',system-ui,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%,#1c2740 0%,#0d1017 55%,#080a0f 100%);
+    color:#e7e9ee;padding:24px}
+  .card{width:100%;max-width:540px;background:rgba(22,26,36,.72);
+    border:1px solid rgba(120,150,200,.18);border-radius:26px;padding:38px 30px 30px;
+    box-shadow:0 24px 70px rgba(0,0,0,.5);backdrop-filter:blur(8px);text-align:center}
+  .clap{font-size:44px;line-height:1;filter:drop-shadow(0 4px 14px rgba(0,0,0,.4))}
+  .title{margin-top:12px;font-size:19px;font-weight:800;letter-spacing:-.3px}
+  .kicker{margin-top:6px;font-size:12.5px;color:#8b93a3;letter-spacing:.4px}
+  .num{margin:26px 0 4px;font-size:60px;font-weight:900;letter-spacing:-1.5px;
+    background:linear-gradient(180deg,#dfe7ff,#8fb0ff);-webkit-background-clip:text;
+    background-clip:text;color:transparent;animation:pop .7s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+  .numlbl{font-size:13px;color:#9aa0ab;letter-spacing:.5px}
+  .stats{display:flex;gap:10px;justify-content:center;margin-top:22px}
+  .stat{flex:1;max-width:170px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);
+    border-radius:16px;padding:14px 10px}
+  .stat b{display:block;font-size:20px;font-weight:800;color:#e7e9ee}
+  .stat span{font-size:11.5px;color:#8b93a3}
+  .divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.12),transparent);margin:28px 0 22px}
+  .bye{font-size:14.5px;line-height:1.85;color:#c7ccd6}
+  .bye b{color:#ffd9a8;font-weight:700}
+  .journey{margin-top:14px;font-size:15px;font-weight:800;
+    background:linear-gradient(90deg,#ffd27d,#ff9e6d,#ff8fbf);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .foot{margin-top:26px;font-size:11.5px;color:#6b7280;line-height:1.7}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;
+    margin-right:6px;vertical-align:middle;box-shadow:0 0 0 0 rgba(74,222,128,.6);animation:blink 2.4s infinite}
+  @keyframes blink{0%{box-shadow:0 0 0 0 rgba(74,222,128,.5)}70%{box-shadow:0 0 0 7px rgba(74,222,128,0)}100%{box-shadow:0 0 0 0 rgba(74,222,128,0)}}
+</style></head>
+<body>
+  <div class="card">
+    <div class="clap">🎬✨</div>
+    <div class="title">그린랜드 2: 마이그레이션</div>
+    <div class="kicker">실시간 추적을 마칩니다 · 개봉 2026-07-01</div>
+    <div class="num">__CUM__</div>
+    <div class="numlbl">누적 관객 (명)</div>
+    <div class="stats">
+      <div class="stat"><b>__TODAY__</b><span>오늘 관객</span></div>
+      <div class="stat"><b>약 __FINAL__</b><span>최종 예측</span></div>
+    </div>
+    <div class="divider"></div>
+    <div class="bye">그린랜드2의 개봉을 위해 노력해주신<br><b>모든 분들, 고생 많으셨습니다.</b></div>
+    <div class="journey">우리의 여정은 계속됩니다! 🚀</div>
+    <div class="foot"><span class="dot"></span>이 페이지는 종영까지 관객수만 조용히 갱신됩니다<br>마지막 갱신 · __UPD__</div>
+  </div>
+</body></html>"""
+
+
+def _render_farewell(out_path):
+    snaps = load_member()[0]
+    last = snaps[-1] if snaps else {}
+    cum = _num(last.get("누적관객수")) or 0
+    today = _num(last.get("관객수")) or 0
+    upd = (last.get("수집시각") or "")[:16].replace("T", " ")
+    try:
+        pf = precise_forecast()
+        final = f"{pf['final']:,}" if pf and pf.get("final") else "—"
+    except Exception:
+        final = "—"
+    html = (FAREWELL_HTML
+            .replace("__CUM__", f"{cum:,}")
+            .replace("__TODAY__", f"{today:,}")
+            .replace("__FINAL__", final)
+            .replace("__UPD__", upd))
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    return out_path
+
+
 def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
+    if FAREWELL_MODE:
+        return _render_farewell(out_path)
     rows = load_rows(csv_path)
     movie, pts = build_series(rows)
     last = latest(pts)
