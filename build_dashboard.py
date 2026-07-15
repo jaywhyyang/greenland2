@@ -1231,13 +1231,22 @@ def top_forecast(snaps, sched=None):
     cap = (now_a + remain * MAX_FILL) if remain is not None else None
     hoi = _hoi_factor(today, yest, now_m) if yest else None  # 참고용(남은 회차 오늘/전일 비)
 
+    # 수집지연 catch-up 블립 감지: 밤새 미반영분이 한 구간에 몰려 크게 튄 뒤(큰 점프) 다시 평탄해지는 패턴.
+    # 이 경우 곡선/시간대 외삽은 그 점프를 '성장'으로 오해해 과대추정한다 → 현재 누적의 1.4배로 제한.
+    _incs = [b - a for (_, a), (_, b) in zip(tv, tv[1:])]
+    _big = max(_incs) if _incs else 0
+    _recent_flat = bool(_incs) and _incs[-1] < 0.05 * max(now_a, 1)
+    catchup = now_a > 50 and _big > 0.3 * now_a and _recent_flat
+
     def hadj(v):  # 회차 감소 반영: 남은(미래) 증가분에 hoi(√댐핑) 적용. 회차 반토막→계수 0.71
         if hoi is not None and hoi < 1 and v > now_a:
             return now_a + (v - now_a) * (hoi ** 0.5)
         return v
 
-    def fin(v):  # 회차 보정 후 물리적 용량 상한 적용
+    def fin(v):  # 회차 보정 + catch-up 블립 외삽 제한 + 물리적 용량 상한
         v = hadj(v)
+        if catchup:
+            v = min(v, now_a * 1.4)
         return min(v, cap) if cap is not None else v
 
     # 선예매(프로모 등)로 당일 개장 시점 관객이 이미 큰 경우, 그 값을 '오전 페이스'로 오해해
