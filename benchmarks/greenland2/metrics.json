@@ -1,0 +1,223 @@
+{
+  "film": {
+    "title": "그린랜드 2: 마이그레이션",
+    "movie_cd": "20264056",
+    "open_date": "2026-07-01",
+    "target": 60000,
+    "final_cum_observed": 54947,
+    "hit_target": false
+  },
+  "benchmark_used": {
+    "name": "너자2(늘봄가든?)",
+    "final": 59179,
+    "note": "6만 미달 최근접 comp"
+  },
+  "daily_curve": [
+    {
+      "date": "2026-07-01",
+      "dow": "수",
+      "type": "평일",
+      "daily": null,
+      "cum": 8581,
+      "seats": 96334,
+      "shows": 782,
+      "fill_pct": null,
+      "lifetime_frac": 0.1562
+    },
+    {
+      "date": "2026-07-02",
+      "dow": "목",
+      "type": "평일",
+      "daily": 6291,
+      "cum": 14872,
+      "seats": 94492,
+      "shows": 782,
+      "fill_pct": 6.66,
+      "lifetime_frac": 0.2707
+    },
+    {
+      "date": "2026-07-03",
+      "dow": "금",
+      "type": "평일",
+      "daily": 5655,
+      "cum": 20527,
+      "seats": 86866,
+      "shows": 717,
+      "fill_pct": 6.51,
+      "lifetime_frac": 0.3736
+    },
+    {
+      "date": "2026-07-04",
+      "dow": "토",
+      "type": "주말",
+      "daily": 7949,
+      "cum": 28476,
+      "seats": 66249,
+      "shows": 594,
+      "fill_pct": 12.0,
+      "lifetime_frac": 0.5182
+    },
+    {
+      "date": "2026-07-05",
+      "dow": "일",
+      "type": "주말",
+      "daily": 7097,
+      "cum": 35573,
+      "seats": 64955,
+      "shows": 576,
+      "fill_pct": 10.93,
+      "lifetime_frac": 0.6474
+    },
+    {
+      "date": "2026-07-06",
+      "dow": "월",
+      "type": "평일",
+      "daily": 2588,
+      "cum": 38161,
+      "seats": 77644,
+      "shows": 650,
+      "fill_pct": 3.33,
+      "lifetime_frac": 0.6945
+    },
+    {
+      "date": "2026-07-07",
+      "dow": "화",
+      "type": "평일",
+      "daily": 3039,
+      "cum": 41200,
+      "seats": 78428,
+      "shows": 659,
+      "fill_pct": 3.87,
+      "lifetime_frac": 0.7498
+    },
+    {
+      "date": "2026-07-08",
+      "dow": "수",
+      "type": "평일",
+      "daily": 1500,
+      "cum": 42700,
+      "seats": 23452,
+      "shows": 210,
+      "fill_pct": 6.4,
+      "lifetime_frac": 0.7771
+    },
+    {
+      "date": "2026-07-09",
+      "dow": "목",
+      "type": "평일",
+      "daily": 3013,
+      "cum": 45713,
+      "seats": 25651,
+      "shows": 226,
+      "fill_pct": 11.75,
+      "lifetime_frac": 0.8319
+    },
+    {
+      "date": "2026-07-10",
+      "dow": "금",
+      "type": "평일",
+      "daily": 2814,
+      "cum": 48527,
+      "seats": 20654,
+      "shows": 179,
+      "fill_pct": 13.62,
+      "lifetime_frac": 0.8832
+    },
+    {
+      "date": "2026-07-11",
+      "dow": "토",
+      "type": "주말",
+      "daily": 2275,
+      "cum": 50802,
+      "seats": 16799,
+      "shows": 161,
+      "fill_pct": 13.54,
+      "lifetime_frac": 0.9246
+    },
+    {
+      "date": "2026-07-12",
+      "dow": "일",
+      "type": "주말",
+      "daily": 1737,
+      "cum": 52539,
+      "seats": 15402,
+      "shows": 146,
+      "fill_pct": 11.28,
+      "lifetime_frac": 0.9562
+    },
+    {
+      "date": "2026-07-13",
+      "dow": "월",
+      "type": "평일",
+      "daily": 1310,
+      "cum": 53849,
+      "seats": 21216,
+      "shows": 183,
+      "fill_pct": 6.17,
+      "lifetime_frac": 0.98
+    },
+    {
+      "date": "2026-07-14",
+      "dow": "화",
+      "type": "평일",
+      "daily": 709,
+      "cum": 54558,
+      "seats": 22078,
+      "shows": 192,
+      "fill_pct": 3.21,
+      "lifetime_frac": 0.9929
+    },
+    {
+      "date": "2026-07-15",
+      "dow": "수",
+      "type": "평일",
+      "daily": 389,
+      "cum": 54947,
+      "seats": 1709,
+      "shows": 12,
+      "fill_pct": 22.76,
+      "lifetime_frac": 1.0
+    }
+  ],
+  "weekday_fill_pct": {
+    "note": "관객/편성좌석. 3주차 편성절벽 전 평일 참고",
+    "recent_weekday": [
+      11.75,
+      13.62,
+      6.17,
+      3.21,
+      22.76
+    ]
+  },
+  "region_shares": {
+    "서울": 0.42,
+    "수도권_전체": 0.67,
+    "지방": 0.33,
+    "source": "수집 편성/체인 지역 데이터 유추(2026-07 기준)"
+  },
+  "chain_shares_organic": {
+    "메가": 0.39,
+    "CGV": 0.36,
+    "롯데": 0.25
+  },
+  "promo_did": {
+    "program": "롯데 5,000장 티켓 프로모션",
+    "net_new_est": 5280,
+    "ratio": 1.06,
+    "note": "순증 ~5,280명(1:1 수준, 스노볼 없음). 롯데 5일 총관객 6,847·비프로모 ~1,847",
+    "decision_500": "500장 추가는 안 하기로(순증 보장 불확실)"
+  },
+  "schedule_cliff": {
+    "date": "2026-07-15",
+    "cause": "호프(나홍진) 개봉",
+    "seats": 1709,
+    "shows": 12,
+    "chains": {
+      "메가": 0,
+      "CGV": 1,
+      "롯데": 11
+    },
+    "cut_pct_vs_prev": 0.92,
+    "note": "3주차 대작 개봉시 페이드작 편성 90%+ 삭감 사례"
+  }
+}

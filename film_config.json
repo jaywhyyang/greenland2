@@ -1,0 +1,18 @@
+{
+  "_comment": "영화별 설정. 다음 영화는 이 값만 바꾸고 PLAYBOOK.md의 '다음 영화 세팅 체크리스트'대로 각 스크립트 상수를 교체하면 재사용됩니다. (아직 코드가 이 파일을 직접 읽지는 않음 — 리팩터링 전까지는 참조용 단일 소스)",
+  "movie_cd": "20264056",
+  "movie_keyword": "그린랜드 2",
+  "title": "그린랜드 2: 마이그레이션",
+  "open_date": "2026-07-01",
+  "target_audience": 60000,
+  "distributor_agency": "노바엔터테인먼트",
+  "benchmarks": ["너자2", "상자속의양", "그린랜드2"],
+  "known_events": [
+    {"date": "2026-07-15", "type": "편성절벽", "cause": "호프(나홍진) 개봉", "effect": "3주차 편성 92% 삭감"}
+  ],
+  "swap_points": {
+    "member_auto.py": "MOVIE_CD",
+    "kobis_greenland2.py": "MOVIE_KEYWORD",
+    "build_dashboard.py": "개봉일 하드코딩(예: HOFE/개봉일 문자열), LIFETIME_FRAC(벤치 재보정), 지역/체인 비중 주석"
+  }
+}
