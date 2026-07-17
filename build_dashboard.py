@@ -940,6 +940,12 @@ def precise_forecast():
         v = base * r
         if d >= HOFE:
             v *= HOF_FAC
+        # 종영 국면 상한: 직전 완료일 실측이 이미 150명 미만이면 사실상 종영 수순이라, 지난주(편성 절벽 전)
+        # 기반 투영은 과대다. 이때는 '마지막 실측 일별 × 1.2'를 천장으로 두되, 하루 20%씩 감쇠시킨다
+        # (종영 국면 수요는 유지가 아니라 단조 감소).
+        _last_daily = daily.get(settled_date)
+        if _last_daily is not None and _last_daily < 150:
+            v = min(v, _last_daily * 1.2 * (0.8 ** i))
         # 실제 편성 좌석으로 상한(제공 편성 이후 날짜는 마지막 편성좌석에서 하루 15%씩 감쇠 가정)
         sd_iso = d.isoformat()
         cap_seats = _sched_seats.get(sd_iso)
@@ -2750,7 +2756,7 @@ FAREWELL_HTML = """<!doctype html>
     <div class="num">__CUM__</div>
     <div class="numlbl">누적 관객 (명)</div>
     <div class="stats">
-      <div class="stat"><b>__TODAY__</b><span>오늘 관객</span></div>
+      <div class="stat"><b>__TODAY__</b><span>__TODAYLBL__</span></div>
       <div class="stat"><b>약 __FINAL__</b><span>최종 예측</span></div>
     </div>
     <div class="divider"></div>
@@ -2761,12 +2767,21 @@ FAREWELL_HTML = """<!doctype html>
 </body></html>"""
 
 
+def _dt_date_today():
+    return datetime.date.today().isoformat()
+
+
 def _render_farewell(out_path):
     snaps = load_member()[0]
     last = snaps[-1] if snaps else {}
     cum = _num(last.get("누적관객수")) or 0
     today = _num(last.get("관객수")) or 0
     upd = (last.get("수집시각") or "")[:16].replace("T", " ")
+    # '오늘 관객'은 수집이 멈춘 날엔 오해를 부른다 → 실제 수집 날짜로 라벨링
+    dstr = (last.get("날짜") or (last.get("수집시각") or "")[:10])
+    today_lbl = f"{dstr[5:].replace('-', '/')} 일별" if dstr else "일별 관객"
+    if dstr == _dt_date_today():
+        today_lbl = "오늘 관객"
     try:
         pf = precise_forecast()
         final = f"{pf['final']:,}" if pf and pf.get("final") else "—"
@@ -2775,6 +2790,7 @@ def _render_farewell(out_path):
     html = (FAREWELL_HTML
             .replace("__CUM__", f"{cum:,}")
             .replace("__TODAY__", f"{today:,}")
+            .replace("__TODAYLBL__", today_lbl)
             .replace("__FINAL__", final)
             .replace("__UPD__", upd))
     with open(out_path, "w", encoding="utf-8") as f:
