@@ -2757,7 +2757,7 @@ FAREWELL_HTML = """<!doctype html>
     <div class="numlbl">누적 관객 (명)</div>
     <div class="stats">
       <div class="stat"><b>__TODAY__</b><span>__TODAYLBL__</span></div>
-      <div class="stat"><b>약 __FINAL__</b><span>최종 예측</span></div>
+      <div class="stat"><b>__DAYS__</b><span>개봉 경과</span></div>
     </div>
     <div class="divider"></div>
     <div class="bye">그린랜드2의 개봉을 위해 노력해주신<br><b>모든 분들, 고생 많으셨습니다.</b></div>
@@ -2772,26 +2772,40 @@ def _dt_date_today():
 
 
 def _render_farewell(out_path):
-    snaps = load_member()[0]
-    last = snaps[-1] if snaps else {}
-    cum = _num(last.get("누적관객수")) or 0
-    today = _num(last.get("관객수")) or 0
-    upd = (last.get("수집시각") or "")[:16].replace("T", " ")
-    # '오늘 관객'은 수집이 멈춘 날엔 오해를 부른다 → 실제 수집 날짜로 라벨링
-    dstr = (last.get("날짜") or (last.get("수집시각") or "")[:10])
-    today_lbl = f"{dstr[5:].replace('-', '/')} 일별" if dstr else "일별 관객"
-    if dstr == _dt_date_today():
-        today_lbl = "오늘 관객"
+    """공개 실시간 수집(로그인 불필요)의 '누적관객수'만으로 렌더한다.
+    회원 통계는 KOBIS 로그인이 만료되면 멈추므로 종료 페이지의 소스로 쓰지 않는다.
+    누적은 KOBIS가 매일 0시경 전일 확정치로 갱신 → 하루 한 번 자연히 올라간다."""
+    rows = []
     try:
-        pf = precise_forecast()
-        final = f"{pf['final']:,}" if pf and pf.get("final") else "—"
+        with open(CSV_PATH, encoding="utf-8-sig", newline="") as f:
+            rd = csv.reader(f)
+            next(rd, None)
+            rows = [x for x in rd if x and len(x) >= 9]
     except Exception:
-        final = "—"
+        rows = []
+    cum, upd, daily = 0, "", None
+    if rows:
+        last = rows[-1]
+        cum = _num(last[-1]) or 0          # 누적관객수(맨 끝 컬럼)
+        upd = last[0][:16]
+        for x in reversed(rows[:-1]):      # 직전 '다른 누적' = 전일 확정 → 차이가 그날 관객
+            prev = _num(x[-1])
+            if prev and prev != cum:
+                daily = cum - prev
+                break
+    # 마지막으로 확정된 날 = 갱신일의 전날(KOBIS는 0시경 전일 확정치를 올림)
+    dlbl, days = "최근 일별", "—"
+    try:
+        d0 = datetime.date.fromisoformat(upd[:10])
+        dlbl = f"{(d0 - datetime.timedelta(days=1)).strftime('%m/%d')} 일별"
+        days = f"{(d0 - datetime.date(2026, 7, 1)).days + 1}일차"
+    except Exception:
+        pass
     html = (FAREWELL_HTML
             .replace("__CUM__", f"{cum:,}")
-            .replace("__TODAY__", f"{today:,}")
-            .replace("__TODAYLBL__", today_lbl)
-            .replace("__FINAL__", final)
+            .replace("__TODAY__", (f"{daily:,}" if daily is not None else "—"))
+            .replace("__TODAYLBL__", dlbl)
+            .replace("__DAYS__", days)
             .replace("__UPD__", upd))
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
