@@ -4,8 +4,10 @@
     "movie_cd": "20264056",
     "open_date": "2026-07-01",
     "target": 60000,
-    "final_cum_observed": 54947,
-    "hit_target": false
+    "final_cum_observed": 55221,
+    "hit_target": false,
+    "final_status": "확정(종영 정리 시점 2026-07-20)",
+    "note": "7/16 이후 회원수집 로그인 만료 → 공개 실시간 누적 기준. 말일 tail 하루 20~55명."
   },
   "benchmark_used": {
     "name": "너자2(늘봄가든?)",
@@ -219,5 +221,273 @@
     },
     "cut_pct_vs_prev": 0.92,
     "note": "3주차 대작 개봉시 페이드작 편성 90%+ 삭감 사례"
+  },
+  "confirmed_daily_curve": [
+    {
+      "date": "2026-06-29",
+      "dow": "월",
+      "type": "평일",
+      "cum": 418,
+      "daily": null,
+      "day_n": -1,
+      "lifetime_frac": 0.0076
+    },
+    {
+      "date": "2026-07-02",
+      "dow": "목",
+      "type": "평일",
+      "cum": 8583,
+      "daily": 8165,
+      "day_n": 2,
+      "lifetime_frac": 0.1554
+    },
+    {
+      "date": "2026-07-03",
+      "dow": "금",
+      "type": "평일",
+      "cum": 14871,
+      "daily": 6288,
+      "day_n": 3,
+      "lifetime_frac": 0.2693
+    },
+    {
+      "date": "2026-07-04",
+      "dow": "토",
+      "type": "주말",
+      "cum": 20527,
+      "daily": 5656,
+      "day_n": 4,
+      "lifetime_frac": 0.3717
+    },
+    {
+      "date": "2026-07-05",
+      "dow": "일",
+      "type": "주말",
+      "cum": 28476,
+      "daily": 7949,
+      "day_n": 5,
+      "lifetime_frac": 0.5157
+    },
+    {
+      "date": "2026-07-05",
+      "dow": "일",
+      "type": "주말",
+      "cum": 28481,
+      "daily": 5,
+      "day_n": 5,
+      "lifetime_frac": 0.5158
+    },
+    {
+      "date": "2026-07-06",
+      "dow": "월",
+      "type": "평일",
+      "cum": 35573,
+      "daily": 7092,
+      "day_n": 6,
+      "lifetime_frac": 0.6442
+    },
+    {
+      "date": "2026-07-07",
+      "dow": "화",
+      "type": "평일",
+      "cum": 38161,
+      "daily": 2588,
+      "day_n": 7,
+      "lifetime_frac": 0.6911
+    },
+    {
+      "date": "2026-07-08",
+      "dow": "수",
+      "type": "평일",
+      "cum": 41200,
+      "daily": 3039,
+      "day_n": 8,
+      "lifetime_frac": 0.7461
+    },
+    {
+      "date": "2026-07-09",
+      "dow": "목",
+      "type": "평일",
+      "cum": 42700,
+      "daily": 1500,
+      "day_n": 9,
+      "lifetime_frac": 0.7733
+    },
+    {
+      "date": "2026-07-09",
+      "dow": "목",
+      "type": "평일",
+      "cum": 42702,
+      "daily": 2,
+      "day_n": 9,
+      "lifetime_frac": 0.7733
+    },
+    {
+      "date": "2026-07-09",
+      "dow": "목",
+      "type": "평일",
+      "cum": 42703,
+      "daily": 1,
+      "day_n": 9,
+      "lifetime_frac": 0.7733
+    },
+    {
+      "date": "2026-07-10",
+      "dow": "금",
+      "type": "평일",
+      "cum": 45715,
+      "daily": 3012,
+      "day_n": 10,
+      "lifetime_frac": 0.8279
+    },
+    {
+      "date": "2026-07-11",
+      "dow": "토",
+      "type": "주말",
+      "cum": 48532,
+      "daily": 2817,
+      "day_n": 11,
+      "lifetime_frac": 0.8789
+    },
+    {
+      "date": "2026-07-11",
+      "dow": "토",
+      "type": "주말",
+      "cum": 48534,
+      "daily": 2,
+      "day_n": 11,
+      "lifetime_frac": 0.8789
+    },
+    {
+      "date": "2026-07-11",
+      "dow": "토",
+      "type": "주말",
+      "cum": 48532,
+      "daily": -2,
+      "day_n": 11,
+      "lifetime_frac": 0.8789
+    },
+    {
+      "date": "2026-07-12",
+      "dow": "일",
+      "type": "주말",
+      "cum": 50808,
+      "daily": 2276,
+      "day_n": 12,
+      "lifetime_frac": 0.9201
+    },
+    {
+      "date": "2026-07-12",
+      "dow": "일",
+      "type": "주말",
+      "cum": 50809,
+      "daily": 1,
+      "day_n": 12,
+      "lifetime_frac": 0.9201
+    },
+    {
+      "date": "2026-07-13",
+      "dow": "월",
+      "type": "평일",
+      "cum": 52544,
+      "daily": 1735,
+      "day_n": 13,
+      "lifetime_frac": 0.9515
+    },
+    {
+      "date": "2026-07-14",
+      "dow": "화",
+      "type": "평일",
+      "cum": 53890,
+      "daily": 1346,
+      "day_n": 14,
+      "lifetime_frac": 0.9759
+    },
+    {
+      "date": "2026-07-15",
+      "dow": "수",
+      "type": "평일",
+      "cum": 54558,
+      "daily": 668,
+      "day_n": 15,
+      "lifetime_frac": 0.988
+    },
+    {
+      "date": "2026-07-16",
+      "dow": "목",
+      "type": "평일",
+      "cum": 55041,
+      "daily": 483,
+      "day_n": 16,
+      "lifetime_frac": 0.9967
+    },
+    {
+      "date": "2026-07-17",
+      "dow": "금",
+      "type": "평일",
+      "cum": 55087,
+      "daily": 46,
+      "day_n": 17,
+      "lifetime_frac": 0.9976
+    },
+    {
+      "date": "2026-07-18",
+      "dow": "토",
+      "type": "주말",
+      "cum": 55138,
+      "daily": 51,
+      "day_n": 18,
+      "lifetime_frac": 0.9985
+    },
+    {
+      "date": "2026-07-19",
+      "dow": "일",
+      "type": "주말",
+      "cum": 55192,
+      "daily": 54,
+      "day_n": 19,
+      "lifetime_frac": 0.9995
+    },
+    {
+      "date": "2026-07-20",
+      "dow": "월",
+      "type": "평일",
+      "cum": 55221,
+      "daily": 29,
+      "day_n": 20,
+      "lifetime_frac": 1.0
+    }
+  ],
+  "lifetime_frac_by_day": {
+    "-1": 0.0076,
+    "2": 0.1554,
+    "3": 0.2693,
+    "4": 0.3717,
+    "5": 0.5158,
+    "6": 0.6442,
+    "7": 0.6911,
+    "8": 0.7461,
+    "9": 0.7733,
+    "10": 0.8279,
+    "11": 0.8789,
+    "12": 0.9201,
+    "13": 0.9515,
+    "14": 0.9759,
+    "15": 0.988,
+    "16": 0.9967,
+    "17": 0.9976,
+    "18": 0.9985,
+    "19": 0.9995,
+    "20": 1.0
+  },
+  "closing_summary": {
+    "final_audience": 55221,
+    "target": 60000,
+    "shortfall": 4779,
+    "benchmark_너자2": 59179,
+    "vs_benchmark": -3958,
+    "peak_daily": 8165,
+    "cliff": "2026-07-15 호프 개봉 → 편성 1,709석·12회(92%↓), 이후 일별 500→50명대 붕괴",
+    "lesson": "서울·수도권 67% 편중 + 3주차 대작 개봉 = tail 소멸. 편성이 최종을 결정."
   }
 }
