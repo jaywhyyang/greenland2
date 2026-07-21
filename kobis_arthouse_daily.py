@@ -38,7 +38,7 @@ PB = "https://www.kobis.or.kr/kobis/business/stat/boxs/findPeriodBoxOfficeList.d
 PS = "https://www.kobis.or.kr/kobis/business/stat/boxs/findPeriodSeatTicketList.do"
 
 START = datetime.date(2024, 1, 1)
-END = min(datetime.date.today(), datetime.date(2026, 5, 20))
+END = datetime.date.today()
 DELAY = 0.7
 
 DAY_HEADER = ["날짜", "영화명", "개봉일", "관객수", "스크린수", "상영횟수",

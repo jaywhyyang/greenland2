@@ -28,7 +28,7 @@ BOX = "https://www.kobis.or.kr/kobis/business/stat/boxs/findPeriodBoxOfficeList.
 INFO = "https://www.kobis.or.kr/kobis/business/mast/mvie/searchMovieList.do"
 
 NEW_FROM = datetime.date(2024, 1, 1)
-NEW_TO = datetime.date(2026, 4, 30)   # 개봉 3개월 경과분만 (성적 확정)
+NEW_TO = datetime.date.today()   # 성적 확정 여부는 뒤 단계(merge)에서 상영 지속으로 판단
 DELAY = 0.5
 HEADER = ["순위", "영화명", "개봉일", "제작연도", "제작국가", "장르", "감독",
           "개봉스크린수", "첫주관객", "첫주상영횟수", "최종누적관객", "누적매출액",
@@ -99,6 +99,11 @@ def meta(name):
 
 
 def main():
+    done = {}
+    if os.path.exists(OUT):
+        for r in csv.DictReader(open(OUT, encoding="utf-8-sig")):
+            done[(r["영화명"], r["개봉일"])] = r
+
     src = list(csv.DictReader(open(SRC, encoding="utf-8-sig")))
     films = []
     for r in src:
@@ -109,9 +114,12 @@ def main():
         if NEW_FROM <= dt <= NEW_TO:
             films.append((r["영화명"], dt, int(r["누적관객수"]), int(r["누적매출액"])))
     films.sort(key=lambda x: -x[2])
-    print(f"대상 {len(films)}편 보강 시작")
+    fresh = [f for f in films if (f[0], f[1].strftime("%Y-%m-%d")) not in done]
+    print(f"대상 {len(films)}편 · 기수집 {len(films)-len(fresh)}편 건너뜀 · 신규 {len(fresh)}편")
 
-    recs = []
+    recs = [done[(f[0], f[1].strftime("%Y-%m-%d"))] for f in films
+            if (f[0], f[1].strftime("%Y-%m-%d")) in done]
+    films = fresh
     for i, (name, dt, cum, sales) in enumerate(films, 1):
         try:
             fw, scr, shows = first_week(name, dt)
@@ -136,7 +144,7 @@ def main():
         if i % 25 == 0:
             print(f"  {i}/{len(films)} …")
 
-    recs.sort(key=lambda r: -r["최종누적관객"])
+    recs.sort(key=lambda r: -int(r["최종누적관객"] or 0))
     for i, r in enumerate(recs, 1):
         r["순위"] = i
     with open(OUT, "w", encoding="utf-8-sig", newline="") as fp:

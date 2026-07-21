@@ -1,0 +1,452 @@
+<title>비직배 상업 외화 흥행 실적 · 2024–2026</title>
+<style>
+  :root{
+    --ink:#14181B; --paper:#F1F3F2; --card:#FFF; --line:#DCE1DF; --muted:#6B7573;
+    --accent:#1F6F5C; --alert:#A8452F; --wknd:#2F6FA8; --grid:#E7EBE9;
+    --shadow:0 1px 2px rgba(20,24,27,.05),0 4px 18px rgba(20,24,27,.04);
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --ink:#E5E9E7; --paper:#0E1312; --card:#161C1A; --line:#28302E; --muted:#8B9694;
+    --accent:#4FA88F; --alert:#D4735A; --wknd:#6FA8D8; --grid:#232B29; --shadow:none;
+  }}
+  :root[data-theme="dark"]{
+    --ink:#E5E9E7; --paper:#0E1312; --card:#161C1A; --line:#28302E; --muted:#8B9694;
+    --accent:#4FA88F; --alert:#D4735A; --wknd:#6FA8D8; --grid:#232B29; --shadow:none;
+  }
+  :root[data-theme="light"]{
+    --ink:#14181B; --paper:#F1F3F2; --card:#FFF; --line:#DCE1DF; --muted:#6B7573;
+    --accent:#1F6F5C; --alert:#A8452F; --wknd:#2F6FA8; --grid:#E7EBE9;
+    --shadow:0 1px 2px rgba(20,24,27,.05),0 4px 18px rgba(20,24,27,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:'Pretendard',-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic','맑은 고딕',sans-serif;
+    font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1320px;margin:0 auto;padding:44px 22px 90px;display:flex;flex-direction:column;gap:34px}
+  header{display:flex;flex-direction:column;gap:9px;border-bottom:2px solid var(--ink);padding-bottom:18px}
+  .eyebrow{font-size:11.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--wknd);font-weight:700}
+  h1{margin:0;font-size:clamp(25px,4vw,37px);font-weight:800;letter-spacing:-.022em;line-height:1.18;text-wrap:balance}
+  .sub{color:var(--muted);font-size:13.5px;max-width:74ch;margin:0}
+  .sub a{color:var(--accent)}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:15px 17px;
+    display:flex;flex-direction:column;gap:4px;box-shadow:var(--shadow)}
+  .tile .k{font-size:11px;letter-spacing:.09em;color:var(--muted);font-weight:700}
+  .tile .v{font-size:25px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+  .tile .n{font-size:12px;color:var(--muted)}
+  .tile.w .v{color:var(--wknd)}
+  section{display:flex;flex-direction:column;gap:13px}
+  h2{margin:0;font-size:16.5px;font-weight:700;letter-spacing:-.01em}
+  h2 .hint{font-weight:400;color:var(--muted);font-size:13px;margin-left:8px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:19px;box-shadow:var(--shadow)}
+
+  .cmp{width:100%;border-collapse:collapse;font-size:13.5px}
+  .cmp th,.cmp td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:right;
+    font-variant-numeric:tabular-nums}
+  .cmp th:first-child,.cmp td:first-child{text-align:left;font-weight:600}
+  .cmp thead th{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700;
+    border-bottom:2px solid var(--line)}
+  .cmp tbody tr:last-child td{border-bottom:none}
+  .cmp .k{color:var(--wknd);font-weight:700}
+  .cmp .a{color:var(--muted)}
+
+  .calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:16px;align-items:end}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld label{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .fld input{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
+    color:var(--ink);font:inherit;font-size:15px;font-variant-numeric:tabular-nums;text-align:right;width:100%}
+  .fld .u{font-size:11px;color:var(--muted)}
+  .out{border-left:3px solid var(--alert);padding-left:15px;display:flex;flex-direction:column;gap:2px}
+  .out .big{font-size:27px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.15}
+  .out .cap{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700}
+  .out .sm{font-size:12.5px;color:var(--muted)} .out .sm b{color:var(--alert);font-size:14px}
+  .out.sim{border-left-color:var(--muted)}
+  .out.sim.plus{border-left-color:var(--accent)} .out.sim.plus .big{color:var(--accent)}
+  .out.sim.minus{border-left-color:var(--alert)} .out.sim.minus .big{color:var(--alert)}
+  .wcur{display:flex;gap:6px}
+  .wcur input{flex:1;min-width:0}
+  .wcur select{padding:9px 7px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
+    color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+  .outs{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:18px;
+    margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  .formula{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:15px;padding-top:11px}
+
+  .dist{display:flex;flex-direction:column;gap:7px}
+  .drow{display:grid;grid-template-columns:88px 1fr 88px;align-items:center;gap:11px;font-size:13px}
+  .drow .lb{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
+  .bar{height:19px;background:var(--grid);border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--muted);border-radius:3px}
+  .drow.under .bar i{background:var(--alert)}
+  .drow.under .lb{color:var(--alert);font-weight:700}
+  .drow .ct{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px}
+  .thr{display:flex;align-items:center;gap:9px;margin:4px 0}
+  .thr::before,.thr::after{content:"";flex:1;height:2px;background:var(--alert)}
+  .thr span{font-size:11.5px;font-weight:700;color:var(--alert);white-space:nowrap;
+    font-variant-numeric:tabular-nums}
+  .lg{font-size:12.5px;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
+  .lg b{color:var(--alert)}
+
+  .ctl{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+  input[type=search]{flex:1 1 250px;min-width:190px;padding:9px 13px;border:1px solid var(--line);
+    border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:14px}
+  input:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.tog{padding:9px 13px;border:1px solid var(--line);border-radius:8px;background:var(--card);
+    color:var(--muted);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  button.tog[aria-pressed="true"]{background:var(--wknd);border-color:var(--wknd);color:#fff}
+  .count{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;margin-left:auto}
+
+  .tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--card);box-shadow:var(--shadow)}
+  table.rk{border-collapse:collapse;width:100%;font-size:13px}
+  .rk th,.rk td{padding:8px 11px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line);
+    vertical-align:top}
+  .rk thead th{position:sticky;top:0;background:var(--card);z-index:2;font-size:11px;letter-spacing:.05em;
+    color:var(--muted);font-weight:700;cursor:pointer;user-select:none;border-bottom:2px solid var(--line)}
+  .rk thead th:hover{color:var(--ink)} .rk thead th.on{color:var(--wknd)}
+  .rk thead th.on::after{content:attr(data-a);margin-left:4px}
+  .rk td.num,.rk th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .rk tbody tr:hover{background:color-mix(in srgb,var(--wknd) 8%,transparent)}
+  .rk tbody tr:last-child td{border-bottom:none}
+  .nm{font-weight:600;white-space:normal;min-width:180px;max-width:250px}
+  .meta{color:var(--muted);font-size:11.5px}
+  td.dstr{max-width:130px;white-space:normal;font-size:11.5px;color:var(--muted)}
+  .cum{font-weight:700} .under{color:var(--alert)}
+  .wc{color:var(--wknd);font-weight:700}
+  .spark{display:block}
+  tr.mark td{background:color-mix(in srgb,var(--alert) 10%,var(--card));border-top:2px solid var(--alert);
+    border-bottom:2px solid var(--alert);font-weight:700;color:var(--alert);white-space:normal;font-size:13px}
+  tr.mark span{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:3px}
+  footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:15px}
+  footer code{background:var(--grid);padding:1px 5px;border-radius:4px;font-size:11.5px}
+  @media (max-width:640px){.wrap{padding:26px 13px 60px}.drow{grid-template-columns:72px 1fr 62px}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">KOBIS 통합전산망 기반 · 2024–2026</div>
+    <h1>비직배 상업 외화 흥행 실적</h1>
+    <p class="sub">2024년 1월 이후 개봉한 비직배 수입 어린이 애니메이션 123편.
+      일본 애니(팬덤 극장판·대형 IP), 대형 배급사 경유 메이저 IP, 작가주의·성인 애니는 제외했습니다.
+      같은 기준으로 정리한 <a href="arthouse.html">아트하우스 외화 실적</a>과 비교해 보실 수 있습니다.</p>
+      <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a></p>
+  </header>
+
+  <div class="tiles"><div class="tile "><span class="k">분석 대상</span><span class="v">123편</span><span class="n">성적 확정분</span></div><div class="tile "><span class="k">중앙값</span><span class="v">13,062</span><span class="n">아트하우스 5,620명</span></div><div class="tile w"><span class="k">주말 집중도</span><span class="v">48%</span><span class="n">첫주 관객 중 금·토·일</span></div><div class="tile "><span class="k">최고 기록</span><span class="v">3,392,542</span><span class="n">미션 임파서블: 파이널 레코닝</span></div><div class="tile "><span class="k">배수 중앙</span><span class="v">1.35배</span><span class="n">아트하우스 1.71배</span></div><div class="tile "><span class="k">P&A 3천만 회수</span><span class="v">62%</span><span class="n">아트하우스 45%</span></div></div>
+
+  <section>
+    <h2>세 세그먼트 비교<span class="hint">같은 기준으로 정리한 결과</span></h2>
+    <div class="panel">
+      <table class="cmp">
+        <thead><tr><th>지표</th><th>상업 외화</th><th>아트하우스 외화</th><th>차이</th></tr></thead>
+        <tbody><tr><td>중앙 관객수</td><td class='k'>13,062명</td><td class='a'>5,620명</td><td class='a'>2.3배</td></tr><tr><td>개봉일 좌석판매율</td><td class='k'>8.4%</td><td class='a'>8.1%</td><td class='a'>+0.3%p</td></tr><tr><td>첫 주말 좌석판매율</td><td class='k'>7.8%</td><td class='a'>7.5%</td><td class='a'>+0.3%p</td></tr><tr><td>개봉일 → 첫 주말 변화</td><td class='k'>-0.6%p</td><td class='a'>-0.6%p</td><td class='a'>—</td></tr><tr><td>배수 (최종÷첫주)</td><td class='k'>1.35배</td><td class='a'>1.71배</td><td class='a'>-0.36</td></tr><tr><td>최고 기록</td><td class='k'>3,392,542명</td><td class='a'>1,213,349명</td><td class='a'>0배 차이</td></tr><tr><td>P&A 3천만 회수율</td><td class='k'>62%</td><td class='a'>45%</td><td class='a'>+17%p</td></tr></tbody>
+      </table>
+      <div class="formula">상업 외화는 개봉일 좌석판매율 8.4%, 첫 주말 7.8%로 아트하우스(8.1% → 7.5%)보다 좌석을 잘 채웁니다. 중앙값은 13,062명으로 아트하우스(5,620명)의 2.3배이고, 최고 기록은 3,392,542명입니다. 다만 배수는 1.35배로 아트하우스(1.71배)와 큰 차이가 없어, 개봉 규모가 크다고 입소문이 더 붙지는 않습니다. 이 세그먼트는 개봉 30개관 이상만 남긴 것이라 애초에 일정 규모 이상 편성된 작품들입니다.</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>얼마를 써야 본전인가<span class="hint">비용을 넣으면 그 돈조차 못 번 영화가 몇 편인지 나옵니다</span></h2>
+    <div class="panel">
+      <div class="calc">
+        <div class="fld"><label for="pa">P&amp;A</label>
+          <input id="pa" type="number" min="0" step="500" value="10000" inputmode="numeric">
+          <span class="u">만원</span></div>
+        <div class="fld"><label for="mg">수입 MG</label>
+          <div class="wcur">
+            <input id="mg" type="number" min="0" step="1000" value="0" inputmode="numeric">
+            <select id="cur" aria-label="통화">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="KRW">만원</option>
+            </select>
+          </div>
+          <span class="u" id="mgu">0으로 두면 가장 보수적인 하한</span></div>
+        <div class="fld" id="fxfld"><label for="fx">적용 환율</label>
+          <input id="fx" type="number" min="1" step="10" value="1500" inputmode="numeric">
+          <span class="u" id="fxu">원 / 1 USD</span></div>
+        <div class="fld"><label for="up">실정산 부금단가</label>
+          <input id="up" type="number" min="1" step="100" value="4200" inputmode="numeric">
+          <span class="u">원 / 관객 1명</span></div>
+        <div class="fld"><label for="au">예상 관객수</label>
+          <input id="au" type="number" min="0" step="1000" value="13062" inputmode="numeric">
+          <span class="u">명 · 이 성적일 때 손익</span></div>
+      </div>
+      <div class="outs">
+        <div class="out">
+          <span class="cap">이만큼은 들어야 본전</span>
+          <span class="big" id="obep">–</span>
+          <span class="sm" id="orate">–</span>
+        </div>
+        <div class="out sim" id="simbox">
+          <span class="cap">그때 전체 손익</span>
+          <span class="big" id="osim">–</span>
+          <span class="sm" id="osimn">–</span>
+        </div>
+        <div class="out sim" id="relbox">
+          <span class="cap">개봉 실익 · 개봉 안 하는 경우 대비</span>
+          <span class="big" id="orel">–</span>
+          <span class="sm" id="oreln">–</span>
+        </div>
+      </div>
+      <div class="formula">
+        수입가(MG)는 작품마다 천차만별이라 누가 남겼는지는 실제 계약을 봐야 압니다.
+        하지만 P&amp;A는 극장 개봉을 하는 이상 최소한 들어가는 돈이 있습니다.
+        그래서 이 페이지는 <b>영화를 공짜로 사왔다고 쳐도 그 P&amp;A조차 극장에서 못 번 영화</b>만 붉게 표시합니다.
+        입력값은 이 브라우저에만 있고 저장되지 않습니다.        <br><br><b>개봉이 이득인지는 MG와 무관합니다.</b>
+        개봉을 안 하면 손실은 수입 MG 그대로이고, 개봉하면 거기에 P&amp;A가 더해지고 부금이 들어옵니다.
+        양쪽에서 MG가 상쇄되므로 <b>부금이 P&amp;A를 넘느냐</b>만 남습니다.
+        그래서 개봉 분기점은 P&amp;A ÷ 부금단가이고, 수입가를 얼마에 샀든 이 선은 같습니다.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>관객수 구간별 분포<span class="hint">붉은 구간이 비용조차 못 번 영화들입니다</span></h2>
+    <div class="panel">
+      <div class="dist" id="dist"></div>
+      <div class="lg" id="distlg"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>전체 랭킹<span class="hint">막대는 개봉일부터 14일간 일별 관객 · 파랑이 금·토·일</span></h2>
+    <div class="ctl">
+      <input type="search" id="q" placeholder="영화명 · 국가 · 배급사 검색" aria-label="검색">
+      <button class="tog" id="tbep" aria-pressed="false">못 번 영화만</button>
+      <span class="count" id="ct"></span>
+    </div>
+    <div class="tw">
+      <table class="rk">
+        <thead><tr>
+          <th class="num" data-k="rank">#</th>
+          <th data-k="name">영화</th>
+          <th data-k="open">개봉일</th>
+          <th data-k="nat">국가</th>
+          <th data-k="dist">배급사</th>
+          <th class="num" data-k="scr">스크린</th>
+          <th class="num" data-k="s0">개봉일<br>좌석수</th>
+          <th class="num" data-k="rw">첫주말<br>판매율</th>
+          <th class="num" data-k="wc">주말<br>집중도</th>
+          <th data-k="rank">D+0 → D+14</th>
+          <th class="num" data-k="fw">첫주<br>관객</th>
+          <th class="num" data-k="cum">최종<br>누적</th>
+          <th class="num" data-k="mult">배수</th>
+        </tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    출처 영화진흥위원회 영화관입장권통합전산망(KOBIS) · 수집 2026-07-21<br>
+    주말 집중도는 첫 주말(개봉 후 처음 오는 금·토·일) 관객 ÷ 첫주(개봉일~D+6) 관객입니다. 개봉 30개관 미만과 청소년관람불가 소규모 상영은 제외했습니다.
+    배수는 최종 누적 ÷ 첫주 관객으로, 값이 클수록 개봉 후 입소문으로 확산된 작품입니다.
+    좌석판매율은 해당 구간 관객수 ÷ 좌석수로 직접 계산했습니다.
+    최종 누적은 일별 관객 합산값이며, 수집 종료일까지 상영이 이어져 성적이 확정되지 않은 작품은 제외했습니다.
+  </footer>
+</div>
+
+<script>
+const D=[{"name":"미션 임파서블: 파이널 레코닝","open":"2025-05-17","wd":5,"nat":"미국","dir":"크리스토퍼 맥쿼리","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":2385,"s0":1314846,"r0":32.2,"sw":2559664,"rw":29.7,"wc":59.2,"fw":1281981,"cum":3392542,"mult":2.65,"c":[423889,335564,107449,101189,96073,84519,133298,309938,244898,60085,54631,95142,51226,68698,164536]},{"name":"나우 유 씨 미 3","open":"2025-11-12","wd":2,"nat":"미국","dir":"루벤 플레셔","dist":"롯데컬처웍스(주)롯데엔터테인먼트,(주)바이포엠스튜디오","scr":1261,"s0":786559,"r0":10.5,"sw":2598746,"rw":16.8,"wc":63.2,"fw":688408,"cum":1372208,"mult":1.99,"c":[82300,68497,92708,183741,158846,53445,48871,40741,37010,53165,103015,90295,29408,29804,35043]},{"name":"글래디에이터 Ⅱ","open":"2024-11-13","wd":2,"nat":"미국","dir":"리들리 스콧","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":1769,"s0":983577,"r0":7.3,"sw":2718849,"rw":11.7,"wc":60.4,"fw":527680,"cum":909990,"mult":1.72,"c":[72025,48582,63058,132337,123151,51195,37332,28029,26090,31135,59066,52549,17130,19222,20367]},{"name":"콰이어트 플레이스: 첫째 날","open":"2024-06-26","wd":2,"nat":"미국","dir":"마이클 사노스키","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":942,"s0":555979,"r0":19.7,"sw":1363907,"rw":14.9,"wc":50.4,"fw":403317,"cum":552619,"mult":1.37,"c":[109291,45234,53863,83454,66048,23781,21646,15481,14237,22267,27004,21466,8499,7631,6215]},{"name":"수퍼 소닉3","open":"2025-01-01","wd":2,"nat":"미국","dir":"제프 파울러","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":766,"s0":184379,"r0":41.2,"sw":630722,"rw":14.3,"wc":47.2,"fw":190595,"cum":364667,"mult":1.91,"c":[75916,11618,11144,42122,36677,6056,7062,5390,5257,6086,24351,23722,3672,3882,3586]},{"name":"트랜스포머 ONE","open":"2024-09-25","wd":2,"nat":"미국","dir":"조시 쿨리","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":951,"s0":428523,"r0":5.6,"sw":1413194,"rw":8.8,"wc":60.7,"fw":206131,"cum":361683,"mult":1.75,"c":[24008,12010,17028,55347,52652,14651,30435,4885,26243,10010,13177,13544,1991,3388,13459]},{"name":"발레리나","open":"2025-08-06","wd":2,"nat":"미국","dir":"렌 와이즈먼","dist":"판씨네마(주)","scr":670,"s0":279492,"r0":15.5,"sw":664472,"rw":16.5,"wc":52.7,"fw":207730,"cum":323108,"mult":1.56,"c":[43395,25629,27267,46277,35844,14612,14706,8780,11948,19142,18151,12350,5658,5271,5155]},{"name":"긴키 지방의 어느 장소에 대하여","open":"2025-08-13","wd":2,"nat":"일본","dir":"시라이시 코지","dist":"(주)바이포엠스튜디오","scr":344,"s0":65144,"r0":21.7,"sw":224217,"rw":32.6,"wc":59.4,"fw":123184,"cum":272653,"mult":2.21,"c":[14146,14359,24374,25833,22932,10956,10584,10273,9463,8285,18908,18460,6675,6089,8226]},{"name":"스머프","open":"2025-08-06","wd":2,"nat":"미국","dir":"크리스 밀러","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":587,"s0":106224,"r0":14.6,"sw":306589,"rw":20.7,"wc":62.5,"fw":101756,"cum":193143,"mult":1.9,"c":[15505,11033,10991,25672,26920,5463,6172,4552,4731,19243,12034,11798,2664,2578,2227]},{"name":"더 폴: 디렉터스 컷","open":"2024-12-25","wd":2,"nat":"영국","dir":"타셈 싱","dist":"주식회사 오디언스","scr":83,"s0":15025,"r0":33.0,"sw":46501,"rw":22.8,"wc":44.0,"fw":24146,"cum":190538,"mult":7.89,"c":[4951,2872,2471,4391,3757,2884,2820,3751,2228,2178,3668,2790,1751,1927,1710]},{"name":"첫사랑 엔딩","open":"2025-08-27","wd":2,"nat":"중국","dir":"리우 유린","dist":"(주)바이포엠스튜디오","scr":489,"s0":80691,"r0":19.4,"sw":223162,"rw":18.1,"wc":52.7,"fw":76847,"cum":138470,"mult":1.8,"c":[15615,8238,8755,15295,16434,5894,6616,4071,3468,4764,9976,10512,3001,2697,2068]},{"name":"패스트 라이브즈","open":"2024-03-06","wd":2,"nat":"미국","dir":"셀린 송","dist":"(주)씨제이이엔엠","scr":606,"s0":130872,"r0":6.4,"sw":328847,"rw":10.2,"wc":55.4,"fw":60515,"cum":127025,"mult":2.1,"c":[8376,6546,8719,13727,11096,5680,6371,3603,3134,4008,6361,5320,2314,2393,2195]},{"name":"이프: 상상의 친구","open":"2024-05-15","wd":2,"nat":"미국","dir":"존 크래신스키","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":658,"s0":132329,"r0":26.7,"sw":327343,"rw":10.2,"wc":42.2,"fw":79464,"cum":109298,"mult":1.38,"c":[35363,3523,4885,14027,14628,2671,4367,1702,1385,2181,6105,7024,848,760,527]},{"name":"비키퍼","open":"2024-04-03","wd":2,"nat":"미국","dir":"데이비드 에이어","dist":"(주)바른손이앤에이","scr":688,"s0":204458,"r0":8.7,"sw":585933,"rw":6.8,"wc":49.8,"fw":80564,"cum":102969,"mult":1.28,"c":[17837,11109,12304,15628,12195,5012,6479,4696,2275,2175,2442,1973,1769,1017,462]},{"name":"스폰지밥 무비: 네모바지를 찾아서","open":"2026-01-01","wd":3,"nat":"미국","dir":"데릭 드라이먼","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":505,"s0":68636,"r0":36.7,"sw":186301,"rw":17.2,"wc":50.0,"fw":63998,"cum":86512,"mult":1.35,"c":[25204,7121,12958,11913,2451,2439,1912,1880,2213,4446,4461,1031,1374,740,497]},{"name":"네가 마지막으로 남긴 노래","open":"2026-04-01","wd":2,"nat":"일본","dir":"미키 타카히로","dist":"(주)넥스트엔터테인먼트월드(NEW),(주)팬엔터테인먼트","scr":560,"s0":163144,"r0":7.0,"sw":384791,"rw":9.3,"wc":59.4,"fw":60284,"cum":81629,"mult":1.35,"c":[11414,5257,7267,16758,11758,3790,4040,2835,2143,2499,3544,3342,1115,1472,200]},{"name":"부고니아","open":"2025-11-05","wd":2,"nat":"미국","dir":"요르고스 란티모스","dist":"(주)씨제이이엔엠","scr":518,"s0":138328,"r0":6.6,"sw":326686,"rw":6.6,"wc":50.0,"fw":43225,"cum":74074,"mult":1.71,"c":[9092,5895,6381,8583,6658,2885,3731,2376,2113,3099,4502,3787,2074,2251,1242]},{"name":"하우스메이드","open":"2026-01-28","wd":2,"nat":"미국","dir":"폴 페이그","dist":"(주)누리픽쳐스","scr":533,"s0":109698,"r0":8.5,"sw":353752,"rw":8.0,"wc":53.5,"fw":53095,"cum":68333,"mult":1.29,"c":[9297,6330,7059,12160,9199,4477,4573,1509,1372,1825,2191,1461,1359,2104,26]},{"name":"너자 2","open":"2026-02-25","wd":2,"nat":"중국","dir":"","dist":"주식회사 콘텐츠존,(주)다자인소프트","scr":277,"s0":72422,"r0":9.6,"sw":163770,"rw":11.5,"wc":46.7,"fw":40419,"cum":66134,"mult":1.64,"c":[6936,5841,3638,7981,7249,6934,1840,2512,2388,1861,2894,3831,208,330,1533]},{"name":"니코: 오로라 원정대의 모험","open":"2024-12-25","wd":2,"nat":"독일","dir":"캐리 주스넌,요르겐 레르담","dist":"TCO(주)더콘텐츠온,메가박스중앙(주)","scr":393,"s0":67851,"r0":35.1,"sw":127629,"rw":10.0,"wc":28.4,"fw":44984,"cum":59800,"mult":1.33,"c":[23797,2863,2393,5781,4584,3258,2308,1508,1126,452,731,847,802,344,91]},{"name":"스마일 2","open":"2024-10-16","wd":2,"nat":"미국","dir":"파커 핀","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":549,"s0":151502,"r0":5.4,"sw":341399,"rw":6.2,"wc":51.7,"fw":41155,"cum":56072,"mult":1.36,"c":[8137,5186,5874,8916,6501,3107,3434,895,1508,1894,2435,1934,1148,1274,455]},{"name":"영화 이상한 과자 가게 전천당","open":"2025-02-19","wd":2,"nat":"일본","dir":"나카타 히데오","dist":"(주)넥스트엔터테인먼트월드(NEW)","scr":198,"s0":47742,"r0":8.3,"sw":152523,"rw":11.7,"wc":59.6,"fw":29989,"cum":55862,"mult":1.86,"c":[3941,3490,2824,7321,7721,2102,2590,1593,1901,1394,3900,4305,4773,223,61]},{"name":"사운드 오브 프리덤","open":"2024-02-21","wd":2,"nat":"미국","dir":"알레한드로 고메즈 몬테베르드","dist":"(주)넥스트엔터테인먼트월드(NEW)","scr":248,"s0":84696,"r0":9.6,"sw":139072,"rw":11.3,"wc":46.4,"fw":33867,"cum":53945,"mult":1.59,"c":[8148,4729,5060,5712,4956,2410,2852,1165,1584,1675,1347,1521,1209,2274,912]},{"name":"라스트 마일","open":"2025-03-26","wd":2,"nat":"일본","dir":"츠카하라 아유코","dist":"(주)플레이그램","scr":148,"s0":42700,"r0":9.4,"sw":127142,"rw":10.8,"wc":58.8,"fw":23462,"cum":53013,"mult":2.26,"c":[4031,1800,4514,5565,3715,1990,1847,1731,1879,2608,4120,2227,982,1045,1747]},{"name":"첫 번째 키스","open":"2025-02-26","wd":2,"nat":"일본","dir":"츠카하라 아유코","dist":"메가박스중앙(주)","scr":184,"s0":61274,"r0":10.1,"sw":139977,"rw":11.3,"wc":50.8,"fw":31177,"cum":52646,"mult":1.69,"c":[6199,3100,5016,5427,5397,4324,1714,1889,1687,923,2011,1810,1054,955,1541]},{"name":"더 커버넌트","open":"2024-09-27","wd":4,"nat":"미국","dir":"가이 리치","dist":"(주)제이앤씨미디어그룹,와이드 릴리즈(주)","scr":230,"s0":44644,"r0":13.5,"sw":119839,"rw":12.5,"wc":65.5,"fw":22814,"cum":52262,"mult":2.29,"c":[6012,4633,4308,3012,1651,1095,2103,503,812,582,1093,1586,2738,1682,2153]},{"name":"랜드 오브 배드","open":"2024-03-13","wd":2,"nat":"미국","dir":"윌리엄 유뱅크","dist":"메가박스중앙(주)","scr":385,"s0":84430,"r0":6.4,"sw":225938,"rw":7.0,"wc":52.9,"fw":29958,"cum":44642,"mult":1.49,"c":[5369,3960,4388,6109,5349,2054,2729,1754,1739,1781,2784,2309,1101,1005,334]},{"name":"케이팝 데몬 헌터스","open":"2025-10-31","wd":4,"nat":"캐나다","dir":"매기 강","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":123,"s0":92796,"r0":7.6,"sw":286866,"rw":13.7,"wc":100.0,"fw":39175,"cum":40272,"mult":1.03,"c":[7013,17578,14584,0,0,0,0,0,0,0,0,0,0,0,0]},{"name":"악령: 깨어난 시체","open":"2025-03-19","wd":2,"nat":"베트남","dir":"","dist":"(주)디스테이션","scr":254,"s0":54705,"r0":14.1,"sw":169856,"rw":9.9,"wc":51.7,"fw":32641,"cum":39125,"mult":1.2,"c":[7730,4188,3006,6648,7206,1965,1898,842,917,706,1308,972,881,218,55]},{"name":"밥 말리: 원 러브","open":"2024-03-13","wd":2,"nat":"미국","dir":"레이날도 마커스 그린","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":579,"s0":158050,"r0":6.0,"sw":300075,"rw":4.1,"wc":39.6,"fw":30932,"cum":39069,"mult":1.26,"c":[9496,4553,4752,4081,3408,1818,2824,2013,1090,1041,813,749,426,398,18]},{"name":"더 러닝 맨","open":"2025-12-10","wd":2,"nat":"영국","dir":"에드가 라이트","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":557,"s0":150036,"r0":4.8,"sw":308633,"rw":5.5,"wc":48.1,"fw":35234,"cum":38854,"mult":1.1,"c":[7260,5590,5242,6490,5213,3002,2437,460,386,390,270,245,160,174,23]},{"name":"헤레틱","open":"2025-04-02","wd":2,"nat":"미국","dir":"스콧 벡,브라이언 우즈","dist":"(주)이놀미디어,롯데컬처웍스(주)롯데시네마","scr":150,"s0":63438,"r0":8.7,"sw":195267,"rw":7.8,"wc":55.6,"fw":27441,"cum":38333,"mult":1.4,"c":[5539,3366,3667,6933,4645,1468,1823,1369,941,1281,1903,1502,644,498,184]},{"name":"프라이메이트","open":"2026-01-28","wd":2,"nat":"미국","dir":"요하네스 로버츠","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":502,"s0":107641,"r0":7.4,"sw":261909,"rw":5.7,"wc":45.2,"fw":33227,"cum":37267,"mult":1.12,"c":[7922,4927,4862,5889,4278,2292,3057,443,328,412,466,287,305,320,1]},{"name":"골드핑거","open":"2024-04-10","wd":2,"nat":"홍콩","dir":"장문강","dist":"메가박스중앙(주)","scr":423,"s0":88882,"r0":11.3,"sw":218950,"rw":6.2,"wc":43.6,"fw":30940,"cum":35359,"mult":1.14,"c":[10077,3964,3672,6556,3248,1799,1624,969,445,459,697,582,304,300,75]},{"name":"731","open":"2026-01-21","wd":2,"nat":"중국","dir":"조림산","dist":"주식회사 콘텐츠존,(주)다자인소프트","scr":314,"s0":53901,"r0":11.3,"sw":144341,"rw":8.7,"wc":45.4,"fw":27517,"cum":32102,"mult":1.17,"c":[6084,4088,4087,4628,3781,2046,2803,427,473,509,818,886,233,281,26]},{"name":"이매지너리","open":"2024-08-28","wd":2,"nat":"미국","dir":"제프 와드로","dist":"(주)올스타엔터테인먼트,(주)플레이그램","scr":218,"s0":57312,"r0":11.2,"sw":132833,"rw":8.8,"wc":44.6,"fw":26356,"cum":31778,"mult":1.21,"c":[6410,4280,2720,5120,3913,1645,2268,816,595,408,814,852,130,152,71]},{"name":"노보케인","open":"2025-03-12","wd":2,"nat":"미국","dir":"댄 버크,로버트 올슨","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":514,"s0":126346,"r0":5.7,"sw":294484,"rw":4.2,"wc":44.9,"fw":27191,"cum":29297,"mult":1.08,"c":[7200,3881,4054,4509,3659,1766,2122,352,225,222,247,191,66,86,4]},{"name":"나를 모르는 그녀의 세계에서","open":"2025-05-22","wd":3,"nat":"일본","dir":"미키 타카히로","dist":"와이드 릴리즈(주),(주)키다리스튜디오","scr":218,"s0":60185,"r0":7.7,"sw":136520,"rw":8.7,"wc":57.7,"fw":20492,"cum":27962,"mult":1.36,"c":[4635,3249,4483,4090,1413,1303,1319,569,398,854,605,221,525,236,265]},{"name":"이상한 집","open":"2025-07-17","wd":3,"nat":"일본","dir":"이시카와 준이치","dist":"(주)바이포엠스튜디오","scr":140,"s0":34847,"r0":10.7,"sw":71353,"rw":16.3,"wc":58.1,"fw":19981,"cum":27007,"mult":1.35,"c":[3731,3957,4076,3578,1724,1583,1332,952,971,1191,1184,1071,538,308,146]},{"name":"프랑켄슈타인","open":"2025-10-22","wd":2,"nat":"멕시코","dir":"기예르모 델 토로","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":105,"s0":15534,"r0":15.1,"sw":57148,"rw":11.2,"wc":51.0,"fw":12544,"cum":26755,"mult":2.13,"c":[2345,1209,1579,2675,2148,1242,1346,2326,1002,1370,2108,1781,983,1198,164]},{"name":"스트레이 키즈 : 더 도미네이트 익스피리언스","open":"2026-02-04","wd":2,"nat":"미국","dir":"","dist":"씨제이포디플렉스 주식회사","scr":103,"s0":33487,"r0":9.0,"sw":94010,"rw":8.9,"wc":59.3,"fw":14111,"cum":25022,"mult":1.77,"c":[3029,1317,1103,2297,4961,702,702,2770,1286,884,1089,853,563,483,438]},{"name":"마야","open":"2024-08-16","wd":4,"nat":"베트남","dir":"","dist":"롯데컬처웍스(주)롯데시네마","scr":59,"s0":11149,"r0":41.8,"sw":42877,"rw":35.2,"wc":74.2,"fw":20347,"cum":23695,"mult":1.16,"c":[4662,5407,5028,2167,1676,747,660,464,729,715,267,238,112,64,98]},{"name":"쉘터","open":"2026-04-15","wd":2,"nat":"미국","dir":"릭 로먼 워","dist":"(주)누리픽쳐스","scr":174,"s0":34498,"r0":11.0,"sw":87277,"rw":10.0,"wc":48.6,"fw":17896,"cum":21880,"mult":1.22,"c":[3789,2840,2291,3125,3286,851,1714,514,500,588,531,604,618,140,60]},{"name":"저니 투 베들레헴","open":"2024-11-20","wd":2,"nat":"미국","dir":"","dist":"길갈","scr":47,"s0":5619,"r0":5.6,"sw":24028,"rw":14.8,"wc":71.7,"fw":4969,"cum":21816,"mult":4.39,"c":[316,331,523,1013,2025,310,451,321,407,390,893,2207,109,149,812]},{"name":"워킹맨","open":"2025-10-01","wd":2,"nat":"미국","dir":"데이비드 에이어","dist":"메가박스중앙(주),(주)스튜디오디에이치엘","scr":173,"s0":52983,"r0":8.4,"sw":78119,"rw":6.3,"wc":29.7,"fw":16546,"cum":21014,"mult":1.27,"c":[4459,2751,1925,1640,1341,1647,2783,1078,765,369,478,391,159,132,101]},{"name":"결속밴드 라이브 -항성-","open":"2024-05-29","wd":2,"nat":"일본","dir":"","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":72,"s0":17090,"r0":22.9,"sw":45184,"rw":11.3,"wc":48.0,"fw":10651,"cum":20422,"mult":1.92,"c":[3919,1083,1447,2546,1117,277,262,761,827,699,733,346,152,200,177]},{"name":"노멀","open":"2026-04-17","wd":4,"nat":"미국","dir":"벤 휘틀리","dist":"(주)팝엔터테인먼트","scr":129,"s0":31806,"r0":7.4,"sw":85275,"rw":8.2,"wc":52.8,"fw":13295,"cum":20281,"mult":1.53,"c":[2366,2471,2183,965,1922,1644,1744,1775,529,478,319,571,602,932,402]},{"name":"만천과해","open":"2024-07-03","wd":2,"nat":"중국","dir":"천줘","dist":"오드","scr":93,"s0":26866,"r0":12.6,"sw":58191,"rw":6.7,"wc":35.8,"fw":10843,"cum":19373,"mult":1.79,"c":[3398,1506,1234,1578,1071,827,1229,1830,950,834,553,287,197,836,553]},{"name":"킬 빌: 더 홀 블러디 어페어","open":"2026-04-01","wd":2,"nat":"미국","dir":"쿠엔틴 타란티노","dist":"(주)누리픽쳐스","scr":88,"s0":15711,"r0":18.6,"sw":45107,"rw":14.6,"wc":53.2,"fw":12360,"cum":19353,"mult":1.57,"c":[2923,1047,1020,3479,2079,983,829,386,351,418,1379,813,464,399,117]},{"name":"월레스와 그로밋 더 클래식 컬렉션","open":"2024-02-21","wd":2,"nat":"영국","dir":"닉 파크","dist":"씨지브이 아이스콘","scr":47,"s0":9706,"r0":32.9,"sw":23936,"rw":18.9,"wc":44.5,"fw":10137,"cum":18337,"mult":1.81,"c":[3190,1122,955,1845,1712,664,649,1203,735,1043,992,681,313,281,266]},{"name":"우견니","open":"2024-02-14","wd":2,"nat":"중국","dir":"루오 루오","dist":"오드,홀리가든","scr":143,"s0":59634,"r0":7.8,"sw":115218,"rw":4.4,"wc":38.2,"fw":13179,"cum":17981,"mult":1.36,"c":[4638,1386,1288,2030,1710,1183,944,918,367,290,277,287,419,370,143]},{"name":"드라이브 인 타이페이","open":"2025-04-11","wd":4,"nat":"프랑스","dir":"조지 황","dist":"(주)영화특별시에스엠씨","scr":475,"s0":111814,"r0":4.5,"sw":296545,"rw":4.3,"wc":76.8,"fw":16519,"cum":17763,"mult":1.08,"c":[5079,4273,3339,1310,1131,435,952,122,170,155,54,67,26,31,21]},{"name":"영원","open":"2026-02-04","wd":2,"nat":"미국","dir":"데이빗 프레인","dist":"워터홀컴퍼니(주)","scr":120,"s0":26870,"r0":4.0,"sw":62257,"rw":7.7,"wc":60.4,"fw":7976,"cum":17528,"mult":2.2,"c":[1087,672,922,2184,1711,799,601,726,784,825,1692,940,862,828,306]},{"name":"본회퍼: 목사.스파이.암살자","open":"2025-04-09","wd":2,"nat":"미국","dir":"토드 코라르니키","dist":"파이오니아21","scr":57,"s0":8329,"r0":7.5,"sw":28639,"rw":9.8,"wc":47.2,"fw":5923,"cum":17116,"mult":2.89,"c":[624,830,890,957,949,804,869,282,362,766,1052,1050,508,397,407]},{"name":"더 크로우","open":"2024-12-11","wd":2,"nat":"프랑스","dir":"루퍼트 샌더스","dist":"판씨네마(주)","scr":200,"s0":38211,"r0":13.7,"sw":70377,"rw":7.9,"wc":33.7,"fw":16510,"cum":17088,"mult":1.04,"c":[5233,2673,2674,1626,1272,704,2328,32,41,100,16,11,18,10,10]},{"name":"너만 보이는 날","open":"2026-06-24","wd":2,"nat":"중국","dir":"","dist":"(주)호라이즌웍스,(주)스튜디오디에이치엘","scr":158,"s0":25585,"r0":13.0,"sw":55430,"rw":9.2,"wc":40.5,"fw":12601,"cum":16672,"mult":1.32,"c":[3337,1927,1955,1542,1606,871,1363,85,84,55,130,170,35,68,0]},{"name":"4월이 되면 그녀는","open":"2024-11-13","wd":2,"nat":"일본","dir":"","dist":"(주)디스테이션","scr":122,"s0":31173,"r0":11.9,"sw":82366,"rw":4.7,"wc":37.2,"fw":10377,"cum":16319,"mult":1.57,"c":[3720,1894,1739,1157,965,436,466,1151,1158,1199,384,402,172,174,74]},{"name":"히어","open":"2025-02-19","wd":2,"nat":"미국","dir":"로버트 저메키스","dist":"메가박스중앙(주),(주)이놀미디어","scr":144,"s0":50640,"r0":6.4,"sw":105325,"rw":5.3,"wc":46.3,"fw":12041,"cum":15676,"mult":1.3,"c":[3227,1571,1197,2446,1927,726,947,526,429,169,322,249,279,103,103]},{"name":"레드불 T1 다큐멘터리 : 함께 날아오르다","open":"2024-09-04","wd":2,"nat":"오스트리아","dir":"","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":46,"s0":11896,"r0":42.2,"sw":32857,"rw":13.4,"wc":36.4,"fw":12060,"cum":14824,"mult":1.23,"c":[5022,1981,1926,1438,1028,350,315,907,241,242,431,316,268,313,0]},{"name":"말할 수 없는 비밀: 마지막 챕터","open":"2025-10-30","wd":3,"nat":"일본","dir":"카와이 하야토","dist":"(주)호라이즌웍스","scr":158,"s0":38117,"r0":9.5,"sw":81415,"rw":7.8,"wc":47.1,"fw":13484,"cum":14253,"mult":1.06,"c":[3606,2262,2173,1915,635,882,2011,57,68,99,57,47,72,19,21]},{"name":"오피셜히게단디즘 라이브 앳 스타디움 2025","open":"2026-04-02","wd":3,"nat":"일본","dir":"","dist":"(주)영화사 그램","scr":58,"s0":14556,"r0":21.8,"sw":37352,"rw":11.7,"wc":51.3,"fw":8510,"cum":13957,"mult":1.64,"c":[3178,1441,1681,1246,406,310,248,348,405,1002,897,170,159,84,63]},{"name":"탐정 키엔: 사라진 머리","open":"2025-06-18","wd":2,"nat":"베트남","dir":"빅터 부","dist":"(주)디스테이션","scr":86,"s0":15683,"r0":9.8,"sw":44663,"rw":10.9,"wc":49.3,"fw":9879,"cum":13062,"mult":1.32,"c":[1537,1228,1276,1598,1999,1254,987,472,332,335,470,486,356,385,62]},{"name":"열혈검사","open":"2025-04-16","wd":2,"nat":"중국","dir":"견자단","dist":"(주)디스테이션","scr":101,"s0":26963,"r0":6.9,"sw":76650,"rw":5.0,"wc":44.7,"fw":8507,"cum":13041,"mult":1.53,"c":[1856,1494,1866,1015,922,414,940,1057,810,1373,391,313,205,130,2]},{"name":"위장수사","open":"2025-06-27","wd":4,"nat":"몽고","dir":"","dist":"(주)스마일이엔티,주식회사 블루필름웍스","scr":61,"s0":8527,"r0":37.1,"sw":20640,"rw":25.6,"wc":74.6,"fw":7092,"cum":11830,"mult":1.67,"c":[3164,1004,1123,492,555,221,533,910,369,394,375,473,104,439,3]},{"name":"9월 5일: 위험한 특종","open":"2025-02-05","wd":2,"nat":"미국","dir":"팀 펠바움","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":221,"s0":41140,"r0":2.9,"sw":112267,"rw":4.4,"wc":55.2,"fw":9045,"cum":11684,"mult":1.29,"c":[1208,1081,1345,1992,1656,831,932,120,86,187,208,123,93,185,90]},{"name":"캐시 아웃","open":"2024-09-12","wd":3,"nat":"미국","dir":"","dist":"주식회사 제이씨엔터웍스","scr":185,"s0":41823,"r0":10.8,"sw":53321,"rw":6.1,"wc":31.2,"fw":10358,"cum":11378,"mult":1.1,"c":[4511,1607,850,771,671,812,1136,62,87,38,51,44,74,1,0]},{"name":"언젠틀 오퍼레이션","open":"2025-03-19","wd":2,"nat":"영국","dir":"가이 리치","dist":"메가박스중앙(주)","scr":134,"s0":35148,"r0":4.6,"sw":78579,"rw":4.8,"wc":46.7,"fw":8083,"cum":11043,"mult":1.37,"c":[1606,1076,1116,1475,1186,571,1053,502,294,284,426,341,223,103,42]},{"name":"에드워드 호퍼","open":"2024-11-27","wd":2,"nat":"영국","dir":"필 그랩스키","dist":"영화사빅","scr":111,"s0":15473,"r0":9.2,"sw":35138,"rw":8.5,"wc":44.0,"fw":6790,"cum":10768,"mult":1.59,"c":[1422,757,611,1209,1169,634,988,390,751,260,354,533,143,122,65]},{"name":"아웃 오브 네스트","open":"2026-02-13","wd":4,"nat":"태국","dir":"앤드류 고든,제프 슈,아르투로 A. 아르난데스,비라파트라 지나나빈","dist":"㈜코리아스크린","scr":91,"s0":9373,"r0":6.6,"sw":34059,"rw":9.0,"wc":50.3,"fw":6062,"cum":10713,"mult":1.77,"c":[618,1185,1248,1110,849,784,268,350,440,293,230,641,284,271,599]},{"name":"헬보이: 크룩드 맨","open":"2024-12-18","wd":2,"nat":"미국","dir":"브라이언 테일러","dist":"와이드 릴리즈(주)","scr":131,"s0":21794,"r0":8.8,"sw":42754,"rw":9.5,"wc":41.6,"fw":9798,"cum":10384,"mult":1.06,"c":[1920,2007,1809,1266,1003,599,1194,6,159,43,6,29,56,0,0]},{"name":"금지된 장난","open":"2024-06-05","wd":2,"nat":"일본","dir":"나카타 히데오","dist":"와이드 릴리즈(주)","scr":118,"s0":26902,"r0":8.3,"sw":57516,"rw":6.4,"wc":39.5,"fw":9319,"cum":10064,"mult":1.08,"c":[2228,2509,1324,1327,1034,372,525,49,46,77,109,55,34,39,0]},{"name":"보더랜드","open":"2025-03-05","wd":2,"nat":"미국","dir":"일라이 로스","dist":"(주)누리픽쳐스","scr":209,"s0":45294,"r0":5.2,"sw":99954,"rw":4.2,"wc":45.4,"fw":9313,"cum":9953,"mult":1.07,"c":[2371,1343,1037,1912,1275,423,952,124,38,51,139,108,29,34,26]},{"name":"신 가면라이더","open":"2024-04-03","wd":2,"nat":"일본","dir":"안노 히데아키","dist":"(주)블루라벨픽쳐스","scr":74,"s0":13926,"r0":12.4,"sw":39236,"rw":7.5,"wc":52.7,"fw":5612,"cum":8865,"mult":1.58,"c":[1728,620,728,1180,1048,145,163,1083,529,522,361,682,37,39,0]},{"name":"별처럼 빛나는 너에게 더무비-일섬일섬량성성","open":"2024-05-22","wd":2,"nat":"중국","dir":"진소명,장반","dist":"워터홀컴퍼니(주)","scr":158,"s0":32807,"r0":3.3,"sw":96829,"rw":3.2,"wc":51.0,"fw":5987,"cum":8050,"mult":1.34,"c":[1078,477,544,1446,1064,626,752,248,117,222,207,156,105,133,8]},{"name":"원 앤 온리","open":"2024-03-13","wd":2,"nat":"중국","dir":"동성붕","dist":"(주)스튜디오디에이치엘","scr":112,"s0":22374,"r0":5.5,"sw":51744,"rw":4.6,"wc":48.2,"fw":4956,"cum":8021,"mult":1.62,"c":[1222,805,842,857,690,298,242,887,322,304,216,262,103,114,49]},{"name":"크레센도 반 클라이번 콩쿠르 실황","open":"2024-01-31","wd":2,"nat":"미국","dir":"헤더 윌크","dist":"오드","scr":61,"s0":11421,"r0":8.2,"sw":30152,"rw":7.3,"wc":49.1,"fw":4497,"cum":7449,"mult":1.66,"c":[942,446,426,1081,700,463,439,113,92,209,228,253,222,49,76]},{"name":"멜라니아","open":"2026-01-30","wd":4,"nat":"미국","dir":"브렛 래트너","dist":"(주)누리픽쳐스","scr":77,"s0":7848,"r0":23.9,"sw":22087,"rw":18.9,"wc":58.6,"fw":7110,"cum":7110,"mult":1.0,"c":[1872,1184,1113,644,629,295,1373,0,0,0,0,0,0,0,0]},{"name":"최후의 만찬","open":"2026-06-04","wd":3,"nat":"미국","dir":"","dist":"(주)드림팩트엔터테인먼트,루디아코프","scr":78,"s0":8403,"r0":6.7,"sw":22936,"rw":8.9,"wc":60.6,"fw":3369,"cum":7017,"mult":2.08,"c":[561,440,863,739,234,336,196,191,233,118,272,168,70,49,3]},{"name":"극장판 미스터리라 하지 말지어다","open":"2024-11-27","wd":2,"nat":"일본","dir":"마츠야마 히로아키","dist":"(주)미디어캐슬","scr":99,"s0":20120,"r0":5.3,"sw":47946,"rw":4.9,"wc":47.0,"fw":4979,"cum":6748,"mult":1.36,"c":[1072,711,909,814,615,420,438,101,96,111,51,56,94,107,5]},{"name":"장난을 잘 치는 타카기 양","open":"2025-03-05","wd":2,"nat":"일본","dir":"이마이즈미 리키야","dist":"TCO(주)더콘텐츠온","scr":127,"s0":29660,"r0":3.5,"sw":63326,"rw":4.6,"wc":56.8,"fw":5082,"cum":6595,"mult":1.3,"c":[1036,618,570,1298,1021,262,277,158,93,120,280,200,57,72,61]},{"name":"노 웨이 업","open":"2024-06-19","wd":2,"nat":"영국","dir":"클라우디오 파","dist":"스튜디오 에이드","scr":147,"s0":32853,"r0":5.8,"sw":50806,"rw":3.7,"wc":31.0,"fw":5995,"cum":6580,"mult":1.1,"c":[1896,1668,534,735,590,301,271,69,42,39,8,10,28,29,0]},{"name":"아서","open":"2024-04-17","wd":2,"nat":"미국","dir":"사이먼 셀란 존스","dist":"(주)누리픽쳐스","scr":113,"s0":18956,"r0":3.5,"sw":53096,"rw":5.9,"wc":60.2,"fw":5209,"cum":6525,"mult":1.25,"c":[670,580,680,1369,1088,417,405,34,39,52,28,23,39,181,287]},{"name":"수 분간의 응원을","open":"2024-09-25","wd":2,"nat":"일본","dir":"포푸리카","dist":"(주)애니플러스","scr":82,"s0":18151,"r0":7.2,"sw":45555,"rw":3.7,"wc":41.6,"fw":4065,"cum":5849,"mult":1.44,"c":[1310,381,481,646,566,414,267,114,205,117,153,71,48,59,358]},{"name":"극장판 요아소비 5주년 기념 돔 라이브 2024 \"초현실\"","open":"2025-02-21","wd":4,"nat":"일본","dir":"","dist":"리벳,씨제이 씨지브이(CJ CGV)(주)","scr":30,"s0":0,"r0":0,"sw":0,"rw":0,"wc":79.9,"fw":4255,"cum":5773,"mult":1.36,"c":[1466,1093,841,177,217,277,184,269,209,148,213,67,19,36,26]},{"name":"스트레인저스: 챕터1","open":"2024-08-28","wd":2,"nat":"미국","dir":"레니 할린","dist":"판씨네마(주)","scr":223,"s0":33972,"r0":3.8,"sw":68880,"rw":3.2,"wc":44.0,"fw":4958,"cum":5555,"mult":1.12,"c":[1291,835,695,831,654,293,359,8,7,44,26,28,3,3,5]},{"name":"물은 바다를 향해 흐른다","open":"2024-08-07","wd":2,"nat":"일본","dir":"마에다 테츠","dist":"트윈플러스파트너스(주)","scr":57,"s0":8024,"r0":14.4,"sw":21571,"rw":6.4,"wc":31.3,"fw":4384,"cum":5269,"mult":1.2,"c":[1153,822,459,535,377,350,688,56,33,19,31,32,21,132,4]},{"name":"레트리뷰션","open":"2024-01-24","wd":2,"nat":"미국","dir":"님로드 안탈","dist":"메가박스중앙(주)","scr":202,"s0":36245,"r0":3.2,"sw":80209,"rw":2.6,"wc":45.1,"fw":4709,"cum":5115,"mult":1.09,"c":[1165,628,603,775,744,387,407,113,35,29,26,31,9,9,0]},{"name":"킹덤 3: 운명의 불꽃","open":"2024-01-17","wd":2,"nat":"일본","dir":"사토 신스케","dist":"와이드 릴리즈(주),(주)플레이그램,(주)이놀미디어","scr":136,"s0":27194,"r0":4.9,"sw":55546,"rw":3.3,"wc":40.5,"fw":4532,"cum":5008,"mult":1.11,"c":[1322,933,907,442,488,211,229,43,22,16,20,18,5,4,11]},{"name":"바운디 라이브 인 런던","open":"2025-05-28","wd":2,"nat":"일본","dir":"","dist":"메가박스중앙(주)","scr":39,"s0":7775,"r0":10.6,"sw":19155,"rw":10.1,"wc":54.9,"fw":3530,"cum":4796,"mult":1.36,"c":[823,427,318,1061,558,142,201,112,102,128,209,173,48,25,21]},{"name":"귀목: 피의 혼례","open":"2025-10-01","wd":2,"nat":"베트남","dir":"르 반 키엣","dist":"롯데컬처웍스(주)롯데시네마","scr":33,"s0":5791,"r0":12.2,"sw":14288,"rw":10.2,"wc":36.7,"fw":3963,"cum":4551,"mult":1.15,"c":[708,654,426,344,685,663,483,178,90,56,67,58,50,32,5]},{"name":"아도 스페셜 라이브 \"신조우\" 인 시네마","open":"2025-04-23","wd":2,"nat":"일본","dir":"","dist":"와이드 릴리즈(주)","scr":42,"s0":0,"r0":0,"sw":0,"rw":0,"wc":53.3,"fw":3012,"cum":4435,"mult":1.47,"c":[824,341,657,585,362,115,128,155,243,202,122,119,78,95,79]},{"name":"까이마 : 저주의 무덤","open":"2025-12-11","wd":3,"nat":"베트남","dir":"","dist":"(주)메이킹에이프린트","scr":50,"s0":7592,"r0":21.4,"sw":17306,"rw":8.6,"wc":36.7,"fw":4051,"cum":4197,"mult":1.04,"c":[1621,522,604,361,222,323,398,21,24,26,21,4,50,0,0]},{"name":"엑소시스트: 더 데빌","open":"2024-09-25","wd":2,"nat":"미국","dir":"호세 프렌데스","dist":"와이드 릴리즈(주),(주)제이앤씨미디어그룹","scr":161,"s0":22165,"r0":3.7,"sw":50986,"rw":3.8,"wc":53.8,"fw":3622,"cum":4011,"mult":1.11,"c":[827,397,489,820,639,362,88,83,24,27,20,18,16,16,3]},{"name":"스페셜즈","open":"2026-03-13","wd":4,"nat":"일본","dir":"우치다 에이지","dist":"(주)바이포엠스튜디오","scr":49,"s0":6502,"r0":2.3,"sw":19759,"rw":17.9,"wc":95.0,"fw":3732,"cum":3868,"mult":1.04,"c":[152,1362,2032,80,57,18,31,6,1,1,0,1,0,0,0]},{"name":"도쿄 리벤저스2: 결전","open":"2025-10-10","wd":4,"nat":"일본","dir":"하나부사 츠토무","dist":"(주)플레이그램","scr":46,"s0":6837,"r0":16.5,"sw":19168,"rw":11.9,"wc":63.3,"fw":3605,"cum":3736,"mult":1.04,"c":[1131,698,454,241,271,231,579,15,29,29,14,20,0,3,4]},{"name":"무서운 영화","open":"2026-07-01","wd":2,"nat":"미국","dir":"","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":40,"s0":6877,"r0":10.0,"sw":17038,"rw":9.4,"wc":48.1,"fw":3340,"cum":3370,"mult":1.01,"c":[686,426,566,627,413,293,329,2,5,18,3,2,0,0,0]},{"name":"언더닌자","open":"2026-02-05","wd":3,"nat":"일본","dir":"후쿠다 유이치","dist":"메가박스중앙(주),㈜T-JOY","scr":65,"s0":8792,"r0":9.7,"sw":19465,"rw":6.2,"wc":38.4,"fw":3169,"cum":3191,"mult":1.01,"c":[853,451,396,369,295,297,508,3,1,4,1,3,0,2,1]},{"name":"패신저","open":"2026-06-24","wd":2,"nat":"미국","dir":"안드레 외브레달","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":83,"s0":13647,"r0":3.3,"sw":33576,"rw":4.2,"wc":45.6,"fw":3063,"cum":3178,"mult":1.04,"c":[447,361,498,519,381,358,499,8,12,17,33,40,2,3,0]},{"name":"어프렌티스","open":"2024-10-23","wd":2,"nat":"캐나다","dir":"알리 아바시","dist":"(주)누리픽쳐스","scr":67,"s0":9764,"r0":2.8,"sw":24559,"rw":3.6,"wc":44.5,"fw":1984,"cum":3022,"mult":1.52,"c":[276,252,232,346,304,233,341,26,14,14,50,28,5,37,3]},{"name":"빌리 아일리시 - 히트 미 하드 앤드 소프트: 더 투어","open":"2026-05-06","wd":2,"nat":"미국","dir":"제임스 카메론,빌리 아일리시","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":63,"s0":14967,"r0":2.7,"sw":38947,"rw":2.8,"wc":50.4,"fw":2178,"cum":2912,"mult":1.34,"c":[404,222,239,403,455,181,274,186,0,0,0,0,0,0,0]},{"name":"스크림 7","open":"2026-04-01","wd":2,"nat":"미국","dir":"케빈 윌리엄슨","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":105,"s0":19428,"r0":4.1,"sw":35927,"rw":3.1,"wc":43.1,"fw":2612,"cum":2804,"mult":1.07,"c":[794,379,512,333,282,181,131,19,35,18,20,18,16,8,0]},{"name":"썸머 블루 아워","open":"2025-09-17","wd":2,"nat":"대만","dir":"","dist":"(주)누리픽쳐스","scr":67,"s0":9481,"r0":2.3,"sw":23441,"rw":2.4,"wc":49.2,"fw":1126,"cum":2686,"mult":2.39,"c":[221,142,184,166,204,90,119,0,1,10,0,0,0,1,0]},{"name":"하우스 오브 다이너마이트","open":"2025-10-08","wd":2,"nat":"미국","dir":"캐서린 비글로우","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":32,"s0":3277,"r0":17.4,"sw":8550,"rw":10.6,"wc":40.3,"fw":2246,"cum":2605,"mult":1.16,"c":[570,453,272,344,290,147,170,45,46,60,37,87,37,41,3]},{"name":"더 테러 라이브 : 라스트 쇼","open":"2025-04-16","wd":2,"nat":"일본","dir":"와타나베 카즈타카","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":33,"s0":7359,"r0":6.6,"sw":20581,"rw":6.1,"wc":51.6,"fw":2428,"cum":2516,"mult":1.04,"c":[485,557,968,154,132,67,65,17,16,16,12,5,13,9,0]},{"name":"더 엑소시즘","open":"2025-01-15","wd":2,"nat":"미국","dir":"","dist":"(주)누리픽쳐스","scr":117,"s0":17696,"r0":2.5,"sw":44669,"rw":2.9,"wc":53.3,"fw":2469,"cum":2484,"mult":1.01,"c":[450,323,319,474,522,205,176,6,4,5,0,0,0,0,0]},{"name":"류이치 사카모토: 플레잉 디 오케스트라 2014","open":"2025-04-09","wd":2,"nat":"일본","dir":"","dist":"리벳","scr":55,"s0":12763,"r0":2.0,"sw":34201,"rw":2.5,"wc":54.9,"fw":1545,"cum":2092,"mult":1.35,"c":[250,169,304,253,291,112,166,23,168,45,40,36,18,14,41]},{"name":"메이킹 다큐멘터리 `스즈메의 문단속`을 따라가다","open":"2024-01-10","wd":2,"nat":"일본","dir":"마츠모토 소","dist":"(주)쇼박스","scr":42,"s0":5502,"r0":22.0,"sw":11305,"rw":2.1,"wc":13.8,"fw":1686,"cum":1774,"mult":1.05,"c":[1208,141,95,76,62,45,59,22,16,2,14,13,14,7,0]},{"name":"사일런트 나잇","open":"2024-07-17","wd":2,"nat":"미국","dir":"오우삼","dist":"이화배컴퍼니(주)","scr":65,"s0":10582,"r0":2.2,"sw":23524,"rw":2.6,"wc":46.5,"fw":1294,"cum":1531,"mult":1.18,"c":[238,208,225,184,193,126,120,8,2,8,5,0,8,0,16]},{"name":"제이 켈리","open":"2025-11-19","wd":2,"nat":"미국","dir":"노아 바움백","dist":"씨제이 씨지브이(CJ CGV)(주)","scr":35,"s0":4549,"r0":4.4,"sw":8092,"rw":4.4,"wc":38.9,"fw":926,"cum":1451,"mult":1.57,"c":[200,133,126,123,111,136,97,65,49,40,92,32,42,31,22]},{"name":"브릭레이어","open":"2025-05-28","wd":2,"nat":"헝가리","dir":"레니 할린","dist":"(주)올스타엔터테인먼트,(주)플레이그램","scr":31,"s0":5452,"r0":3.0,"sw":8879,"rw":2.0,"wc":27.8,"fw":643,"cum":1154,"mult":1.79,"c":[166,114,62,61,56,61,123,7,7,3,1,1,1,39,14]},{"name":"폭스 헌트","open":"2025-08-13","wd":2,"nat":"홍콩","dir":"장립가","dist":"(주)다자인소프트,(주)제이앤씨미디어그룹","scr":47,"s0":6232,"r0":2.8,"sw":9382,"rw":2.6,"wc":29.1,"fw":845,"cum":1148,"mult":1.36,"c":[177,253,106,72,68,94,75,14,77,0,0,0,0,3,3]},{"name":"터커 & 데일 Vs 이블","open":"2024-08-28","wd":2,"nat":"미국","dir":"일라이 크레이그","dist":"(주)콘텐츠판다","scr":34,"s0":6802,"r0":6.7,"sw":14967,"rw":2.5,"wc":35.2,"fw":1073,"cum":1133,"mult":1.06,"c":[454,116,154,147,77,57,68,12,5,3,8,19,9,4,0]},{"name":"리그레팅 유","open":"2025-11-05","wd":2,"nat":"미국","dir":"조쉬 분","dist":"롯데컬처웍스(주)롯데엔터테인먼트","scr":44,"s0":7626,"r0":1.9,"sw":17537,"rw":2.1,"wc":49.5,"fw":756,"cum":1023,"mult":1.35,"c":[144,89,106,127,141,75,74,20,49,50,40,40,25,43,0]},{"name":"올 더 네임즈 오브 갓","open":"2024-04-17","wd":2,"nat":"헝가리","dir":"다니엘 칼파소로","dist":"(주)이놀미디어,(주)플레이그램","scr":31,"s0":4366,"r0":12.8,"sw":11430,"rw":1.8,"wc":22.5,"fw":896,"cum":940,"mult":1.05,"c":[560,45,51,82,69,54,35,0,0,0,0,0,0,0,0]},{"name":"잠행","open":"2024-03-27","wd":2,"nat":"홍콩","dir":"관지요","dist":"(주)이놀미디어","scr":32,"s0":3651,"r0":7.4,"sw":9388,"rw":2.4,"wc":29.0,"fw":787,"cum":932,"mult":1.18,"c":[269,203,76,100,52,43,44,0,0,0,0,1,4,0,0]},{"name":"컬트 시카리오","open":"2024-10-17","wd":3,"nat":"미국","dir":"존 키스","dist":"(주)블루라벨픽쳐스","scr":48,"s0":4183,"r0":16.2,"sw":353,"rw":13.6,"wc":6.2,"fw":773,"cum":789,"mult":1.02,"c":[677,16,16,16,16,16,16,16,0,0,0,0,0,0,0]},{"name":"방탄소년단 아미: 포에버 위 아 영","open":"2025-07-30","wd":2,"nat":"미국","dir":"","dist":"(주)위즈온센","scr":62,"s0":7947,"r0":2.5,"sw":17757,"rw":1.9,"wc":43.9,"fw":789,"cum":789,"mult":1.0,"c":[201,99,124,144,78,56,87,0,0,0,0,0,0,0,0]},{"name":"목중무인 : 안하무인","open":"2024-06-27","wd":3,"nat":"중국","dir":"","dist":"(주)스튜디오디에이치엘","scr":50,"s0":4381,"r0":16.3,"sw":99,"rw":8.1,"wc":1.1,"fw":728,"cum":736,"mult":1.01,"c":[712,8,0,0,0,8,0,8,0,0,0,0,0,0,0]},{"name":"프리 폴","open":"2025-05-21","wd":2,"nat":"러시아","dir":"올레흐 우라자이킨","dist":"(주)스튜디오디에이치엘","scr":44,"s0":3099,"r0":11.7,"sw":1592,"rw":1.4,"wc":5.5,"fw":400,"cum":625,"mult":1.56,"c":[363,7,8,11,3,6,2,0,145,0,10,10,20,20,20]},{"name":"퀸메리호: 저주받은 항해","open":"2025-06-13","wd":4,"nat":"미국","dir":"개리 쇼어","dist":"그린나래미디어(주)","scr":37,"s0":3093,"r0":10.2,"sw":6373,"rw":8.0,"wc":90.5,"fw":567,"cum":571,"mult":1.01,"c":[315,113,85,21,16,10,7,4,0,0,0,0,0,0,0]},{"name":"무티: 주술살인","open":"2024-01-17","wd":2,"nat":"미국","dir":"조지 갈로","dist":"주식회사 제이씨엔터웍스","scr":40,"s0":4568,"r0":3.6,"sw":8952,"rw":1.9,"wc":35.4,"fw":489,"cum":505,"mult":1.03,"c":[165,76,59,65,49,25,50,16,0,0,0,0,0,0,0]},{"name":"애프터: 유혹의 끝","open":"2024-02-21","wd":2,"nat":"미국","dir":"캐스틸 랜던","dist":"스튜디오 에이드","scr":46,"s0":6903,"r0":2.9,"sw":3029,"rw":5.0,"wc":32.0,"fw":469,"cum":485,"mult":1.03,"c":[202,71,59,50,41,27,19,8,1,0,0,0,0,0,0]},{"name":"브레이브 온 파이어","open":"2024-04-17","wd":2,"nat":"미국","dir":"피터 파시넬리,닉 라이온","dist":"(주)박수엔터테인먼트","scr":38,"s0":4583,"r0":3.9,"sw":9903,"rw":1.5,"wc":35.7,"fw":412,"cum":466,"mult":1.13,"c":[177,32,34,61,52,30,26,0,8,8,0,0,8,10,0]}];
+const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=document.getElementById('ct'),
+      tbep=document.getElementById('tbep'), mg=document.getElementById('mg'), pa=document.getElementById('pa'),
+      up=document.getElementById('up'), obep=document.getElementById('obep'), orate=document.getElementById('orate'),
+      au=document.getElementById('au'),
+      osim=document.getElementById('osim'), osimn=document.getElementById('osimn'),
+      simbox=document.getElementById('simbox'),
+      orel=document.getElementById('orel'), oreln=document.getElementById('oreln'),
+      relbox=document.getElementById('relbox'),
+      dist=document.getElementById('dist'), distlg=document.getElementById('distlg');
+let sortK='rank', sortA=true, onlyBep=false, BEP=0;
+const fmt=n=>n?Math.round(n).toLocaleString('ko-KR'):'–';
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// 수입 MG는 달러·유로로 계약하는 경우가 많아 통화를 고를 수 있게 둔다.
+// 환율은 수시로 바뀌므로 고정하지 않고 입력값으로 두되 기본값만 채워둔다.
+const cur=document.getElementById('cur'), fx=document.getElementById('fx'),
+      fxfld=document.getElementById('fxfld'), mgu=document.getElementById('mgu'),
+      fxu=document.getElementById('fxu');
+const SYM={USD:'$',EUR:'€'}, FXDEF={USD:1500,EUR:1600};
+function mgWon(){
+  const v=Number(mg.value)||0;
+  return cur.value==='KRW' ? v*10000 : v*(Number(fx.value)||0);
+}
+function mgLabel(){
+  const v=Number(mg.value)||0;
+  return cur.value==='KRW' ? `MG ${fmt(v)}만`
+                           : `MG ${SYM[cur.value]}${fmt(v)}(${fmt(mgWon()/10000)}만)`;
+}
+function syncCur(){
+  const krw=cur.value==='KRW';
+  fxfld.style.display=krw?'none':'';
+  if(!krw){
+    const live=LIVE[cur.value]&&Number(fx.value)===LIVE[cur.value];
+    fxu.textContent=`원 / 1 ${cur.value}`+(live?` · 자동 ${LIVE.date}`:' · 직접 입력');
+  }
+  mgu.textContent=(krw?'만원':cur.value)+' · 0으로 두면 가장 보수적인 하한';
+}
+
+// 환율 자동 채움. 네이버는 공개 API가 없고 브라우저에서 직접 호출하면 CORS에 막혀
+// 공개 API(open.er-api.com)를 쓴다. 시장 중간환율이라 은행 매매기준율과는 몇 원 차이가 난다.
+// 실패하면 조용히 기본값을 유지하고, 사용자가 직접 고친 값은 덮어쓰지 않는다.
+let LIVE={date:''}, fxTouched=false;
+function applyFx(){
+  if(LIVE[cur.value]&&!fxTouched) fx.value=LIVE[cur.value];
+  syncCur();
+}
+async function loadFx(){
+  try{
+    const [a,b]=await Promise.all([
+      fetch('https://open.er-api.com/v6/latest/USD').then(r=>r.json()),
+      fetch('https://open.er-api.com/v6/latest/EUR').then(r=>r.json())]);
+    if(a&&a.rates&&a.rates.KRW) LIVE.USD=Math.round(a.rates.KRW);
+    if(b&&b.rates&&b.rates.KRW) LIVE.EUR=Math.round(b.rates.KRW);
+    const d=new Date(a.time_last_update_unix*1000);
+    LIVE.date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    applyFx(); refresh();
+  }catch(e){ /* 조회 실패 시 기본값 유지 */ }
+}
+
+const BUCKETS=[[50000,1e9,'5만+'],[40000,50000,'4–5만'],[30000,40000,'3–4만'],[20000,30000,'2–3만'],
+  [10000,20000,'1–2만'],[5000,10000,'5천–1만'],[0,5000,'5천 미만']];
+
+function costPhrase(){
+  const w=mgWon(), p=Number(pa.value)||0;
+  return w===0 ? `영화를 공짜로 사왔어도 P&A ${fmt(p)}만원`
+               : `${mgLabel()} + P&A ${fmt(p)}만 = ${fmt(w/10000+p)}만원`;
+}
+function calcBep(){
+  const tot=mgWon()+(Number(pa.value)||0)*10000, u=Number(up.value)||0;
+  BEP = u>0 ? tot/u : 0;
+  const k=D.filter(d=>d.cum<BEP).length;
+  obep.textContent = BEP>0 ? fmt(BEP)+'명' : '–';
+  orate.innerHTML = BEP>0
+    ? `${costPhrase()}은 못 벌었을 작품 <b>${k}편 / ${D.length}편 (${(100*k/D.length).toFixed(1)}%)</b>`
+    : '부금단가를 입력하세요';
+}
+const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\.0$/,'')+'만':fmt(n);
+
+
+// 예상 관객수를 넣으면 그 지점의 손익을 계산한다.
+//   부금 = 관객수 × 부금단가,  손익 = 부금 − (MG + P&A)
+function simulate(base){
+  const a=Number(au.value)||0, u=Number(up.value)||0;
+  const tot=mgWon()+(Number(pa.value)||0)*10000;
+  const rev=a*u, pl=rev-tot;
+  osim.textContent=(pl>=0?'+':'−')+fmt(Math.abs(pl)/10000)+'만원';
+  simbox.classList.toggle('plus',pl>=0);
+  simbox.classList.toggle('minus',pl<0);
+  const better=base.filter(d=>d.cum>=a).length;
+  const pct=base.length?100*better/base.length:0;
+  osimn.innerHTML=`부금 ${fmt(rev/10000)}만원 · 이 성적을 넘긴 작품 `
+    +`<b>${better}편 / ${base.length}편 (상위 ${pct.toFixed(0)}%)</b>`;
+
+  // 개봉 여부 판단 — 개봉 안 하면 손실은 MG 그대로, 개봉하면 -MG-P&A+부금.
+  // 양쪽에서 MG가 상쇄되므로 부금이 P&A 를 넘는지만 보면 된다(MG 무관).
+  const paw=(Number(pa.value)||0)*10000;
+  const relGain=rev-paw, relNeed=u>0?paw/u:0;
+  orel.textContent=(relGain>=0?'+':'−')+fmt(Math.abs(relGain)/10000)+'만원';
+  relbox.classList.toggle('plus',relGain>=0);
+  relbox.classList.toggle('minus',relGain<0);
+  oreln.innerHTML=`개봉 분기 <b>${fmt(relNeed)}명</b> · 이보다 적으면 `
+    +`<b>개봉 안 하고 MG만 손실 보는 편이 이득</b>`;
+}
+
+function drawDist(){
+  // 입력값이 구간 한가운데를 지나면 그 구간을 정확히 둘로 쪼갠다.
+  // 그래야 기준선이 실제 위치에 그어지고, 아래쪽만 붉게 칠할 수 있다.
+  let bs=BUCKETS.map(([lo,hi,lb])=>({lo,hi,lb}));
+  if(BEP>0){
+    const i=bs.findIndex(b=>b.lo<BEP&&BEP<b.hi);
+    if(i>=0){
+      const b=bs[i];
+      bs.splice(i,1,
+        {lo:BEP,hi:b.hi,lb:b.hi>=1e9?compact(BEP)+'+':compact(BEP)+'–'+compact(b.hi)},
+        {lo:b.lo,hi:BEP,lb:compact(b.lo)+'–'+compact(BEP)});
+    }
+  }
+  const cnt=bs.map(b=>D.filter(d=>d.cum>=b.lo&&d.cum<b.hi).length);
+  const mx=Math.max(...cnt,1);
+  dist.innerHTML=bs.map((b,i)=>{
+    const line=(BEP>0&&i>0&&bs[i-1].lo>=BEP&&b.hi<=BEP)
+      ? `<div class="thr"><span>${fmt(BEP)}명</span></div>` : '';
+    return line+`<div class="drow ${BEP>0&&b.hi<=BEP?'under':''}"><span class="lb">${b.lb}</span>
+     <span class="bar"><i style="width:${Math.max(2,Math.round(100*cnt[i]/mx))}%"></i></span>
+     <span class="ct">${cnt[i]}편</span></div>`;
+  }).join('');
+  const m=[...D].sort((a,b)=>a.cum-b.cum)[Math.floor(D.length/2)];
+  distlg.innerHTML=`중앙값 <b>${fmt(m.cum)}명</b> · 최고 ${fmt(D[0].cum)}명`
+    +(BEP>0?` · <b>선 아래 = ${costPhrase()}도 극장에서 못 번 영화</b>`:'');
+}
+// 금·토·일 막대를 다른 색으로 칠해 주말 쏠림이 눈에 보이게 한다
+function spark(c,wd){
+  const w=104,h=26,mx=Math.max(...c,1),n=c.length,bw=w/n;
+  let b='';
+  for(let i=0;i<n;i++){
+    const day=(wd+i)%7, wknd=day>=4;
+    const bh=Math.max(1,Math.round(c[i]/mx*(h-3)));
+    b+=`<rect x="${(i*bw).toFixed(1)}" y="${h-bh}" width="${(bw-1.1).toFixed(1)}" height="${bh}" rx="0.7"
+        fill="${wknd?'var(--wknd)':'currentColor'}" opacity="${wknd?'.95':'.45'}"/>`;
+  }
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${b}</svg>`;
+}
+function view(){
+  let r=D.slice();
+  if(onlyBep&&BEP>0) r=r.filter(d=>d.cum<BEP);
+  const s=q.value.trim().toLowerCase();
+  if(s) r=r.filter(d=>(d.name+' '+d.nat+' '+d.dist+' '+d.dir).toLowerCase().includes(s));
+  r.forEach((d,i)=>d.rank=i+1);
+  const dir=sortA?1:-1;
+  r.sort((a,b)=>{const x=a[sortK],y=b[sortK];
+    return typeof x==='string'?x.localeCompare(y,'ko')*dir:(x-y)*dir;});
+  return r;
+}
+function draw(){
+  const r=view(); let html='', marked=false;
+  const desc=(sortK==='cum'&&!sortA)||(sortK==='rank'&&sortA);
+  for(const d of r){
+    if(desc&&!marked&&BEP>0&&d.cum<BEP){
+      html+=`<tr class="mark"><td colspan="13">여기 아래는 ${costPhrase()}조차 극장에서 못 번 영화들 — ${fmt(BEP)}명 미만
+        <span>위쪽이라고 남는 장사였다는 뜻은 아닙니다. 실제 수입가를 알아야 알 수 있습니다.</span></td></tr>`;
+      marked=true;
+    }
+    html+=`<tr>
+      <td class="num meta">${d.rank}</td>
+      <td class="nm">${esc(d.name)}<div class="meta">${esc(d.dir)||'&nbsp;'}</div></td>
+      <td class="meta">${d.open}</td>
+      <td class="meta">${esc(d.nat)||'–'}</td>
+      <td class="dstr">${esc(d.dist)||'–'}</td>
+      <td class="num">${fmt(d.scr)}</td>
+      <td class="num">${fmt(d.s0)}</td>
+      <td class="num meta">${d.rw?d.rw.toFixed(1)+'%':'–'}</td>
+      <td class="num wc">${d.wc?d.wc.toFixed(0)+'%':'–'}</td>
+      <td>${spark(d.c,d.wd)}</td>
+      <td class="num">${fmt(d.fw)}</td>
+      <td class="num cum ${BEP>0&&d.cum<BEP?'under':''}">${fmt(d.cum)}</td>
+      <td class="num meta">${d.mult?d.mult.toFixed(2)+'×':'–'}</td>
+    </tr>`;
+  }
+  tb.innerHTML=html;
+  const nb=BEP>0?r.filter(d=>d.cum<BEP).length:0;
+  ct.textContent=`${r.length}편 표시`+(BEP>0?` · 못 번 영화 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
+}
+function refresh(){calcBep();simulate(D);drawDist();draw();}
+document.querySelectorAll('.rk thead th').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const k=th.dataset.k;
+    if(sortK===k) sortA=!sortA; else{sortK=k; sortA=['rank','name','open','nat','dist'].includes(k);}
+    document.querySelectorAll('.rk thead th').forEach(o=>{o.classList.remove('on');o.removeAttribute('data-a');});
+    th.classList.add('on'); th.setAttribute('data-a',sortA?'↑':'↓');
+    draw();
+  });
+});
+[mg,pa,up,au,fx].forEach(el=>el.addEventListener('input',refresh));
+cur.addEventListener('change',()=>{
+  if(FXDEF[cur.value]) fx.value=LIVE[cur.value]||FXDEF[cur.value];
+  syncCur(); refresh();});
+fx.addEventListener('input',()=>{fxTouched=true;syncCur();});
+q.addEventListener('input',draw);
+tbep.addEventListener('click',()=>{onlyBep=!onlyBep;tbep.setAttribute('aria-pressed',onlyBep);draw();});
+syncCur();
+refresh();
+loadFx();
+</script>
