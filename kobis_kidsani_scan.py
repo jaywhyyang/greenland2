@@ -135,7 +135,8 @@ def main():
         cum = sum(int(r["관객수"] or 0) for r in by.values())
         scr = max([int(r["스크린수"] or 0) for r in by.values()] or [0])
         last = max(by) if by else None
-        running = bool(last and last >= EDGE)
+        # 개봉 4주가 지났으면 수집 종료일까지 상영 중이어도 성적이 굳은 것으로 본다
+        running = bool(last and last >= EDGE and (EDGE - od).days < 28)
         curve = [int(by[od + datetime.timedelta(days=j)]["관객수"] or 0)
                  if (od + datetime.timedelta(days=j)) in by else 0 for j in range(NDAY)]
 

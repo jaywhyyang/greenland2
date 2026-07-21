@@ -25,13 +25,14 @@ DEF_MG, DEF_PA, DEF_UNIT = 0, 3000, 4200   # 만원, 만원, 원
 def load():
     rows = []
     for r in csv.DictReader(open(SRC, encoding="utf-8-sig")):
-        if r["성적확정"] != "확정":
-            continue          # 수집 종료일까지 상영 중이라 성적 미확정
+        # 상영 중인 작품도 뺴지 않고 배지로 표시한다.
+        # 최근 개봉작이 통째로 빠지면 시장 현황 페이지로서 반쪽이 되기 때문이다.
         iv = lambda k: int(r[k]) if r.get(k) and r[k].strip() else 0
         fv = lambda k: float(r[k]) if r.get(k) and r[k].strip() else 0
         od = datetime.date(*map(int, r["개봉일"].split("-")))
         rows.append({
-            "name": r["영화명"], "open": r["개봉일"], "wd": od.weekday(),
+            "name": r["영화명"], "open": r["개봉일"],
+            "run": r["성적확정"] != "확정", "wd": od.weekday(),
             "nat": r["대표국적"], "dir": r["감독"], "dist": r["배급사"],
             "scr": iv("개봉스크린수"),
             "s0": iv("개봉일좌석수"), "r0": fv("개봉일좌석판매율"),
@@ -177,6 +178,9 @@ HTML = """<title>어린이 애니메이션 수입작 흥행 실적 · 2024–202
   .nm{font-weight:600;white-space:normal;min-width:180px;max-width:250px}
   .meta{color:var(--muted);font-size:11.5px}
   td.dstr{max-width:130px;white-space:normal;font-size:11.5px;color:var(--muted)}
+  .pill{display:inline-block;padding:0 6px;border-radius:99px;font-size:10.5px;font-weight:700;
+    border:1px solid currentColor;margin-left:5px;color:var(--muted)}
+  .pill.run{color:var(--wknd)}
   .cum{font-weight:700} .under{color:var(--alert)}
   .wc{color:var(--wknd);font-weight:700}
   .spark{display:block}
@@ -309,7 +313,7 @@ HTML = """<title>어린이 애니메이션 수입작 흥행 실적 · 2024–202
     주말 집중도는 첫 주말(개봉 후 처음 오는 금·토·일) 관객 ÷ 첫주(개봉일~D+6) 관객입니다.
     배수는 최종 누적 ÷ 첫주 관객으로, 값이 클수록 개봉 후 입소문으로 확산된 작품입니다.
     좌석판매율은 해당 구간 관객수 ÷ 좌석수로 직접 계산했습니다.
-    최종 누적은 일별 관객 합산값이며, 수집 종료일까지 상영이 이어져 성적이 확정되지 않은 작품은 제외했습니다.
+    최종 누적은 일별 관객 합산값입니다. <code>상영중</code> 배지가 붙은 작품은 수집 시점에 아직 상영이 이어지고 있어 수치가 더 올라갈 수 있습니다.
   </footer>
 </div>
 
@@ -479,7 +483,8 @@ function draw(){
     }
     html+=`<tr>
       <td class="num meta">${d.rank}</td>
-      <td class="nm">${esc(d.name)}<div class="meta">${esc(d.dir)||'&nbsp;'}</div></td>
+      <td class="nm">${esc(d.name)}${d.run?'<span class="pill run">상영중</span>':''}
+        <div class="meta">${esc(d.dir)||'&nbsp;'}</div></td>
       <td class="meta">${d.open}</td>
       <td class="meta">${esc(d.nat)||'–'}</td>
       <td class="dstr">${esc(d.dist)||'–'}</td>
@@ -568,7 +573,7 @@ def main():
             f"{kc[-1]:,}명에 그칩니다. 첫 주말에 올 관객은 다 오지만 그 이상으로 번지지는 않는다는 뜻입니다. "
             f"바닥은 튼튼하고 천장은 낮은 구조입니다.")
 
-    keys = ("name", "open", "wd", "nat", "dir", "dist", "scr", "s0", "r0",
+    keys = ("name", "open", "wd", "nat", "dir", "dist", "scr", "s0", "r0", "run",
             "sw", "rw", "wc", "fw", "cum", "mult", "c")
     data = [{k: r[k] for k in keys} for r in K]
     html = (HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
