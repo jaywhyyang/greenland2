@@ -28,7 +28,14 @@ ERO_SCREEN_MAX = 20
 KEEP = set()
 
 # 계산기 초기값 (열람자가 화면에서 바꿀 수 있다)
-DEF_MG, DEF_PA, DEF_UNIT = 7500, 7000, 4200   # 만원, 만원, 원
+#
+# 손익분기선을 하나 긋지 않는 이유 —
+# 수입 MG는 작품·계약마다 편차가 커서 하한이 없다시피 하고, 실제 회수 여부는
+# 계약 조건을 봐야만 알 수 있다. 반면 P&A 는 극장 개봉을 하는 이상 하한이 있다
+# (최대한 아껴 5천만, 보통 1억, 1.5~2억이면 잘 쓴 편).
+# 따라서 이 페이지는 '누가 회수했다'를 판정하지 않고,
+# MG 를 0원으로 놓아도 P&A 조차 못 건진 구간 = 어떤 계약이어도 손실인 구간만 표시한다.
+DEF_MG, DEF_PA, DEF_UNIT = 0, 5000, 4200   # 만원, 만원, 원
 
 
 def load():
@@ -108,7 +115,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   .fld input{padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
     color:var(--ink);font:inherit;font-size:15px;font-variant-numeric:tabular-nums;text-align:right;width:100%}
   .fld .u{font-size:11px;color:var(--muted)}
-  .out{border-left:3px solid var(--accent);padding-left:15px;display:flex;flex-direction:column;gap:2px}
+  .out{border-left:3px solid var(--alert);padding-left:15px;display:flex;flex-direction:column;gap:2px}
   .out .big{font-size:27px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.15}
   .out .cap{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700}
   .out .sm{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -120,8 +127,8 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   .drow .lb{color:var(--muted);font-variant-numeric:tabular-nums;text-align:right}
   .bar{height:19px;background:var(--grid);border-radius:3px;overflow:hidden}
   .bar i{display:block;height:100%;background:var(--muted);border-radius:3px;transition:background .15s}
-  .drow.ok .bar i{background:var(--accent)}
-  .drow.ok .lb{color:var(--accent);font-weight:700}
+  .drow.under .bar i{background:var(--alert)}
+  .drow.under .lb{color:var(--alert);font-weight:700}
   .drow .ct{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px}
   .lg{font-size:12.5px;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
   .lg b{color:var(--accent)}
@@ -151,12 +158,14 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   /* 배급사 셀. 분포 차트의 .dist 와 이름이 겹치면 display:flex 가 흘러들어와
      td 가 테이블 레이아웃에서 빠지고 행 경계선이 끊긴다. 반드시 다른 이름을 쓴다. */
   td.dstr{max-width:140px;white-space:normal;font-size:11.5px;color:var(--muted)}
-  .cum{font-weight:700} .ok{color:var(--accent)} .no{color:var(--muted)}
+  .cum{font-weight:700} .under{color:var(--alert)}
+  .lg .u,.out .sm b{color:var(--alert)}
   .pill{display:inline-block;padding:0 6px;border-radius:99px;font-size:10.5px;font-weight:700;
     border:1px solid currentColor;margin-left:5px;color:var(--muted)}
   .spark{display:block}
-  tr.mark td{background:color-mix(in srgb,var(--accent) 11%,var(--card));border-top:2px solid var(--accent);
-    border-bottom:2px solid var(--accent);font-weight:700;color:var(--accent);white-space:normal;font-size:12.5px}
+  tr.mark td{background:color-mix(in srgb,var(--alert) 10%,var(--card));border-top:2px solid var(--alert);
+    border-bottom:2px solid var(--alert);font-weight:600;color:var(--alert);white-space:normal;
+    font-size:12.5px;line-height:1.5}
   footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:15px}
   footer code{background:var(--grid);padding:1px 5px;border-radius:4px;font-size:11.5px}
   @media (max-width:640px){.wrap{padding:26px 13px 60px}.drow{grid-template-columns:74px 1fr 68px}}
@@ -174,24 +183,30 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   <div class="tiles">__TILES__</div>
 
   <section>
-    <h2>손익분기 계산기<span class="hint">수입가와 마케팅비를 넣으면 필요 관객과 달성 확률이 나옵니다</span></h2>
+    <h2>회수 하한 계산<span class="hint">비용을 넣으면 그 아래로는 어떤 계약이어도 손실인 구간이 표시됩니다</span></h2>
     <div class="panel">
       <div class="calc">
-        <div class="fld"><label for="mg">수입 MG</label>
-          <input id="mg" type="number" min="0" step="100" value="__MG__" inputmode="numeric"><span class="u">만원</span></div>
         <div class="fld"><label for="pa">P&amp;A</label>
-          <input id="pa" type="number" min="0" step="100" value="__PA__" inputmode="numeric"><span class="u">만원</span></div>
+          <input id="pa" type="number" min="0" step="500" value="__PA__" inputmode="numeric">
+          <span class="u">만원 · 최소 5,000 / 보통 10,000 / 잘 쓰면 15,000~20,000</span></div>
+        <div class="fld"><label for="mg">수입 MG</label>
+          <input id="mg" type="number" min="0" step="500" value="__MG__" inputmode="numeric">
+          <span class="u">만원 · 0으로 두면 가장 보수적인 하한</span></div>
         <div class="fld"><label for="up">실정산 부금단가</label>
-          <input id="up" type="number" min="1" step="100" value="__UNIT__" inputmode="numeric"><span class="u">원 / 관객 1명</span></div>
+          <input id="up" type="number" min="1" step="100" value="__UNIT__" inputmode="numeric">
+          <span class="u">원 / 관객 1명</span></div>
         <div class="out">
-          <span class="cap">손익분기 관객</span>
+          <span class="cap">이 비용을 넘기려면</span>
           <span class="big" id="obep">–</span>
           <span class="sm" id="orate">–</span>
         </div>
       </div>
       <div class="formula">
-        관객수 × 부금단가 − (수입 MG + P&amp;A) ≥ 0 &nbsp;→&nbsp; 손익분기 관객 = 총제작비 ÷ 부금단가.
-        입력값은 이 브라우저에서만 계산에 쓰이며 페이지에 저장되지 않습니다.
+        <b>이 페이지는 개별 작품의 회수 여부를 판정하지 않습니다.</b>
+        수입 MG는 작품·계약마다 편차가 커서 실제 손익은 계약 조건을 봐야만 알 수 있습니다.
+        다만 P&amp;A는 극장 개봉을 하는 이상 하한이 있으므로, <b>MG를 0원으로 놓아도 P&amp;A조차 못 건진 구간</b>은
+        어떤 계약이어도 손실이라고 말할 수 있습니다. 아래 표시는 그 구간만을 뜻합니다.
+        입력값은 이 브라우저에서만 쓰이며 페이지에 저장되지 않습니다.
       </div>
     </div>
   </section>
@@ -209,7 +224,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
     <div class="ctl">
       <input type="search" id="q" placeholder="영화명 · 감독 · 국가 · 장르 · 배급사 검색" aria-label="검색">
       <button class="tog" id="tre" aria-pressed="false">재개봉 포함</button>
-      <button class="tog" id="tbep" aria-pressed="false">손익분기 돌파만</button>
+      <button class="tog" id="tbep" aria-pressed="false">비용 미달만 보기</button>
       <span class="count" id="ct"></span>
     </div>
     <div class="tw">
@@ -228,6 +243,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
           <th data-k="rank">D+0 → D+14</th>
           <th class="num" data-k="fw">첫주<br>관객</th>
           <th class="num" data-k="cum">최종<br>누적</th>
+          <th class="num" data-k="cum">부금<br>환산</th>
           <th class="num" data-k="mult">배수</th>
         </tr></thead>
         <tbody id="tb"></tbody>
@@ -240,7 +256,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
     첫주 관객은 개봉일~D+6, 첫 주말은 개봉 후 처음 오는 금·토·일 구간입니다.
     좌석판매율은 해당 구간 관객수 ÷ 좌석수로 직접 계산했습니다.
     배수는 최종 누적 ÷ 첫주 관객으로, 값이 클수록 개봉 후 입소문으로 확산된 작품입니다.
-    좌석 데이터가 제공되지 않는 일부 소규모 상영은 <code>–</code>로 표시했습니다.
+    좌석 데이터가 제공되지 않는 일부 소규모 상영은 <code>–</code>로 표시했습니다.<br>부금 환산은 관객수 × 부금단가로 계산한 <b>참고용 추정치</b>이며 실제 정산액이 아닙니다. 개별 작품의 손익은 수입 MG·P&amp;A 등 계약 조건에 따라 달라지므로 이 페이지만으로 판단할 수 없습니다.
   </footer>
 </div>
 
@@ -264,24 +280,26 @@ function calcBep(){
   const u=Number(up.value)||0;
   BEP = u>0 ? tot/u : 0;
   const base=D.filter(d=>!d.re);
-  const k=base.filter(d=>d.cum>=BEP).length;
+  const k=base.filter(d=>d.cum<BEP).length;   // 아래쪽(확실 손실)을 센다
   obep.textContent = BEP>0 ? fmt(BEP)+'명' : '–';
   orate.innerHTML = BEP>0
-    ? `총제작비 ${fmt(tot/10000)}만원 · 달성 <b>${k}편 / ${base.length}편 (${(100*k/base.length).toFixed(1)}%)</b>`
+    ? `비용 ${fmt(tot/10000)}만원 · 못 넘긴 작품 <b>${k}편 / ${base.length}편 (${(100*k/base.length).toFixed(1)}%)</b>`
     : '부금단가를 입력하세요';
 }
 
 function drawDist(){
   const base=D.filter(d=>!d.re);
-  const cnt=BUCKETS.map(([lo,hi,lb])=>[lb,base.filter(d=>d.cum>=lo&&d.cum<hi).length,lo]);
+  const cnt=BUCKETS.map(([lo,hi,lb])=>[lb,base.filter(d=>d.cum>=lo&&d.cum<hi).length,lo,hi]);
   const mx=Math.max(...cnt.map(x=>x[1]),1);
-  dist.innerHTML=cnt.map(([lb,v,lo])=>
-    `<div class="drow ${BEP>0&&lo>=BEP?'ok':''}"><span class="lb">${lb}</span>
+  // 비용을 확실히 못 넘긴 구간(구간 상단조차 기준 미만)만 붉게 칠한다. 넘은 쪽은 판정하지 않는다.
+  dist.innerHTML=cnt.map(([lb,v,lo,hi])=>
+    `<div class="drow ${BEP>0&&hi<=BEP?'under':''}"><span class="lb">${lb}</span>
      <span class="bar"><i style="width:${Math.max(2,Math.round(100*v/mx))}%"></i></span>
      <span class="ct">${v}편</span></div>`).join('');
   const med=[...base].sort((a,b)=>a.cum-b.cum)[Math.floor(base.length/2)];
-  distlg.innerHTML=`중앙값 <b>${fmt(med.cum)}명</b> · 5천 명 미만 ${base.filter(d=>d.cum<5000).length}편`
-    + (BEP>0?` · 손익분기 <b>${fmt(BEP)}명</b> 이상 구간이 초록입니다`:'');
+  distlg.innerHTML=`중앙값 <b class="u">${fmt(med.cum)}명</b> (부금 환산 ${fmt(med.cum*(Number(up.value)||0)/10000)}만원)`
+    + ` · 5천 명 미만 ${base.filter(d=>d.cum<5000).length}편`
+    + (BEP>0?` · <span class="u">붉은 구간 = 입력한 비용을 어떤 계약이어도 못 넘긴 작품</span>`:'');
 }
 
 function spark(c){
@@ -297,7 +315,7 @@ function spark(c){
 
 function view(){
   let r=D.filter(d=>showRe||!d.re);
-  if(onlyBep&&BEP>0) r=r.filter(d=>d.cum>=BEP);
+  if(onlyBep&&BEP>0) r=r.filter(d=>d.cum<BEP);
   const s=q.value.trim().toLowerCase();
   if(s) r=r.filter(d=>(d.name+' '+d.dir+' '+d.nat+' '+d.gen+' '+d.dist).toLowerCase().includes(s));
   r.forEach((d,i)=>d.rank=i+1);
@@ -313,10 +331,12 @@ function draw(){
   const desc=(sortK==='cum'&&!sortA)||(sortK==='rank'&&sortA);
   for(const d of r){
     if(banded&&desc&&!marked&&BEP>0&&d.cum<BEP){
-      html+=`<tr class="mark"><td colspan="14">손익분기 ${fmt(BEP)}명 — 아래로는 회수 미달</td></tr>`;
+      html+=`<tr class="mark"><td colspan="15">${fmt(BEP)}명 —
+        아래로는 입력한 비용을 어떤 계약이어도 넘기지 못한 구간입니다.
+        위쪽은 회수했다는 뜻이 아니라, 계약 조건 없이는 판단할 수 없다는 뜻입니다.</td></tr>`;
       marked=true;
     }
-    const ok=BEP>0&&d.cum>=BEP;
+    const under=BEP>0&&d.cum<BEP;
     html+=`<tr>
       <td class="num meta">${d.rank}</td>
       <td class="nm">${esc(d.name)}${d.re?'<span class="pill">재개봉</span>':''}
@@ -331,13 +351,14 @@ function draw(){
       <td class="num meta">${d.rw?d.rw.toFixed(1)+'%':'–'}</td>
       <td>${spark(d.c)}</td>
       <td class="num">${fmt(d.fw)}</td>
-      <td class="num cum ${ok?'ok':'no'}">${fmt(d.cum)}</td>
+      <td class="num cum ${under?'under':''}">${fmt(d.cum)}</td>
+      <td class="num meta">${fmt(d.cum*(Number(up.value)||0)/10000)}만</td>
       <td class="num meta">${d.mult?d.mult.toFixed(1)+'×':'–'}</td>
     </tr>`;
   }
   tb.innerHTML=html;
-  const nb=BEP>0?r.filter(d=>d.cum>=BEP).length:0;
-  ct.textContent=`${r.length}편 표시`+(BEP>0?` · 손익분기 돌파 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
+  const nb=BEP>0?r.filter(d=>d.cum<BEP).length:0;
+  ct.textContent=`${r.length}편 표시`+(BEP>0?` · 비용 미달 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
 }
 
 function refresh(){ calcBep(); drawDist(); draw(); }
