@@ -130,6 +130,10 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   .drow.under .bar i{background:var(--alert)}
   .drow.under .lb{color:var(--alert);font-weight:700}
   .drow .ct{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12.5px}
+  .thr{display:flex;align-items:center;gap:9px;margin:4px 0}
+  .thr::before,.thr::after{content:"";flex:1;height:2px;background:var(--alert)}
+  .thr span{font-size:11.5px;font-weight:700;color:var(--alert);white-space:nowrap;
+    font-variant-numeric:tabular-nums}
   .lg{font-size:12.5px;color:var(--muted);margin-top:10px;border-top:1px solid var(--line);padding-top:10px}
   .lg b{color:var(--accent)}
 
@@ -295,19 +299,35 @@ function calcBep(){
     : '부금단가를 입력하세요';
 }
 
+const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\\.0$/,'')+'만':fmt(n);
+
 function drawDist(){
   const base=D.filter(d=>!d.re);
-  const cnt=BUCKETS.map(([lo,hi,lb])=>[lb,base.filter(d=>d.cum>=lo&&d.cum<hi).length,lo,hi]);
-  const mx=Math.max(...cnt.map(x=>x[1]),1);
-  // 비용을 확실히 못 넘긴 구간(구간 상단조차 기준 미만)만 붉게 칠한다. 넘은 쪽은 판정하지 않는다.
-  dist.innerHTML=cnt.map(([lb,v,lo,hi])=>
-    `<div class="drow ${BEP>0&&hi<=BEP?'under':''}"><span class="lb">${lb}</span>
-     <span class="bar"><i style="width:${Math.max(2,Math.round(100*v/mx))}%"></i></span>
-     <span class="ct">${v}편</span></div>`).join('');
+  // 입력값이 구간 한가운데를 지나면 그 구간을 정확히 둘로 쪼갠다.
+  // 그래야 기준선이 실제 위치에 그어지고, 아래쪽만 붉게 칠할 수 있다.
+  let bs=BUCKETS.map(([lo,hi,lb])=>({lo,hi,lb}));
+  if(BEP>0){
+    const i=bs.findIndex(b=>b.lo<BEP&&BEP<b.hi);
+    if(i>=0){
+      const b=bs[i];
+      bs.splice(i,1,
+        {lo:BEP,hi:b.hi,lb:b.hi>=1e9?compact(BEP)+'+':compact(BEP)+'–'+compact(b.hi)},
+        {lo:b.lo,hi:BEP,lb:compact(b.lo)+'–'+compact(BEP)});
+    }
+  }
+  const cnt=bs.map(b=>base.filter(d=>d.cum>=b.lo&&d.cum<b.hi).length);
+  const mx=Math.max(...cnt,1);
+  dist.innerHTML=bs.map((b,i)=>{
+    const line=(BEP>0&&i>0&&bs[i-1].lo>=BEP&&b.hi<=BEP)
+      ? `<div class="thr"><span>${fmt(BEP)}명</span></div>` : '';
+    return line+`<div class="drow ${BEP>0&&b.hi<=BEP?'under':''}"><span class="lb">${b.lb}</span>
+     <span class="bar"><i style="width:${Math.max(2,Math.round(100*cnt[i]/mx))}%"></i></span>
+     <span class="ct">${cnt[i]}편</span></div>`;
+  }).join('');
   const med=[...base].sort((a,b)=>a.cum-b.cum)[Math.floor(base.length/2)];
   distlg.innerHTML=`중앙값 <b class="u">${fmt(med.cum)}명</b> (부금 환산 ${fmt(med.cum*(Number(up.value)||0)/10000)}만원)`
     + ` · 5천 명 미만 ${base.filter(d=>d.cum<5000).length}편`
-    + (BEP>0?` · <span class="u">붉은 구간 = ${costPhrase()}도 극장에서 못 번 영화</span>`:'');
+    + (BEP>0?` · <span class="u">선 아래 = ${costPhrase()}도 극장에서 못 번 영화</span>`:'');
 }
 
 function spark(c){
