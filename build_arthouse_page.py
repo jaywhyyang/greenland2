@@ -19,13 +19,30 @@ BAND = (23000, 33000)   # 로즈부시 유형 comp 클러스터
 RERELEASE_GAP = 6
 NDAY = 15
 
+# 세그먼트에서 통째로 빼는 대상 (필터가 아니라 제외)
+#  · 직배  : 글로벌 스튜디오 한국지사 배급작. 비직배 수입 시장을 보려는 목적이므로 제외.
+#  · 성인에로: 청소년관람불가 + 개봉스크린 20개 미만.
+#    주의 — 이 규칙은 '청불 소규모 개봉작'을 걸러내는 근사치이지 에로물을 정확히 집어내지 못한다.
+#    실제로 크로넨버그 '미래의 범죄들'(칸 경쟁, 16개관)처럼 성격이 다른 작품도 함께 빠진다.
+#    특정 작품을 되살리려면 KEEP 에 제목을 넣는다.
+ERO_SCREEN_MAX = 20
+KEEP = set()
+
 
 def load():
     rows = []
+    n_major = n_ero = 0
     for r in csv.DictReader(open(SRC, encoding="utf-8-sig")):
         oy = int(r["개봉일"][:4])
         py = int(r["제작연도"]) if r["제작연도"].isdigit() else oy
         iv = lambda k: int(r[k]) if r.get(k) and r[k].strip() else 0
+        if r["영화명"] not in KEEP:
+            if r["직배여부"] == "직배":
+                n_major += 1
+                continue
+            if "청소년관람불가" in r["등급"] and iv("개봉스크린수") < ERO_SCREEN_MAX:
+                n_ero += 1
+                continue
         rows.append({
             "name": r["영화명"], "open": r["개봉일"], "py": py,
             "nat": r["대표국적"], "gen": r["장르"], "dir": r["감독"],
@@ -40,6 +57,7 @@ def load():
             "re": (oy - py) >= RERELEASE_GAP,
         })
     rows.sort(key=lambda r: -r["cum"])
+    print(f"  제외: 직배 {n_major}편, 청불·소규모 {n_ero}편")
     return rows
 
 
@@ -134,7 +152,7 @@ HTML = """<title>신작 아트하우스 외화 실적 랭킹 · 2024–2026</tit
     <div class="eyebrow">KOBIS 데이터 분석 · 2024–2026</div>
     <h1>신작 아트하우스 외화 실적 랭킹</h1>
     <p class="sub">2024년 1월 ~ 2026년 4월 개봉, KOBIS에서 다양성영화 × 외국영화로 분류된 __N__편.
-      최종 누적관객 내림차순. 재개봉·구작(개봉연도 − 제작연도 ≥ 6년)은 기본 제외되어 있습니다.</p>
+      최종 누적관객 내림차순. <b>직배(글로벌 스튜디오 한국지사 배급)</b>와 <b>청소년관람불가 중 개봉 20개관 미만</b>은 세그먼트에서 제외했고, 재개봉·구작(개봉연도 − 제작연도 ≥ 6년)은 기본 숨김입니다.</p>
   </header>
 
   <div class="tiles">__TILES__</div>
@@ -155,7 +173,6 @@ HTML = """<title>신작 아트하우스 외화 실적 랭킹 · 2024–2026</tit
     <div class="ctl">
       <input type="search" id="q" placeholder="영화명 · 감독 · 국가 · 장르 검색" aria-label="검색">
       <button class="tog" id="tre" aria-pressed="false">재개봉 포함</button>
-      <button class="tog" id="tind" aria-pressed="false">비직배만</button>
       <button class="tog" id="tbep" aria-pressed="false">BEP 돌파만</button>
       <span class="count" id="ct"></span>
     </div>
@@ -195,7 +212,7 @@ HTML = """<title>신작 아트하우스 외화 실적 랭킹 · 2024–2026</tit
 const D=__DATA__, BEP=__BEP__, BAND=__BAND__;
 const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=document.getElementById('ct'),
       tre=document.getElementById('tre'), tbep=document.getElementById('tbep');
-let sortK='rank', sortA=true, showRe=false, onlyBep=false, onlyInd=false;
+let sortK='rank', sortA=true, showRe=false, onlyBep=false;
 const fmt=n=>n?n.toLocaleString('ko-KR'):'–';
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -213,7 +230,6 @@ function spark(c){
 function view(){
   let r=D.filter(d=>showRe||!d.re);
   if(onlyBep) r=r.filter(d=>d.cum>=BEP);
-  if(onlyInd) r=r.filter(d=>d.major!=='직배');
   const s=q.value.trim().toLowerCase();
   if(s) r=r.filter(d=>(d.name+' '+d.dir+' '+d.nat+' '+d.gen+' '+d.dist).toLowerCase().includes(s));
   r.forEach((d,i)=>d.rank=i+1);
@@ -243,7 +259,7 @@ function draw(){
         <div class="meta">${esc([d.dir,d.gen].filter(Boolean).join(' · '))||'&nbsp;'}</div></td>
       <td class="meta">${d.open}</td>
       <td class="meta">${esc(d.nat)||'–'}</td>
-      <td class="meta dist" title="${esc(d.dist)}">${esc(d.dist)||'–'}${d.major==='직배'?'<span class="pill mj">직배</span>':''}</td>
+      <td class="meta dist" title="${esc(d.dist)}">${esc(d.dist)||'–'}</td>
       <td class="num">${fmt(d.scr)}</td>
       <td class="num">${seat}</td>
       <td class="num meta">${d.srate?d.srate.toFixed(1)+'%':'–'}</td>
@@ -273,8 +289,7 @@ q.addEventListener('input',draw);
 tre.addEventListener('click',()=>{showRe=!showRe;tre.setAttribute('aria-pressed',showRe);
   tre.textContent=showRe?'재개봉 포함됨':'재개봉 포함';draw();});
 tbep.addEventListener('click',()=>{onlyBep=!onlyBep;tbep.setAttribute('aria-pressed',onlyBep);draw();});
-document.getElementById('tind').addEventListener('click',e=>{onlyInd=!onlyInd;
-  e.currentTarget.setAttribute('aria-pressed',onlyInd);draw();});
+
 draw();
 </script>
 """
