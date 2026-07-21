@@ -63,6 +63,10 @@
   .out.sim{border-left-color:var(--muted)}
   .out.sim.plus{border-left-color:var(--accent)} .out.sim.plus .big{color:var(--accent)}
   .out.sim.minus{border-left-color:var(--alert)} .out.sim.minus .big{color:var(--alert)}
+  .wcur{display:flex;gap:6px}
+  .wcur input{flex:1;min-width:0}
+  .wcur select{padding:9px 7px;border:1px solid var(--line);border-radius:8px;background:var(--paper);
+    color:var(--ink);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
   .outs{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:18px;
     margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
   .formula{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:15px;padding-top:11px}
@@ -146,8 +150,18 @@
           <input id="pa" type="number" min="0" step="500" value="3000" inputmode="numeric">
           <span class="u">만원</span></div>
         <div class="fld"><label for="mg">수입 MG</label>
-          <input id="mg" type="number" min="0" step="500" value="0" inputmode="numeric">
-          <span class="u">만원 · 0으로 두면 가장 보수적인 하한</span></div>
+          <div class="wcur">
+            <input id="mg" type="number" min="0" step="1000" value="0" inputmode="numeric">
+            <select id="cur" aria-label="통화">
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="KRW">만원</option>
+            </select>
+          </div>
+          <span class="u" id="mgu">0으로 두면 가장 보수적인 하한</span></div>
+        <div class="fld" id="fxfld"><label for="fx">적용 환율</label>
+          <input id="fx" type="number" min="1" step="10" value="1500" inputmode="numeric">
+          <span class="u" id="fxu">원 / 1 USD</span></div>
         <div class="fld"><label for="up">실정산 부금단가</label>
           <input id="up" type="number" min="1" step="100" value="4200" inputmode="numeric">
           <span class="u">원 / 관객 1명</span></div>
@@ -244,16 +258,39 @@ const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=docum
 let sortK='rank', sortA=true, onlyBep=false, BEP=0;
 const fmt=n=>n?Math.round(n).toLocaleString('ko-KR'):'–';
 const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// 수입 MG는 달러·유로로 계약하는 경우가 많아 통화를 고를 수 있게 둔다.
+// 환율은 수시로 바뀌므로 고정하지 않고 입력값으로 두되 기본값만 채워둔다.
+const cur=document.getElementById('cur'), fx=document.getElementById('fx'),
+      fxfld=document.getElementById('fxfld'), mgu=document.getElementById('mgu'),
+      fxu=document.getElementById('fxu');
+const SYM={USD:'$',EUR:'€'}, FXDEF={USD:1500,EUR:1600};
+function mgWon(){
+  const v=Number(mg.value)||0;
+  return cur.value==='KRW' ? v*10000 : v*(Number(fx.value)||0);
+}
+function mgLabel(){
+  const v=Number(mg.value)||0;
+  return cur.value==='KRW' ? `MG ${fmt(v)}만`
+                           : `MG ${SYM[cur.value]}${fmt(v)}(${fmt(mgWon()/10000)}만)`;
+}
+function syncCur(){
+  const krw=cur.value==='KRW';
+  fxfld.style.display=krw?'none':'';
+  if(!krw) fxu.textContent=`원 / 1 ${cur.value}`;
+  mgu.textContent=(krw?'만원':cur.value)+' · 0으로 두면 가장 보수적인 하한';
+}
+
 const BUCKETS=[[50000,1e9,'5만+'],[40000,50000,'4–5만'],[30000,40000,'3–4만'],[20000,30000,'2–3만'],
   [10000,20000,'1–2만'],[5000,10000,'5천–1만'],[0,5000,'5천 미만']];
 
 function costPhrase(){
-  const m=Number(mg.value)||0, p=Number(pa.value)||0;
-  return m===0 ? `영화를 공짜로 사왔어도 P&A ${fmt(p)}만원`
-               : `MG ${fmt(m)}만 + P&A ${fmt(p)}만 = ${fmt(m+p)}만원`;
+  const w=mgWon(), p=Number(pa.value)||0;
+  return w===0 ? `영화를 공짜로 사왔어도 P&A ${fmt(p)}만원`
+               : `${mgLabel()} + P&A ${fmt(p)}만 = ${fmt(w/10000+p)}만원`;
 }
 function calcBep(){
-  const tot=((Number(mg.value)||0)+(Number(pa.value)||0))*10000, u=Number(up.value)||0;
+  const tot=mgWon()+(Number(pa.value)||0)*10000, u=Number(up.value)||0;
   BEP = u>0 ? tot/u : 0;
   const k=D.filter(d=>d.cum<BEP).length;
   obep.textContent = BEP>0 ? fmt(BEP)+'명' : '–';
@@ -268,7 +305,7 @@ const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\.0$/,'')+'만'
 //   부금 = 관객수 × 부금단가,  손익 = 부금 − (MG + P&A)
 function simulate(base){
   const a=Number(au.value)||0, u=Number(up.value)||0;
-  const tot=((Number(mg.value)||0)+(Number(pa.value)||0))*10000;
+  const tot=mgWon()+(Number(pa.value)||0)*10000;
   const rev=a*u, pl=rev-tot;
   osim.textContent=(pl>=0?'+':'−')+fmt(Math.abs(pl)/10000)+'만원';
   simbox.classList.toggle('plus',pl>=0);
@@ -377,8 +414,10 @@ document.querySelectorAll('.rk thead th').forEach(th=>{
     draw();
   });
 });
-[mg,pa,up,au].forEach(el=>el.addEventListener('input',refresh));
+[mg,pa,up,au,fx].forEach(el=>el.addEventListener('input',refresh));
+cur.addEventListener('change',()=>{if(FXDEF[cur.value])fx.value=FXDEF[cur.value];syncCur();refresh();});
 q.addEventListener('input',draw);
 tbep.addEventListener('click',()=>{onlyBep=!onlyBep;tbep.setAttribute('aria-pressed',onlyBep);draw();});
+syncCur();
 refresh();
 </script>
