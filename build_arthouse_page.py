@@ -148,7 +148,9 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   tbody tr:last-child td{border-bottom:none}
   .nm{font-weight:600;white-space:normal;min-width:170px;max-width:230px}
   .meta{color:var(--muted);font-size:11.5px}
-  td.dist{max-width:140px;white-space:normal;font-size:11.5px;color:var(--muted)}
+  /* 배급사 셀. 분포 차트의 .dist 와 이름이 겹치면 display:flex 가 흘러들어와
+     td 가 테이블 레이아웃에서 빠지고 행 경계선이 끊긴다. 반드시 다른 이름을 쓴다. */
+  td.dstr{max-width:140px;white-space:normal;font-size:11.5px;color:var(--muted)}
   .cum{font-weight:700} .ok{color:var(--accent)} .no{color:var(--muted)}
   .pill{display:inline-block;padding:0 6px;border-radius:99px;font-size:10.5px;font-weight:700;
     border:1px solid currentColor;margin-left:5px;color:var(--muted)}
@@ -321,7 +323,7 @@ function draw(){
         <div class="meta">${esc([d.dir,d.gen].filter(Boolean).join(' · '))||'&nbsp;'}</div></td>
       <td class="meta">${d.open}</td>
       <td class="meta">${esc(d.nat)||'–'}</td>
-      <td class="dist">${esc(d.dist)||'–'}</td>
+      <td class="dstr">${esc(d.dist)||'–'}</td>
       <td class="num">${fmt(d.scr)}</td>
       <td class="num">${fmt(d.s0)}</td>
       <td class="num meta">${d.r0?d.r0.toFixed(1)+'%':'–'}</td>
