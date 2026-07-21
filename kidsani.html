@@ -277,8 +277,32 @@ function mgLabel(){
 function syncCur(){
   const krw=cur.value==='KRW';
   fxfld.style.display=krw?'none':'';
-  if(!krw) fxu.textContent=`원 / 1 ${cur.value}`;
+  if(!krw){
+    const live=LIVE[cur.value]&&Number(fx.value)===LIVE[cur.value];
+    fxu.textContent=`원 / 1 ${cur.value}`+(live?` · 자동 ${LIVE.date}`:' · 직접 입력');
+  }
   mgu.textContent=(krw?'만원':cur.value)+' · 0으로 두면 가장 보수적인 하한';
+}
+
+// 환율 자동 채움. 네이버는 공개 API가 없고 브라우저에서 직접 호출하면 CORS에 막혀
+// 공개 API(open.er-api.com)를 쓴다. 시장 중간환율이라 은행 매매기준율과는 몇 원 차이가 난다.
+// 실패하면 조용히 기본값을 유지하고, 사용자가 직접 고친 값은 덮어쓰지 않는다.
+let LIVE={date:''}, fxTouched=false;
+function applyFx(){
+  if(LIVE[cur.value]&&!fxTouched) fx.value=LIVE[cur.value];
+  syncCur();
+}
+async function loadFx(){
+  try{
+    const [a,b]=await Promise.all([
+      fetch('https://open.er-api.com/v6/latest/USD').then(r=>r.json()),
+      fetch('https://open.er-api.com/v6/latest/EUR').then(r=>r.json())]);
+    if(a&&a.rates&&a.rates.KRW) LIVE.USD=Math.round(a.rates.KRW);
+    if(b&&b.rates&&b.rates.KRW) LIVE.EUR=Math.round(b.rates.KRW);
+    const d=new Date(a.time_last_update_unix*1000);
+    LIVE.date=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    applyFx(); refresh();
+  }catch(e){ /* 조회 실패 시 기본값 유지 */ }
 }
 
 const BUCKETS=[[50000,1e9,'5만+'],[40000,50000,'4–5만'],[30000,40000,'3–4만'],[20000,30000,'2–3만'],
@@ -415,9 +439,13 @@ document.querySelectorAll('.rk thead th').forEach(th=>{
   });
 });
 [mg,pa,up,au,fx].forEach(el=>el.addEventListener('input',refresh));
-cur.addEventListener('change',()=>{if(FXDEF[cur.value])fx.value=FXDEF[cur.value];syncCur();refresh();});
+cur.addEventListener('change',()=>{
+  if(FXDEF[cur.value]) fx.value=LIVE[cur.value]||FXDEF[cur.value];
+  syncCur(); refresh();});
+fx.addEventListener('input',()=>{fxTouched=true;syncCur();});
 q.addEventListener('input',draw);
 tbep.addEventListener('click',()=>{onlyBep=!onlyBep;tbep.setAttribute('aria-pressed',onlyBep);draw();});
 syncCur();
 refresh();
+loadFx();
 </script>
