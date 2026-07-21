@@ -60,6 +60,9 @@
   .out .big{font-size:27px;font-weight:800;letter-spacing:-.025em;font-variant-numeric:tabular-nums;line-height:1.15}
   .out .cap{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700}
   .out .sm{font-size:12.5px;color:var(--muted)} .out .sm b{color:var(--alert);font-size:14px}
+  .out.sim{border-left-color:var(--muted)}
+  .out.sim.plus{border-left-color:var(--accent)} .out.sim.plus .big{color:var(--accent)}
+  .out.sim.minus{border-left-color:var(--alert)} .out.sim.minus .big{color:var(--alert)}
   .formula{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:15px;padding-top:11px}
 
   .dist{display:flex;flex-direction:column;gap:7px}
@@ -151,6 +154,14 @@
           <span class="big" id="obep">–</span>
           <span class="sm" id="orate">–</span>
         </div>
+        <div class="fld"><label for="au">예상 관객수</label>
+          <input id="au" type="number" min="0" step="1000" value="20768" inputmode="numeric">
+          <span class="u">명 · 이 성적일 때 손익</span></div>
+        <div class="out sim" id="simbox">
+          <span class="cap">그때 손익</span>
+          <span class="big" id="osim">–</span>
+          <span class="sm" id="osimn">–</span>
+        </div>
       </div>
       <div class="formula">
         수입가(MG)는 작품마다 천차만별이라 누가 남겼는지는 실제 계약을 봐야 압니다.
@@ -212,6 +223,9 @@ const D=[{"name":"10 라이브즈","open":"2024-08-15","wd":3,"nat":"영국","di
 const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=document.getElementById('ct'),
       tbep=document.getElementById('tbep'), mg=document.getElementById('mg'), pa=document.getElementById('pa'),
       up=document.getElementById('up'), obep=document.getElementById('obep'), orate=document.getElementById('orate'),
+      au=document.getElementById('au'),
+      osim=document.getElementById('osim'), osimn=document.getElementById('osimn'),
+      simbox=document.getElementById('simbox'),
       dist=document.getElementById('dist'), distlg=document.getElementById('distlg');
 let sortK='rank', sortA=true, onlyBep=false, BEP=0;
 const fmt=n=>n?Math.round(n).toLocaleString('ko-KR'):'–';
@@ -234,6 +248,22 @@ function calcBep(){
     : '부금단가를 입력하세요';
 }
 const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\.0$/,'')+'만':fmt(n);
+
+
+// 예상 관객수를 넣으면 그 지점의 손익을 계산한다.
+//   부금 = 관객수 × 부금단가,  손익 = 부금 − (MG + P&A)
+function simulate(base){
+  const a=Number(au.value)||0, u=Number(up.value)||0;
+  const tot=((Number(mg.value)||0)+(Number(pa.value)||0))*10000;
+  const rev=a*u, pl=rev-tot;
+  osim.textContent=(pl>=0?'+':'−')+fmt(Math.abs(pl)/10000)+'만원';
+  simbox.classList.toggle('plus',pl>=0);
+  simbox.classList.toggle('minus',pl<0);
+  const better=base.filter(d=>d.cum>=a).length;
+  const pct=base.length?100*better/base.length:0;
+  osimn.innerHTML=`부금 ${fmt(rev/10000)}만원 · 이 성적을 넘긴 작품 `
+    +`<b>${better}편 / ${base.length}편 (상위 ${pct.toFixed(0)}%)</b>`;
+}
 
 function drawDist(){
   // 입력값이 구간 한가운데를 지나면 그 구간을 정확히 둘로 쪼갠다.
@@ -313,7 +343,7 @@ function draw(){
   const nb=BEP>0?r.filter(d=>d.cum<BEP).length:0;
   ct.textContent=`${r.length}편 표시`+(BEP>0?` · 못 번 영화 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
 }
-function refresh(){calcBep();drawDist();draw();}
+function refresh(){calcBep();simulate(D);drawDist();draw();}
 document.querySelectorAll('.rk thead th').forEach(th=>{
   th.addEventListener('click',()=>{
     const k=th.dataset.k;
@@ -323,7 +353,7 @@ document.querySelectorAll('.rk thead th').forEach(th=>{
     draw();
   });
 });
-[mg,pa,up].forEach(el=>el.addEventListener('input',refresh));
+[mg,pa,up,au].forEach(el=>el.addEventListener('input',refresh));
 q.addEventListener('input',draw);
 tbep.addEventListener('click',()=>{onlyBep=!onlyBep;tbep.setAttribute('aria-pressed',onlyBep);draw();});
 refresh();

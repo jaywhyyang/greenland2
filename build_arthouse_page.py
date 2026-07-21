@@ -120,6 +120,9 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   .out .cap{font-size:11.5px;letter-spacing:.05em;color:var(--muted);font-weight:700}
   .out .sm{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
   .out .sm b{color:var(--accent);font-size:14px}
+  .out.sim{border-left-color:var(--muted)}
+  .out.sim.plus{border-left-color:var(--accent)} .out.sim.plus .big{color:var(--accent)}
+  .out.sim.minus{border-left-color:var(--alert)} .out.sim.minus .big{color:var(--alert)}
   .formula{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:15px;padding-top:11px}
 
   .dist{display:flex;flex-direction:column;gap:7px}
@@ -205,6 +208,14 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
           <span class="big" id="obep">–</span>
           <span class="sm" id="orate">–</span>
         </div>
+        <div class="fld"><label for="au">예상 관객수</label>
+          <input id="au" type="number" min="0" step="1000" value="__AUD__" inputmode="numeric">
+          <span class="u">명 · 이 성적일 때 손익</span></div>
+        <div class="out sim" id="simbox">
+          <span class="cap">그때 손익</span>
+          <span class="big" id="osim">–</span>
+          <span class="sm" id="osimn">–</span>
+        </div>
       </div>
       <div class="formula">
         수입가(MG)는 작품마다 천차만별이라 누가 남겼는지는 실제 계약을 봐야 압니다.
@@ -270,6 +281,9 @@ const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=docum
       tre=document.getElementById('tre'), tbep=document.getElementById('tbep'),
       mg=document.getElementById('mg'), pa=document.getElementById('pa'), up=document.getElementById('up'),
       obep=document.getElementById('obep'), orate=document.getElementById('orate'),
+      au=document.getElementById('au'),
+      osim=document.getElementById('osim'), osimn=document.getElementById('osimn'),
+      simbox=document.getElementById('simbox'),
       dist=document.getElementById('dist'), distlg=document.getElementById('distlg');
 let sortK='rank', sortA=true, showRe=false, onlyBep=false, BEP=0;
 const fmt=n=>n?Math.round(n).toLocaleString('ko-KR'):'–';
@@ -300,6 +314,22 @@ function calcBep(){
 }
 
 const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\\.0$/,'')+'만':fmt(n);
+
+
+// 예상 관객수를 넣으면 그 지점의 손익을 계산한다.
+//   부금 = 관객수 × 부금단가,  손익 = 부금 − (MG + P&A)
+function simulate(base){
+  const a=Number(au.value)||0, u=Number(up.value)||0;
+  const tot=((Number(mg.value)||0)+(Number(pa.value)||0))*10000;
+  const rev=a*u, pl=rev-tot;
+  osim.textContent=(pl>=0?'+':'−')+fmt(Math.abs(pl)/10000)+'만원';
+  simbox.classList.toggle('plus',pl>=0);
+  simbox.classList.toggle('minus',pl<0);
+  const better=base.filter(d=>d.cum>=a).length;
+  const pct=base.length?100*better/base.length:0;
+  osimn.innerHTML=`부금 ${fmt(rev/10000)}만원 · 이 성적을 넘긴 작품 `
+    +`<b>${better}편 / ${base.length}편 (상위 ${pct.toFixed(0)}%)</b>`;
+}
 
 function drawDist(){
   const base=D.filter(d=>!d.re);
@@ -389,7 +419,7 @@ function draw(){
   ct.textContent=`${r.length}편 표시`+(BEP>0?` · 못 번 영화 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
 }
 
-function refresh(){ calcBep(); drawDist(); draw(); }
+function refresh(){ calcBep(); simulate(D.filter(d=>!d.re)); drawDist(); draw(); }
 
 document.querySelectorAll('thead th').forEach(th=>{
   th.addEventListener('click',()=>{
@@ -401,7 +431,7 @@ document.querySelectorAll('thead th').forEach(th=>{
     draw();
   });
 });
-[mg,pa,up].forEach(el=>el.addEventListener('input',refresh));
+[mg,pa,up,au].forEach(el=>el.addEventListener('input',refresh));
 q.addEventListener('input',draw);
 tre.addEventListener('click',()=>{showRe=!showRe;tre.setAttribute('aria-pressed',showRe);
   tre.textContent=showRe?'재개봉 포함됨':'재개봉 포함';refresh();});
@@ -436,7 +466,7 @@ def main():
     html = (HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
                 .replace("__TILES__", th).replace("__N__", str(n))
                 .replace("__MG__", str(DEF_MG)).replace("__PA__", str(DEF_PA))
-                .replace("__UNIT__", str(DEF_UNIT))
+                .replace("__UNIT__", str(DEF_UNIT)).replace("__AUD__", str(c[n//2]))
                 .replace("__DATE__", datetime.date.today().strftime("%Y-%m-%d")))
     open(OUT, "w", encoding="utf-8").write(html)
     print(f"완료: {OUT} (표시 {len(rows)}편 / 신작 {n}편 / 좌석 {ns}편)")
