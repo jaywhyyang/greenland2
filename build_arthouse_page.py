@@ -123,6 +123,8 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   .out.sim{border-left-color:var(--muted)}
   .out.sim.plus{border-left-color:var(--accent)} .out.sim.plus .big{color:var(--accent)}
   .out.sim.minus{border-left-color:var(--alert)} .out.sim.minus .big{color:var(--alert)}
+  .outs{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:18px;
+    margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
   .formula{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:15px;padding-top:11px}
 
   .dist{display:flex;flex-direction:column;gap:7px}
@@ -203,25 +205,35 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
         <div class="fld"><label for="up">실정산 부금단가</label>
           <input id="up" type="number" min="1" step="100" value="__UNIT__" inputmode="numeric">
           <span class="u">원 / 관객 1명</span></div>
+        <div class="fld"><label for="au">예상 관객수</label>
+          <input id="au" type="number" min="0" step="1000" value="__AUD__" inputmode="numeric">
+          <span class="u">명 · 이 성적일 때 손익</span></div>
+      </div>
+      <div class="outs">
         <div class="out">
           <span class="cap">이만큼은 들어야 본전</span>
           <span class="big" id="obep">–</span>
           <span class="sm" id="orate">–</span>
         </div>
-        <div class="fld"><label for="au">예상 관객수</label>
-          <input id="au" type="number" min="0" step="1000" value="__AUD__" inputmode="numeric">
-          <span class="u">명 · 이 성적일 때 손익</span></div>
         <div class="out sim" id="simbox">
-          <span class="cap">그때 손익</span>
+          <span class="cap">그때 전체 손익</span>
           <span class="big" id="osim">–</span>
           <span class="sm" id="osimn">–</span>
+        </div>
+        <div class="out sim" id="relbox">
+          <span class="cap">개봉 실익 · 개봉 안 하는 경우 대비</span>
+          <span class="big" id="orel">–</span>
+          <span class="sm" id="oreln">–</span>
         </div>
       </div>
       <div class="formula">
         수입가(MG)는 작품마다 천차만별이라 누가 남겼는지는 실제 계약을 봐야 압니다.
         하지만 P&amp;A는 극장 개봉을 하는 이상 최소한 들어가는 돈이 있습니다.
         그래서 이 페이지는 <b>영화를 공짜로 사왔다고 쳐도 그 P&amp;A조차 극장에서 못 번 영화</b>만 붉게 표시합니다.
-        수입가를 아신다면 위 칸에 넣어보세요. 입력값은 이 브라우저에만 있고 저장되지 않습니다.
+        수입가를 아신다면 위 칸에 넣어보세요. 입력값은 이 브라우저에만 있고 저장되지 않습니다.        <br><br><b>개봉이 이득인지는 MG와 무관합니다.</b>
+        개봉을 안 하면 손실은 수입 MG 그대로이고, 개봉하면 거기에 P&amp;A가 더해지고 부금이 들어옵니다.
+        양쪽에서 MG가 상쇄되므로 <b>부금이 P&amp;A를 넘느냐</b>만 남습니다.
+        그래서 개봉 분기점은 P&amp;A ÷ 부금단가이고, 수입가를 얼마에 샀든 이 선은 같습니다.
       </div>
     </div>
   </section>
@@ -284,6 +296,8 @@ const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=docum
       au=document.getElementById('au'),
       osim=document.getElementById('osim'), osimn=document.getElementById('osimn'),
       simbox=document.getElementById('simbox'),
+      orel=document.getElementById('orel'), oreln=document.getElementById('oreln'),
+      relbox=document.getElementById('relbox'),
       dist=document.getElementById('dist'), distlg=document.getElementById('distlg');
 let sortK='rank', sortA=true, showRe=false, onlyBep=false, BEP=0;
 const fmt=n=>n?Math.round(n).toLocaleString('ko-KR'):'–';
@@ -329,6 +343,16 @@ function simulate(base){
   const pct=base.length?100*better/base.length:0;
   osimn.innerHTML=`부금 ${fmt(rev/10000)}만원 · 이 성적을 넘긴 작품 `
     +`<b>${better}편 / ${base.length}편 (상위 ${pct.toFixed(0)}%)</b>`;
+
+  // 개봉 여부 판단 — 개봉 안 하면 손실은 MG 그대로, 개봉하면 -MG-P&A+부금.
+  // 양쪽에서 MG가 상쇄되므로 부금이 P&A 를 넘는지만 보면 된다(MG 무관).
+  const paw=(Number(pa.value)||0)*10000;
+  const relGain=rev-paw, relNeed=u>0?paw/u:0;
+  orel.textContent=(relGain>=0?'+':'−')+fmt(Math.abs(relGain)/10000)+'만원';
+  relbox.classList.toggle('plus',relGain>=0);
+  relbox.classList.toggle('minus',relGain<0);
+  oreln.innerHTML=`개봉 분기 <b>${fmt(relNeed)}명</b> · 이보다 적으면 `
+    +`<b>개봉 안 하고 MG만 손실 보는 편이 이득</b>`;
 }
 
 function drawDist(){
