@@ -37,7 +37,8 @@ MAJORS = ("월트디즈니", "디즈니", "워너브러더스", "워너브라더
 HEADER = (["순위", "영화명", "개봉일", "제작연도", "대표국적", "국적", "장르", "감독",
            "배급사", "직배여부", "등급", "개봉스크린수",
            "첫주관객", "2주누적", "최종누적관객", "배수", "스크린당관객",
-           "14일좌석수", "평균좌석판매율", "좌석결손일", "누적매출액"]
+           "개봉일좌석수", "개봉일좌석판매율", "첫주말좌석수", "첫주말좌석판매율",
+           "첫주말일수", "누적매출액"]
           + [f"D{i}" for i in range(NDAY)])
 
 
@@ -71,22 +72,34 @@ def main():
         by_date = daily.get(key, {})
         m = meta.get(key, {})
 
-        curve, seats, rates, miss = [], 0, [], 0
+        curve = []
         for i in range(NDAY):
             row = by_date.get(od + datetime.timedelta(days=i))
-            if not row:
-                curve.append(0)
-                miss += 1
-                continue
-            curve.append(int(row["관객수"] or 0))
-            if row.get("좌석수"):
-                seats += int(row["좌석수"])
-                try:
-                    rates.append(float((row.get("좌석판매율") or "").rstrip("%")))
-                except ValueError:
-                    pass
-            else:
-                miss += 1
+            curve.append(int(row["관객수"] or 0) if row else 0)
+
+        def seat_of(d):
+            r = by_date.get(d)
+            return int(r["좌석수"]) if r and r.get("좌석수") else 0
+
+        def aud_of(d):
+            r = by_date.get(d)
+            return int(r["관객수"] or 0) if r else 0
+
+        # 개봉일 좌석
+        d0_seat = seat_of(od)
+        d0_aud = aud_of(od)
+
+        # 첫 주말 = 개봉일 이후 처음 나오는 금·토·일 연속 구간
+        # (수요일 개봉이면 D+2~D+4. 금·토 개봉이면 남은 요일만 잡히므로 일수를 함께 남긴다)
+        wk_days = []
+        for i in range(NDAY):
+            d = od + datetime.timedelta(days=i)
+            if d.weekday() in (4, 5, 6):
+                wk_days.append(d)
+            elif wk_days:
+                break
+        wk_seat = sum(seat_of(d) for d in wk_days)
+        wk_aud = sum(aud_of(d) for d in wk_days)
 
         wk1 = sum(curve[:7]) or int(e["첫주관객"] or 0)
         wk2 = sum(curve[:14])
@@ -106,8 +119,12 @@ def main():
             "최종누적관객": cum, "누적매출액": int(e["누적매출액"] or 0),
             "배수": round(cum / wk1, 2) if wk1 else "",
             "스크린당관객": round(cum / scr) if scr else "",
-            "14일좌석수": seats or "", "좌석결손일": miss,
-            "평균좌석판매율": round(sum(rates) / len(rates), 1) if rates else "",
+            # 판매율은 퍼센트 평균이 아니라 관객÷좌석으로 직접 구한다
+            "개봉일좌석수": d0_seat or "",
+            "개봉일좌석판매율": round(100 * d0_aud / d0_seat, 1) if d0_seat else "",
+            "첫주말좌석수": wk_seat or "",
+            "첫주말좌석판매율": round(100 * wk_aud / wk_seat, 1) if wk_seat else "",
+            "첫주말일수": len(wk_days),
             **{f"D{i}": curve[i] for i in range(NDAY)},
         })
 
@@ -120,7 +137,7 @@ def main():
         w.writerows(out)
 
     nc = sum(1 for r in out if r["D0"] or r["D1"])
-    ns = sum(1 for r in out if r["14일좌석수"])
+    ns = sum(1 for r in out if r["첫주말좌석수"])
     nd = sum(1 for r in out if r["배급사"])
     print(f"완료: {len(out)}편 → {OUT}")
     print(f"  일별곡선 {nc}편 / 좌석 {ns}편 / 배급사 {nd}편")
