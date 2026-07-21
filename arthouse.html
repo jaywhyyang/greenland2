@@ -276,10 +276,10 @@ const BUCKETS=[[200000,1e9,'20만+'],[100000,200000,'10만–20만'],[50000,1000
 
 // 입력 조건을 사람 말로 풀어 쓴다. MG 0원이면 '공짜로 사왔어도' 라는 표현이 성립한다.
 function costPhrase(){
-  const m=Number(mg.value)||0, p=Number(pa.value)||0;
-  return m===0
+  const w=mgWon(), p=Number(pa.value)||0;
+  return w===0
     ? `영화를 공짜로 사왔어도 P&A ${fmt(p)}만원`
-    : `MG ${fmt(m)}만 + P&A ${fmt(p)}만 = ${fmt(m+p)}만원`;
+    : `${mgLabel()} + P&A ${fmt(p)}만 = ${fmt(w/10000+p)}만원`;
 }
 
 function calcBep(){
