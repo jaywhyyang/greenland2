@@ -164,8 +164,9 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
     border:1px solid currentColor;margin-left:5px;color:var(--muted)}
   .spark{display:block}
   tr.mark td{background:color-mix(in srgb,var(--alert) 10%,var(--card));border-top:2px solid var(--alert);
-    border-bottom:2px solid var(--alert);font-weight:600;color:var(--alert);white-space:normal;
-    font-size:12.5px;line-height:1.5}
+    border-bottom:2px solid var(--alert);font-weight:700;color:var(--alert);white-space:normal;
+    font-size:13px;line-height:1.55}
+  tr.mark span{display:block;font-weight:400;color:var(--muted);font-size:11.5px;margin-top:3px}
   footer{color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:15px}
   footer code{background:var(--grid);padding:1px 5px;border-radius:4px;font-size:11.5px}
   @media (max-width:640px){.wrap{padding:26px 13px 60px}.drow{grid-template-columns:74px 1fr 68px}}
@@ -183,7 +184,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
   <div class="tiles">__TILES__</div>
 
   <section>
-    <h2>회수 하한 계산<span class="hint">비용을 넣으면 그 아래로는 어떤 계약이어도 손실인 구간이 표시됩니다</span></h2>
+    <h2>얼마를 써야 본전인가<span class="hint">비용을 넣으면 그 돈조차 못 번 영화가 몇 편인지 나옵니다</span></h2>
     <div class="panel">
       <div class="calc">
         <div class="fld"><label for="pa">P&amp;A</label>
@@ -196,23 +197,22 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
           <input id="up" type="number" min="1" step="100" value="__UNIT__" inputmode="numeric">
           <span class="u">원 / 관객 1명</span></div>
         <div class="out">
-          <span class="cap">이 비용을 넘기려면</span>
+          <span class="cap">이만큼은 들어야 본전</span>
           <span class="big" id="obep">–</span>
           <span class="sm" id="orate">–</span>
         </div>
       </div>
       <div class="formula">
-        <b>이 페이지는 개별 작품의 회수 여부를 판정하지 않습니다.</b>
-        수입 MG는 작품·계약마다 편차가 커서 실제 손익은 계약 조건을 봐야만 알 수 있습니다.
-        다만 P&amp;A는 극장 개봉을 하는 이상 하한이 있으므로, <b>MG를 0원으로 놓아도 P&amp;A조차 못 건진 구간</b>은
-        어떤 계약이어도 손실이라고 말할 수 있습니다. 아래 표시는 그 구간만을 뜻합니다.
-        입력값은 이 브라우저에서만 쓰이며 페이지에 저장되지 않습니다.
+        수입가(MG)는 작품마다 천차만별이라 누가 남겼는지는 실제 계약을 봐야 압니다.
+        하지만 P&amp;A는 극장 개봉을 하는 이상 최소한 들어가는 돈이 있습니다.
+        그래서 이 페이지는 <b>영화를 공짜로 사왔다고 쳐도 그 P&amp;A조차 극장에서 못 번 영화</b>만 붉게 표시합니다.
+        수입가를 아신다면 위 칸에 넣어보세요. 입력값은 이 브라우저에만 있고 저장되지 않습니다.
       </div>
     </div>
   </section>
 
   <section>
-    <h2>관객수 구간별 분포<span class="hint">손익분기를 넘는 구간이 초록으로 표시됩니다</span></h2>
+    <h2>관객수 구간별 분포<span class="hint">붉은 구간이 비용조차 못 번 영화들입니다</span></h2>
     <div class="panel">
       <div class="dist" id="dist"></div>
       <div class="lg" id="distlg"></div>
@@ -224,7 +224,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
     <div class="ctl">
       <input type="search" id="q" placeholder="영화명 · 감독 · 국가 · 장르 · 배급사 검색" aria-label="검색">
       <button class="tog" id="tre" aria-pressed="false">재개봉 포함</button>
-      <button class="tog" id="tbep" aria-pressed="false">비용 미달만 보기</button>
+      <button class="tog" id="tbep" aria-pressed="false">못 번 영화만</button>
       <span class="count" id="ct"></span>
     </div>
     <div class="tw">
@@ -275,15 +275,23 @@ const BUCKETS=[[200000,1e9,'20만+'],[100000,200000,'10만–20만'],[50000,1000
   [30000,50000,'3만–5만'],[20000,30000,'2만–3만'],[10000,20000,'1만–2만'],
   [5000,10000,'5천–1만'],[1000,5000,'1천–5천'],[0,1000,'1천 미만']];
 
+// 입력 조건을 사람 말로 풀어 쓴다. MG 0원이면 '공짜로 사왔어도' 라는 표현이 성립한다.
+function costPhrase(){
+  const m=Number(mg.value)||0, p=Number(pa.value)||0;
+  return m===0
+    ? `영화를 공짜로 사왔어도 P&A ${fmt(p)}만원`
+    : `MG ${fmt(m)}만 + P&A ${fmt(p)}만 = ${fmt(m+p)}만원`;
+}
+
 function calcBep(){
-  const tot=(Number(mg.value)||0)*10000+(Number(pa.value)||0)*10000;
+  const tot=((Number(mg.value)||0)+(Number(pa.value)||0))*10000;
   const u=Number(up.value)||0;
   BEP = u>0 ? tot/u : 0;
   const base=D.filter(d=>!d.re);
-  const k=base.filter(d=>d.cum<BEP).length;   // 아래쪽(확실 손실)을 센다
+  const k=base.filter(d=>d.cum<BEP).length;   // 아래쪽(확실히 못 번 쪽)을 센다
   obep.textContent = BEP>0 ? fmt(BEP)+'명' : '–';
   orate.innerHTML = BEP>0
-    ? `비용 ${fmt(tot/10000)}만원 · 못 넘긴 작품 <b>${k}편 / ${base.length}편 (${(100*k/base.length).toFixed(1)}%)</b>`
+    ? `${costPhrase()}은 못 벌었을 작품 <b>${k}편 / ${base.length}편 (${(100*k/base.length).toFixed(1)}%)</b>`
     : '부금단가를 입력하세요';
 }
 
@@ -299,7 +307,7 @@ function drawDist(){
   const med=[...base].sort((a,b)=>a.cum-b.cum)[Math.floor(base.length/2)];
   distlg.innerHTML=`중앙값 <b class="u">${fmt(med.cum)}명</b> (부금 환산 ${fmt(med.cum*(Number(up.value)||0)/10000)}만원)`
     + ` · 5천 명 미만 ${base.filter(d=>d.cum<5000).length}편`
-    + (BEP>0?` · <span class="u">붉은 구간 = 입력한 비용을 어떤 계약이어도 못 넘긴 작품</span>`:'');
+    + (BEP>0?` · <span class="u">붉은 구간 = ${costPhrase()}도 극장에서 못 번 영화</span>`:'');
 }
 
 function spark(c){
@@ -331,9 +339,9 @@ function draw(){
   const desc=(sortK==='cum'&&!sortA)||(sortK==='rank'&&sortA);
   for(const d of r){
     if(banded&&desc&&!marked&&BEP>0&&d.cum<BEP){
-      html+=`<tr class="mark"><td colspan="15">${fmt(BEP)}명 —
-        아래로는 입력한 비용을 어떤 계약이어도 넘기지 못한 구간입니다.
-        위쪽은 회수했다는 뜻이 아니라, 계약 조건 없이는 판단할 수 없다는 뜻입니다.</td></tr>`;
+      html+=`<tr class="mark"><td colspan="15">여기 아래는 ${costPhrase()}조차 극장에서 못 번 영화들
+        — ${fmt(BEP)}명 미만<br>
+        <span>위쪽이라고 남는 장사였다는 뜻은 아닙니다. 실제 수입가를 알아야 알 수 있습니다.</span></td></tr>`;
       marked=true;
     }
     const under=BEP>0&&d.cum<BEP;
@@ -358,7 +366,7 @@ function draw(){
   }
   tb.innerHTML=html;
   const nb=BEP>0?r.filter(d=>d.cum<BEP).length:0;
-  ct.textContent=`${r.length}편 표시`+(BEP>0?` · 비용 미달 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
+  ct.textContent=`${r.length}편 표시`+(BEP>0?` · 못 번 영화 ${nb}편 (${r.length?(100*nb/r.length).toFixed(1):0}%)`:'');
 }
 
 function refresh(){ calcBep(); drawDist(); draw(); }
