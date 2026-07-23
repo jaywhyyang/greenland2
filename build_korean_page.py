@@ -1,21 +1,88 @@
-<title>어린이 애니메이션 수입작 흥행 실적 · 2024–2026</title>
+# -*- coding: utf-8 -*-
+"""
+korean_final.csv → korean_report.html
+
+비직배 상업 외화 세그먼트 페이지.
+아트하우스·어린이애니 페이지와 같은 디자인·계산 규칙을 쓴다.
+세그먼트는 여집합으로 정의된다 — kobis_commercial_scan.py 주석 참고.
+"""
+import os
+import csv
+import json
+import datetime
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.path.join(BASE, "korean_final.csv")
+ART = os.path.join(BASE, "arthouse_final.csv")
+OUT = os.path.join(BASE, "korean_report.html")
+
+NDAY = 15
+DEF_MG, DEF_PA, DEF_UNIT = 0, 10000, 4200   # 만원, 만원, 원
+
+
+def load():
+    rows = []
+    for r in csv.DictReader(open(SRC, encoding="utf-8-sig")):
+        # 상영 중인 작품도 뺴지 않고 배지로 표시한다.
+        # 최근 개봉작이 통째로 빠지면 시장 현황 페이지로서 반쪽이 되기 때문이다.
+        iv = lambda k: int(r[k]) if r.get(k) and r[k].strip() else 0
+        fv = lambda k: float(r[k]) if r.get(k) and r[k].strip() else 0
+        od = datetime.date(*map(int, r["개봉일"].split("-")))
+        rows.append({
+            "name": r["영화명"], "open": r["개봉일"],
+            "run": r["성적확정"] != "확정", "wd": od.weekday(),
+            "nat": "한국", "dir": r["감독"], "dist": r["배급사"],
+            "scr": iv("개봉스크린수"),
+            "s0": iv("개봉일좌석수"), "r0": fv("개봉일좌석판매율"),
+            "sw": iv("첫주말좌석수"), "rw": fv("첫주말좌석판매율"),
+            "wc": fv("주말집중도"),
+            "fw": iv("첫주관객"), "cum": iv("최종누적관객"), "mult": fv("배수"),
+            "c": [iv(f"D{i}") for i in range(NDAY)],
+        })
+    rows.sort(key=lambda r: -r["cum"])
+    return rows
+
+
+def art_stats():
+    """비교용 아트하우스 요약 (같은 제외 규칙 적용)."""
+    out = []
+    for r in csv.DictReader(open(ART, encoding="utf-8-sig")):
+        oy = int(r["개봉일"][:4])
+        py = int(r["제작연도"]) if r["제작연도"].isdigit() else oy
+        if oy - py >= 6 or r["직배여부"] == "직배":
+            continue
+        if "청소년관람불가" in r["등급"] and int(r["개봉스크린수"] or 0) < 20:
+            continue
+        out.append({"cum": int(r["최종누적관객"] or 0),
+                    "r0": float(r["개봉일좌석판매율"] or 0),
+                    "rw": float(r["첫주말좌석판매율"] or 0),
+                    "mult": float(r["배수"] or 0)})
+    return out
+
+
+def med(v):
+    v = sorted(x for x in v if x)
+    return v[len(v) // 2] if v else 0
+
+
+HTML = """<title>한국영화 흥행 실적 · 2024–2026</title>
 <style>
   :root{
     --ink:#14181B; --paper:#F1F3F2; --card:#FFF; --line:#DCE1DF; --muted:#6B7573;
-    --accent:#1F6F5C; --alert:#A8452F; --wknd:#C87B2E; --grid:#E7EBE9;
+    --accent:#1F6F5C; --alert:#A8452F; --wknd:#2F6FA8; --grid:#E7EBE9;
     --shadow:0 1px 2px rgba(20,24,27,.05),0 4px 18px rgba(20,24,27,.04);
   }
   @media (prefers-color-scheme:dark){:root{
     --ink:#E5E9E7; --paper:#0E1312; --card:#161C1A; --line:#28302E; --muted:#8B9694;
-    --accent:#4FA88F; --alert:#D4735A; --wknd:#E0A05A; --grid:#232B29; --shadow:none;
+    --accent:#4FA88F; --alert:#D4735A; --wknd:#6FA8D8; --grid:#232B29; --shadow:none;
   }}
   :root[data-theme="dark"]{
     --ink:#E5E9E7; --paper:#0E1312; --card:#161C1A; --line:#28302E; --muted:#8B9694;
-    --accent:#4FA88F; --alert:#D4735A; --wknd:#E0A05A; --grid:#232B29; --shadow:none;
+    --accent:#4FA88F; --alert:#D4735A; --wknd:#6FA8D8; --grid:#232B29; --shadow:none;
   }
   :root[data-theme="light"]{
     --ink:#14181B; --paper:#F1F3F2; --card:#FFF; --line:#DCE1DF; --muted:#6B7573;
-    --accent:#1F6F5C; --alert:#A8452F; --wknd:#C87B2E; --grid:#E7EBE9;
+    --accent:#1F6F5C; --alert:#A8452F; --wknd:#2F6FA8; --grid:#E7EBE9;
     --shadow:0 1px 2px rgba(20,24,27,.05),0 4px 18px rgba(20,24,27,.04);
   }
   *{box-sizing:border-box}
@@ -126,36 +193,25 @@
 <div class="wrap">
   <header>
     <div class="eyebrow">KOBIS 통합전산망 기반 · 2024–2026</div>
-    <h1>어린이 애니메이션 수입작 흥행 실적</h1>
-    <p class="sub">2024년 1월 이후 개봉한 비직배 수입 어린이 애니메이션 52편.
+    <h1>한국영화 흥행 실적</h1>
+    <p class="sub">2024년 1월 이후 개봉한 비직배 수입 어린이 애니메이션 __N__편.
       일본 애니(팬덤 극장판·대형 IP), 대형 배급사 경유 메이저 IP, 작가주의·성인 애니는 제외했습니다.
       같은 기준으로 정리한 <a href="arthouse.html">아트하우스 외화 실적</a>과 비교해 보실 수 있습니다.</p>
       <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a> · <a href="korean.html">한국영화 전체</a> · <a href="krindie.html">한국 독립영화</a></p>
   </header>
 
-  <div class="tiles"><div class="tile "><span class="k">분석 대상</span><span class="v">52편</span><span class="n">성적 확정분</span></div><div class="tile "><span class="k">중앙값</span><span class="v">20,481</span><span class="n">아트하우스 5,620명</span></div><div class="tile w"><span class="k">주말 집중도</span><span class="v">69%</span><span class="n">첫주 관객 중 금·토·일</span></div><div class="tile "><span class="k">최고 기록</span><span class="v">60,606</span><span class="n">10 라이브즈</span></div><div class="tile "><span class="k">배수 중앙</span><span class="v">1.61배</span><span class="n">아트하우스 1.71배</span></div><div class="tile "><span class="k">P&A 3천만 회수</span><span class="v">87%</span><span class="n">아트하우스 45%</span></div></div>
-
-  <section>
-    <h2>주말에 몰린다는 통설<span class="hint">아트하우스와 나란히 놓고 본 결과</span></h2>
-    <div class="panel">
-      <table class="cmp">
-        <thead><tr><th>지표</th><th>어린이 애니</th><th>아트하우스 외화</th><th>차이</th></tr></thead>
-        <tbody><tr><td>중앙 관객수</td><td class='k'>20,481명</td><td class='a'>5,620명</td><td class='a'>3.6배</td></tr><tr><td>개봉일 좌석판매율</td><td class='k'>7.6%</td><td class='a'>8.1%</td><td class='a'>-0.5%p</td></tr><tr><td>첫 주말 좌석판매율</td><td class='k'>10.7%</td><td class='a'>7.5%</td><td class='a'>+3.2%p</td></tr><tr><td>개봉일 → 첫 주말 변화</td><td class='k'>+3.1%p</td><td class='a'>-0.6%p</td><td class='a'>—</td></tr><tr><td>배수 (최종÷첫주)</td><td class='k'>1.61배</td><td class='a'>1.71배</td><td class='a'>-0.10</td></tr><tr><td>최고 기록</td><td class='k'>60,606명</td><td class='a'>1,213,349명</td><td class='a'>20배 차이</td></tr><tr><td>P&A 3천만 회수율</td><td class='k'>87%</td><td class='a'>45%</td><td class='a'>+42%p</td></tr></tbody>
-      </table>
-      <div class="formula">어린이 애니는 개봉일 판매율이 7.6%로 아트하우스(8.1%)와 비슷하게 출발하지만, 첫 주말에 10.7%까지 <b>오릅니다</b>. 아트하우스는 같은 구간에서 7.5%로 <b>떨어집니다</b>. 주말에 채운다는 통설은 데이터로 확인됩니다. 다만 배수는 1.61배로 아트하우스(1.71배)보다 낮고 최고 기록도 60,606명에 그칩니다. 첫 주말에 올 관객은 다 오지만 그 이상으로 번지지는 않는다는 뜻입니다. 바닥은 튼튼하고 천장은 낮은 구조입니다.</div>
-    </div>
-  </section>
+  <div class="tiles">__TILES__</div>
 
   <section>
     <h2>얼마를 써야 본전인가<span class="hint">비용을 넣으면 그 돈조차 못 번 영화가 몇 편인지 나옵니다</span></h2>
     <div class="panel">
       <div class="calc">
         <div class="fld"><label for="pa">P&amp;A</label>
-          <input id="pa" type="number" min="0" step="500" value="3000" inputmode="numeric">
+          <input id="pa" type="number" min="0" step="500" value="__PA__" inputmode="numeric">
           <span class="u">만원</span></div>
         <div class="fld"><label for="mg">수입 MG</label>
           <div class="wcur">
-            <input id="mg" type="number" min="0" step="1000" value="0" inputmode="numeric">
+            <input id="mg" type="number" min="0" step="1000" value="__MG__" inputmode="numeric">
             <select id="cur" aria-label="통화">
               <option value="USD">USD</option>
               <option value="EUR">EUR</option>
@@ -167,10 +223,10 @@
           <input id="fx" type="number" min="1" step="10" value="1500" inputmode="numeric">
           <span class="u" id="fxu">원 / 1 USD</span></div>
         <div class="fld"><label for="up">실정산 부금단가</label>
-          <input id="up" type="number" min="1" step="100" value="4200" inputmode="numeric">
+          <input id="up" type="number" min="1" step="100" value="__UNIT__" inputmode="numeric">
           <span class="u">원 / 관객 1명</span></div>
         <div class="fld"><label for="au">예상 관객수</label>
-          <input id="au" type="number" min="0" step="1000" value="20481" inputmode="numeric">
+          <input id="au" type="number" min="0" step="1000" value="__AUD__" inputmode="numeric">
           <span class="u">명 · 이 성적일 때 손익</span></div>
       </div>
       <div class="outs">
@@ -211,7 +267,7 @@
   </section>
 
   <section>
-    <h2>전체 랭킹<span class="hint">막대는 개봉일부터 14일간 일별 관객 · 주황이 금·토·일</span></h2>
+    <h2>전체 랭킹<span class="hint">막대는 개봉일부터 14일간 일별 관객 · 파랑이 금·토·일</span></h2>
     <div class="ctl">
       <input type="search" id="q" placeholder="영화명 · 국가 · 배급사 검색" aria-label="검색">
       <button class="tog" id="tbep" aria-pressed="false">못 번 영화만</button>
@@ -223,7 +279,6 @@
           <th class="num" data-k="rank">#</th>
           <th data-k="name">영화</th>
           <th data-k="open">개봉일</th>
-          <th data-k="nat">국가</th>
           <th data-k="dist">배급사</th>
           <th class="num" data-k="scr">스크린</th>
           <th class="num" data-k="s0">개봉일<br>좌석수</th>
@@ -240,8 +295,8 @@
   </section>
 
   <footer>
-    출처 영화진흥위원회 영화관입장권통합전산망(KOBIS) · 수집 2026-07-23<br>
-    주말 집중도는 첫 주말(개봉 후 처음 오는 금·토·일) 관객 ÷ 첫주(개봉일~D+6) 관객입니다.
+    출처 영화진흥위원회 영화관입장권통합전산망(KOBIS) · 수집 __DATE__<br>
+    주말 집중도는 첫 주말(개봉 후 처음 오는 금·토·일) 관객 ÷ 첫주(개봉일~D+6) 관객입니다. 개봉 30개관 미만과 청소년관람불가 소규모 상영은 제외했습니다. <code>상영중</code> 배지가 붙은 작품은 수집 시점에 아직 상영이 이어지고 있어 수치가 더 올라갈 수 있습니다.
     배수는 최종 누적 ÷ 첫주 관객으로, 값이 클수록 개봉 후 입소문으로 확산된 작품입니다.
     좌석판매율은 해당 구간 관객수 ÷ 좌석수로 직접 계산했습니다.
     최종 누적은 일별 관객 합산값입니다. <code>상영중</code> 배지가 붙은 작품은 수집 시점에 아직 상영이 이어지고 있어 수치가 더 올라갈 수 있습니다.
@@ -249,7 +304,7 @@
 </div>
 
 <script>
-const D=[{"name":"10 라이브즈","open":"2024-08-15","wd":3,"nat":"영국","dir":"크리스토퍼 젠킨스","dist":"(주)박수엔터테인먼트","scr":191,"s0":35983,"r0":31.0,"run":false,"sw":88455,"rw":15.0,"wc":45.4,"fw":29182,"cum":60606,"mult":2.08,"c":[11153,2725,5198,5334,998,1128,2646,884,600,2767,2878,346,376,235,1116]},{"name":"점보","open":"2026-02-18","wd":2,"nat":"인도네시아","dir":"","dist":"(주)바이포엠스튜디오","scr":371,"s0":46665,"r0":27.1,"run":false,"sw":135684,"rw":16.5,"wc":51.2,"fw":43585,"cum":52582,"mult":1.21,"c":[12648,2470,3263,9260,9807,2584,3553,722,1010,1117,1798,814,1038,201,99]},{"name":"정글번치: 월드투어","open":"2024-01-31","wd":2,"nat":"프랑스","dir":"","dist":"(주)무비다이브","scr":193,"s0":29153,"r0":7.2,"run":false,"sw":104475,"rw":16.0,"wc":73.2,"fw":22804,"cum":52193,"mult":2.29,"c":[2085,1738,2421,7227,7043,909,1381,788,1295,3803,2820,4699,6418,858,514]},{"name":"바다 탐험대 옥토넛 어보브 앤 비욘드 : 극지방 대작전","open":"2025-01-27","wd":0,"nat":"영국","dir":"","dist":"와이드 릴리즈(주)","scr":208,"s0":46800,"r0":15.0,"run":false,"sw":121097,"rw":8.7,"wc":34.4,"fw":30471,"cum":51308,"mult":1.68,"c":[7030,3955,3329,5677,1665,4570,4245,410,660,677,357,639,3144,3552,374]},{"name":"오지: 사라진 숲을 찾아서","open":"2024-09-13","wd":4,"nat":"미국","dir":"","dist":"(주)팝엔터테인먼트,(주)플레이그램","scr":214,"s0":28872,"r0":6.8,"run":false,"sw":104695,"rw":17.2,"wc":50.5,"fw":35662,"cum":50986,"mult":1.43,"c":[1968,7436,8588,5076,5021,7067,506,1603,4719,4476,474,432,593,94,122]},{"name":"엘리: 몬스터 패밀리","open":"2025-02-14","wd":4,"nat":"독일","dir":"피엣 드 라이커,예스퍼 묄러","dist":"(주)올스타엔터테인먼트,(주)플레이그램","scr":345,"s0":35281,"r0":12.3,"run":false,"sw":129235,"rw":12.6,"wc":70.4,"fw":23198,"cum":49325,"mult":2.13,"c":[4324,6355,5660,1409,1499,1821,2130,1525,4067,4052,1694,1056,1091,1066,828]},{"name":"아이엠 티라노","open":"2024-03-01","wd":4,"nat":"중국","dir":"","dist":"주식회사 원더스튜디오,영화사빅","scr":229,"s0":41929,"r0":36.4,"run":false,"sw":118668,"rw":28.6,"wc":93.5,"fw":36317,"cum":49305,"mult":1.36,"c":[15261,9880,8821,848,380,263,864,102,3548,3516,56,30,57,58,29]},{"name":"꼬마 판다 팡의 아프리카 대모험","open":"2025-01-22","wd":2,"nat":"네덜란드","dir":"리처드 클라우스,카스텐 킬러리치","dist":"(주)디스테이션","scr":198,"s0":27966,"r0":6.2,"run":false,"sw":81080,"rw":10.6,"wc":48.2,"fw":17782,"cum":44979,"mult":2.53,"c":[1729,1168,1124,3503,3950,3596,2712,1678,2470,882,1769,1481,448,1112,713]},{"name":"바다 탐험대 옥토넛 어보브 앤 비욘드 : 바다가 위험해","open":"2024-08-14","wd":2,"nat":"영국","dir":"","dist":"와이드 릴리즈(주)","scr":236,"s0":30757,"r0":5.8,"run":false,"sw":94916,"rw":10.7,"wc":43.1,"fw":23559,"cum":42322,"mult":1.8,"c":[1777,10280,1700,4463,3998,563,778,503,1012,1072,2600,2756,360,391,362]},{"name":"스노우 폭스2: 몬스터타운 구하기","open":"2025-04-26","wd":5,"nat":"미국","dir":"","dist":"(주)팝엔터테인먼트","scr":224,"s0":41309,"r0":11.5,"run":false,"sw":81761,"rw":11.6,"wc":57.2,"fw":16559,"cum":41161,"mult":2.49,"c":[4736,4742,395,252,458,3958,2018,3293,2772,7710,5164,355,24,700,1476]},{"name":"톰과 제리: 황금나침반 대소동","open":"2026-01-01","wd":3,"nat":"미국","dir":"","dist":"TCO(주)더콘텐츠온","scr":406,"s0":55498,"r0":23.4,"run":false,"sw":131449,"rw":9.9,"wc":43.8,"fw":29785,"cum":40908,"mult":1.37,"c":[13003,3733,5102,4197,992,1147,1611,1076,1462,1635,1444,428,505,646,396]},{"name":"바다 탐험대 옥토넛 어보브 앤 비욘드 : 콰지의 깜짝 어드벤처","open":"2025-09-27","wd":5,"nat":"영국","dir":"","dist":"와이드 릴리즈(주)","scr":279,"s0":49004,"r0":10.0,"run":false,"sw":98791,"rw":12.3,"wc":68.2,"fw":17842,"cum":40689,"mult":2.28,"c":[4909,7266,387,404,233,239,4404,2728,1962,2030,2945,1837,2115,1287,1146]},{"name":"꼬마참새 리차드: 신비한 보석 탐험대","open":"2024-05-01","wd":2,"nat":"독일","dir":"","dist":"(주)스튜디오디에이치엘","scr":174,"s0":22686,"r0":17.0,"run":false,"sw":65445,"rw":17.8,"wc":50.7,"fw":23004,"cum":39016,"mult":1.7,"c":[3851,825,1056,3147,7465,5898,762,392,520,642,2394,2911,847,403,1657]},{"name":"바다 탐험대 옥토넛 어보브 앤 비욘드 : 육지생물 구조작전","open":"2026-02-12","wd":3,"nat":"영국","dir":"","dist":"와이드 릴리즈(주)","scr":227,"s0":20901,"r0":7.0,"run":false,"sw":87760,"rw":9.1,"wc":41.1,"fw":19331,"cum":34024,"mult":1.76,"c":[1463,807,3618,3523,3602,2217,4101,506,620,1762,2086,802,775,615,887]},{"name":"빌리와 용감한 녀석들: 스노우 베어 구조대","open":"2024-11-07","wd":3,"nat":"멕시코","dir":"가브리엘 리바 팔라시오 알라트리스테,로돌포 리바 팔라시오 알라트리스테","dist":"(주)박수엔터테인먼트","scr":323,"s0":15389,"r0":7.5,"run":false,"sw":99303,"rw":12.7,"wc":80.3,"fw":15724,"cum":33941,"mult":2.16,"c":[1152,1519,5287,5813,607,546,800,725,665,2259,2451,552,330,770,280]},{"name":"언더더씨: 마법 산호초를 찾아서","open":"2024-06-27","wd":3,"nat":"독일","dir":"","dist":"(주)팝엔터테인먼트","scr":215,"s0":11546,"r0":9.6,"run":false,"sw":66103,"rw":13.3,"wc":68.0,"fw":12879,"cum":30960,"mult":2.4,"c":[1107,718,3589,4455,423,1013,1574,903,1397,1622,1888,152,722,1070,1133]},{"name":"슈퍼 엘프: 빨간모자 비밀요정","open":"2025-01-15","wd":2,"nat":"독일","dir":"우테 폰 뮌쇼폴","dist":"(주)박수엔터테인먼트","scr":171,"s0":26890,"r0":6.7,"run":false,"sw":105992,"rw":10.1,"wc":67.7,"fw":15736,"cum":28425,"mult":1.81,"c":[1813,1716,2986,3500,4168,714,839,233,854,659,2348,2924,597,511,269]},{"name":"리틀 엠마","open":"2024-10-25","wd":4,"nat":"미국","dir":"레오 루이스 랴오","dist":"(주)블루라벨픽쳐스","scr":212,"s0":18728,"r0":9.6,"run":false,"sw":95009,"rw":11.1,"wc":81.5,"fw":12897,"cum":26297,"mult":2.04,"c":[1791,4204,4510,216,621,320,1235,369,3240,3405,1208,309,436,333,164]},{"name":"백설공주와 일곱난쟁이","open":"2025-04-10","wd":3,"nat":"미국","dir":"","dist":"(주)박수엔터테인먼트","scr":334,"s0":20778,"r0":3.8,"run":false,"sw":126695,"rw":11.2,"wc":87.2,"fw":16330,"cum":25062,"mult":1.53,"c":[781,693,6331,7212,424,475,414,34,90,2643,2379,44,60,49,18]},{"name":"용감한 돌고래 벨루와 바닷속 친구들","open":"2024-03-13","wd":2,"nat":"캐나다","dir":"","dist":"찬란,(주)빅브라더스","scr":180,"s0":11226,"r0":3.0,"run":false,"sw":58703,"rw":15.7,"wc":79.9,"fw":11518,"cum":24426,"mult":2.12,"c":[334,239,399,4144,4655,435,1312,332,483,1000,3990,3974,188,286,69]},{"name":"꼬마돼지 베이브와 타피티","open":"2025-11-13","wd":3,"nat":"독일","dir":"니나 웰스","dist":"(주)박수엔터테인먼트","scr":359,"s0":17711,"r0":7.6,"run":false,"sw":107294,"rw":11.4,"wc":79.2,"fw":15428,"cum":22441,"mult":1.45,"c":[1347,1565,5307,5352,605,886,366,692,781,937,1034,389,187,175,49]},{"name":"정글비트 2","open":"2026-01-29","wd":3,"nat":"영국","dir":"샘 윌슨","dist":"(주)박수엔터테인먼트","scr":309,"s0":21845,"r0":7.9,"run":false,"sw":109241,"rw":10.2,"wc":68.7,"fw":16146,"cum":22308,"mult":1.38,"c":[1717,2244,4486,4359,740,1433,1167,965,804,450,667,437,828,482,308]},{"name":"아기돼지 3형제: 도넛별 대모험","open":"2025-09-04","wd":3,"nat":"중국","dir":"유위","dist":"와이드 릴리즈(주)","scr":281,"s0":13255,"r0":6.6,"run":false,"sw":77332,"rw":13.6,"wc":80.2,"fw":13076,"cum":21084,"mult":1.61,"c":[873,706,4613,5166,499,340,879,308,171,868,812,93,212,128,216]},{"name":"빼꼼: 미션 투 마스","open":"2024-06-01","wd":5,"nat":"중국","dir":"","dist":"(주)박수엔터테인먼트","scr":160,"s0":37125,"r0":12.8,"run":false,"sw":73021,"rw":12.6,"wc":56.2,"fw":16375,"cum":21067,"mult":1.29,"c":[4745,4462,138,143,260,4246,2381,1727,1368,164,59,4,33,230,35]},{"name":"스노우 퍼핀즈","open":"2024-02-15","wd":3,"nat":"스페인","dir":"","dist":"(주)팝엔터테인먼트","scr":315,"s0":32965,"r0":8.0,"run":false,"sw":108327,"rw":8.0,"wc":56.1,"fw":15367,"cum":20768,"mult":1.35,"c":[2652,1956,3633,3028,929,1377,1792,751,805,764,984,874,438,368,119]},{"name":"스노우 폭스 : 마법의 돌을 찾아서","open":"2026-01-10","wd":5,"nat":"미국","dir":"","dist":"와이드 릴리즈(주)","scr":180,"s0":25416,"r0":14.2,"run":false,"sw":49672,"rw":14.3,"wc":65.1,"fw":10915,"cum":20481,"mult":1.88,"c":[3605,3504,206,461,977,960,1202,1544,2177,162,561,461,493,592,196]},{"name":"200% 울프: 최강 푸들이 될 거야!","open":"2025-03-12","wd":2,"nat":"호주","dir":"알렉스 슈타더만","dist":"(주)팝엔터테인먼트","scr":237,"s0":13370,"r0":5.4,"run":false,"sw":94574,"rw":11.3,"wc":86.5,"fw":12405,"cum":20261,"mult":1.63,"c":[726,428,673,4522,5536,110,410,315,218,281,1912,1943,10,119,165]},{"name":"바커스: 슈퍼스타가 될 거야","open":"2024-06-01","wd":5,"nat":"러시아","dir":"","dist":"와이드 릴리즈(주),(주)태양미디어그룹","scr":173,"s0":33807,"r0":11.6,"run":false,"sw":64591,"rw":10.9,"wc":53.7,"fw":13121,"cum":20194,"mult":1.54,"c":[3907,3134,302,502,148,3436,1692,1706,1780,45,29,41,123,13,208]},{"name":"펫 트레인","open":"2026-03-28","wd":5,"nat":"프랑스","dir":"","dist":"(주)스튜디오디에이치엘,(주)플레이그램","scr":184,"s0":36182,"r0":16.6,"run":false,"sw":70475,"rw":16.4,"wc":95.9,"fw":12054,"cum":20011,"mult":1.66,"c":[6012,5547,174,164,83,34,40,3565,2748,21,41,46,96,95,353]},{"name":"돌핀보이: 푸른 바다의 수호자","open":"2026-06-03","wd":2,"nat":"독일","dir":"","dist":"(주)팝엔터테인먼트","scr":222,"s0":24757,"r0":21.9,"run":false,"sw":55930,"rw":12.6,"wc":49.3,"fw":14325,"cum":19010,"mult":1.33,"c":[5419,924,671,3273,3115,305,618,205,166,48,1077,1174,26,55,0]},{"name":"빌리와 용감한 타이거 킹","open":"2025-09-11","wd":3,"nat":"말레이시아","dir":"","dist":"(주)박수엔터테인먼트","scr":241,"s0":12735,"r0":8.0,"run":false,"sw":72886,"rw":12.9,"wc":79.6,"fw":11844,"cum":16628,"mult":1.4,"c":[1025,755,4602,4074,233,590,565,337,344,769,663,61,28,224,177]},{"name":"빅샤크5: 80일간의 해저일주","open":"2024-07-11","wd":3,"nat":"중국","dir":"","dist":"(주)팝엔터테인먼트","scr":172,"s0":21549,"r0":6.6,"run":false,"sw":77328,"rw":8.2,"wc":73.5,"fw":8605,"cum":15296,"mult":1.78,"c":[1425,1789,2133,2399,321,310,228,344,396,1119,1444,505,489,47,148]},{"name":"캔터빌의 유령","open":"2025-02-26","wd":2,"nat":"미국","dir":"","dist":"와이드 릴리즈(주)","scr":144,"s0":24206,"r0":6.5,"run":false,"sw":73731,"rw":9.1,"wc":52.4,"fw":12751,"cum":15270,"mult":1.2,"c":[1579,1860,2466,2171,2042,2458,175,68,39,93,744,827,42,95,1]},{"name":"출동! 왕엉덩이 히어로: 털복숭이 꼬리도적단 소탕작전","open":"2025-04-12","wd":5,"nat":"호주","dir":"리카르드 쿠소","dist":"(주)팝엔터테인먼트","scr":181,"s0":36859,"r0":8.6,"run":false,"sw":75951,"rw":9.9,"wc":89.6,"fw":8390,"cum":14829,"mult":1.77,"c":[3164,4352,227,141,129,153,224,2225,1723,51,116,43,8,25,97]},{"name":"립세의 사계","open":"2024-01-10","wd":2,"nat":"폴란드","dir":"DK 웰치먼,휴 웰치맨","dist":"(주)디스테이션","scr":186,"s0":40733,"r0":6.3,"run":false,"sw":89981,"rw":3.7,"wc":36.8,"fw":8978,"cum":14364,"mult":1.6,"c":[2556,1261,1225,1107,970,476,1383,892,762,763,516,482,274,253,156]},{"name":"호두까기 인형과 마술피리","open":"2024-10-30","wd":2,"nat":"러시아","dir":"","dist":"(주)팝엔터테인먼트","scr":258,"s0":9926,"r0":2.6,"run":false,"sw":76732,"rw":11.0,"wc":82.2,"fw":10316,"cum":14285,"mult":1.38,"c":[260,537,648,3802,4028,357,684,175,9,109,531,701,241,289,117]},{"name":"마이펫의 컴백홈 어드벤처","open":"2024-10-23","wd":2,"nat":"미국","dir":"케빈 도노반","dist":"그린나래미디어(주)","scr":161,"s0":8923,"r0":2.2,"run":false,"sw":87959,"rw":7.7,"wc":87.1,"fw":7730,"cum":13902,"mult":1.8,"c":[199,294,636,2689,3405,258,249,207,25,82,1451,1722,11,35,54]},{"name":"몬스터 프렌즈","open":"2024-04-25","wd":3,"nat":"스페인","dir":"","dist":"(주)박수엔터테인먼트","scr":180,"s0":14436,"r0":10.4,"run":false,"sw":52672,"rw":10.7,"wc":63.6,"fw":8893,"cum":12519,"mult":1.41,"c":[1508,1768,1847,2037,197,440,1096,489,641,104,386,203,9,0,136]},{"name":"인어공주: 마법물약의 비밀","open":"2024-03-14","wd":3,"nat":"미국","dir":"","dist":"(주)박수엔터테인먼트","scr":188,"s0":9528,"r0":8.7,"run":false,"sw":52466,"rw":14.2,"wc":81.3,"fw":9189,"cum":12265,"mult":1.33,"c":[829,379,3341,3749,149,267,475,22,126,1157,1032,5,61,72,0]},{"name":"아기 티라노 디보: 초식이지만 괜찮아!","open":"2026-02-25","wd":2,"nat":"중국","dir":"","dist":"(주)박수엔터테인먼트","scr":150,"s0":14460,"r0":4.3,"run":false,"sw":63317,"rw":8.5,"wc":59.3,"fw":9027,"cum":12084,"mult":1.34,"c":[628,713,1491,2128,1734,2060,273,29,33,233,1094,1005,25,39,21]},{"name":"프라우드 프린세스: 로열 어드벤처","open":"2025-08-15","wd":4,"nat":"체코","dir":"","dist":"(주)스튜디오디에이치엘","scr":126,"s0":30696,"r0":9.0,"run":false,"sw":84538,"rw":7.9,"wc":92.1,"fw":7230,"cum":10374,"mult":1.43,"c":[2767,1998,1893,229,122,122,99,290,798,890,184,155,12,144,190]},{"name":"얼음 여왕","open":"2026-01-28","wd":2,"nat":"노르웨이","dir":"","dist":"(주)디스테이션","scr":159,"s0":13729,"r0":4.9,"run":false,"sw":58854,"rw":5.5,"wc":57.8,"fw":5648,"cum":10331,"mult":1.83,"c":[676,533,520,1506,1240,193,980,363,516,757,660,769,110,146,178]},{"name":"맘보 점보","open":"2026-06-03","wd":2,"nat":"덴마크","dir":"","dist":"와이드 릴리즈(주)","scr":131,"s0":22085,"r0":9.8,"run":false,"sw":29367,"rw":7.4,"wc":36.7,"fw":5907,"cum":9944,"mult":1.68,"c":[2172,290,255,994,919,111,1166,141,1094,110,347,660,75,238,1]},{"name":"생츄어리 2 : 쿼카가 너무해","open":"2024-03-07","wd":3,"nat":"호주","dir":"리카르드 쿠소","dist":"(주)팝엔터테인먼트","scr":249,"s0":5182,"r0":2.8,"run":false,"sw":66067,"rw":9.9,"wc":93.1,"fw":7004,"cum":9261,"mult":1.32,"c":[143,231,3112,3181,111,130,96,119,4,387,340,10,30,178,0]},{"name":"고양이 수비대: 모나리자를 지켜라!","open":"2025-05-14","wd":2,"nat":"러시아","dir":"바실리 로벤스키","dist":"그린나래미디어(주),주식회사 로아앤코홀딩스","scr":151,"s0":11768,"r0":1.9,"run":false,"sw":57148,"rw":6.9,"wc":79.8,"fw":4973,"cum":7504,"mult":1.51,"c":[228,484,409,1922,1635,175,120,44,46,137,535,530,277,49,149]},{"name":"드림쏭3","open":"2024-03-28","wd":3,"nat":"미국","dir":"안소니 벨","dist":"주식회사 원더스튜디오,영화사빅","scr":238,"s0":7754,"r0":3.1,"run":false,"sw":59770,"rw":6.7,"wc":89.0,"fw":4489,"cum":5625,"mult":1.25,"c":[238,163,2035,1798,101,82,72,14,14,292,296,91,40,35,0]},{"name":"어네스트와 셀레스틴: 멜로디 소동","open":"2025-06-11","wd":2,"nat":"프랑스","dir":"","dist":"(주)영화사 진진,(주)하이스트레인저","scr":119,"s0":14039,"r0":3.2,"run":false,"sw":48099,"rw":4.9,"wc":61.2,"fw":3818,"cum":5104,"mult":1.34,"c":[452,370,512,854,970,310,350,54,71,30,89,84,11,17,28]},{"name":"아톰 새로운 시작","open":"2024-01-31","wd":2,"nat":"미국","dir":"데이빗 보워스","dist":"주식회사 블루필름웍스","scr":144,"s0":10736,"r0":3.0,"run":false,"sw":42286,"rw":5.9,"wc":70.1,"fw":3559,"cum":4558,"mult":1.28,"c":[323,351,235,1122,1138,180,210,4,7,40,33,49,22,8,7]},{"name":"래빗스쿨 2: 부활절 대소동","open":"2024-03-27","wd":2,"nat":"독일","dir":"우테 폰 뮌쇼폴","dist":"(주)버킷스튜디오,주식회사 블루필름웍스","scr":126,"s0":3710,"r0":3.8,"run":false,"sw":41919,"rw":5.9,"wc":83.5,"fw":2973,"cum":3637,"mult":1.22,"c":[141,168,109,1364,1009,129,53,4,14,22,200,127,11,15,0]},{"name":"우주 수호대: 하하하 행성의 대모험","open":"2026-03-13","wd":4,"nat":"중국","dir":"","dist":"(주)팝엔터테인먼트","scr":102,"s0":5188,"r0":1.4,"run":false,"sw":34056,"rw":4.0,"wc":93.7,"fw":1450,"cum":2778,"mult":1.92,"c":[75,653,631,20,30,15,26,72,346,509,17,24,1,10,6]},{"name":"마법 숲 동물 친구들 대모험","open":"2026-04-01","wd":2,"nat":"아랍에미리트연합국정부","dir":"","dist":"(주)팝엔터테인먼트","scr":87,"s0":5664,"r0":1.3,"run":false,"sw":25382,"rw":4.1,"wc":84.3,"fw":1238,"cum":2120,"mult":1.71,"c":[73,50,47,604,393,44,27,8,21,10,201,226,24,17,1]},{"name":"화성특급","open":"2025-04-02","wd":2,"nat":"프랑스","dir":"제레미 페랭","dist":"주식회사 킨스튜디오","scr":19,"s0":2570,"r0":9.4,"run":false,"sw":6481,"rw":2.4,"wc":28.5,"fw":537,"cum":716,"mult":1.33,"c":[241,37,38,63,52,37,69,2,2,5,6,9,3,8,3]}];
+const D=__DATA__;
 const tb=document.getElementById('tb'), q=document.getElementById('q'), ct=document.getElementById('ct'),
       tbep=document.getElementById('tbep'), mg=document.getElementById('mg'), pa=document.getElementById('pa'),
       up=document.getElementById('up'), obep=document.getElementById('obep'), orate=document.getElementById('orate'),
@@ -326,7 +381,7 @@ function calcBep(){
     ? `${costPhrase()}은 못 벌었을 작품 <b>${k}편 / ${D.length}편 (${(100*k/D.length).toFixed(1)}%)</b>`
     : '부금단가를 입력하세요';
 }
-const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\.0$/,'')+'만':fmt(n);
+const compact=n=>n>=10000?String(+(n/10000).toFixed(1)).replace(/\\.0$/,'')+'만':fmt(n);
 
 
 // 예상 관객수를 넣으면 그 지점의 손익을 계산한다.
@@ -408,7 +463,7 @@ function draw(){
   const desc=(sortK==='cum'&&!sortA)||(sortK==='rank'&&sortA);
   for(const d of r){
     if(desc&&!marked&&BEP>0&&d.cum<BEP){
-      html+=`<tr class="mark"><td colspan="13">여기 아래는 ${costPhrase()}조차 극장에서 못 번 영화들 — ${fmt(BEP)}명 미만
+      html+=`<tr class="mark"><td colspan="12">여기 아래는 ${costPhrase()}조차 극장에서 못 번 영화들 — ${fmt(BEP)}명 미만
         <span>위쪽이라고 남는 장사였다는 뜻은 아닙니다. 실제 수입가를 알아야 알 수 있습니다.</span></td></tr>`;
       marked=true;
     }
@@ -417,7 +472,6 @@ function draw(){
       <td class="nm">${esc(d.name)}${d.run?'<span class="pill run">상영중</span>':''}
         <div class="meta">${esc(d.dir)||'&nbsp;'}</div></td>
       <td class="meta">${d.open}</td>
-      <td class="meta">${esc(d.nat)||'–'}</td>
       <td class="dstr">${esc(d.dist)||'–'}</td>
       <td class="num">${fmt(d.scr)}</td>
       <td class="num">${fmt(d.s0)}</td>
@@ -454,3 +508,45 @@ syncCur();
 refresh();
 loadFx();
 </script>
+"""
+
+
+def main():
+    K = load()
+    n = len(K)
+    kc = sorted(x["cum"] for x in K)
+    UP = DEF_UNIT
+
+    kwc = med([x["wc"] for x in K])
+    k_m = med([x["mult"] for x in K])
+    need = 3000 * 10000 / UP
+    k_rec = 100 * sum(1 for v in kc if v >= need) / n
+
+    tiles = [
+        ("분석 대상", f"{n}편", "성적 확정분 포함"),
+        ("중앙값", f"{kc[n//2]:,}", "절반이 이 아래"),
+        ("상위 10%", f"{kc[int(n*0.90)]:,}", f"상위 25%는 {kc[int(n*0.75)]:,}명"),
+        ("최고 기록", f"{kc[-1]:,}", K[0]["name"], "w"),
+        ("배수 중앙", f"{k_m:.2f}배", "최종 ÷ 첫주"),
+        ("주말 집중도", f"{kwc:.0f}%", "첫주 관객 중 금·토·일"),
+    ]
+    th = "".join(f'<div class="tile {t[3] if len(t)>3 else ""}"><span class="k">{t[0]}</span>'
+                 f'<span class="v">{t[1]}</span><span class="n">{t[2]}</span></div>' for t in tiles)
+
+
+
+    keys = ("name", "open", "wd", "nat", "dir", "dist", "scr", "s0", "r0", "run",
+            "sw", "rw", "wc", "fw", "cum", "mult", "c")
+    data = [{k: r[k] for k in keys} for r in K]
+    html = (HTML.replace("__DATA__", json.dumps(data, ensure_ascii=False, separators=(",", ":")))
+                .replace("__TILES__", th)
+                .replace("__N__", str(n)).replace("__MG__", str(DEF_MG))
+                .replace("__PA__", str(DEF_PA)).replace("__UNIT__", str(DEF_UNIT))
+                .replace("__AUD__", str(kc[n//2]))
+                .replace("__DATE__", datetime.date.today().strftime("%Y-%m-%d")))
+    open(OUT, "w", encoding="utf-8").write(html)
+    print(f"완료: {OUT} ({n}편)")
+
+
+if __name__ == "__main__":
+    main()

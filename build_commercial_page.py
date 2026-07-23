@@ -197,7 +197,7 @@ HTML = """<title>비직배 상업 외화 흥행 실적 · 2024–2026</title>
     <p class="sub">2024년 1월 이후 개봉한 비직배 수입 어린이 애니메이션 __N__편.
       일본 애니(팬덤 극장판·대형 IP), 대형 배급사 경유 메이저 IP, 작가주의·성인 애니는 제외했습니다.
       같은 기준으로 정리한 <a href="arthouse.html">아트하우스 외화 실적</a>과 비교해 보실 수 있습니다.</p>
-      <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a></p>
+      <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a> · <a href="korean.html">한국영화 전체</a> · <a href="krindie.html">한국 독립영화</a></p>
   </header>
 
   <div class="tiles">__TILES__</div>

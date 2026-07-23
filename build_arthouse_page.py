@@ -193,7 +193,7 @@ HTML = """<title>한국 아트하우스 외화 흥행 실적 · 2024–2026</tit
     <p class="sub">2024년 1월 ~ 2026년 4월 개봉, KOBIS에서 다양성영화 × 외국영화로 분류된 __N__편.
       직배(글로벌 스튜디오 한국지사 배급)와 청소년관람불가 중 개봉 20개관 미만은 제외해
       비직배 수입 시장만 남겼습니다. 재개봉·구작(개봉연도 − 제작연도 ≥ 6년)은 기본 숨김입니다.</p>
-      <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a></p>
+      <p class="sub" style="margin-top:4px">세그먼트: <a href="arthouse.html">아트하우스 외화</a> · <a href="commercial.html">상업 외화</a> · <a href="kidsani.html">어린이 애니메이션</a> · <a href="korean.html">한국영화 전체</a> · <a href="krindie.html">한국 독립영화</a></p>
   </header>
 
   <div class="tiles">__TILES__</div>
