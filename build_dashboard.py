@@ -67,7 +67,7 @@ OUT_PATH = os.path.join(BASE, "index.html")  # GitHub Pages가 자동 인식하�
 
 # 실시간 추적 종료: True면 상단 관객수 대시보드 + 갱신시간 + 작별 인사만 있는 간단한 페이지를 낸다.
 # (OS 수집 작업이 다시 빌드해도 이 모드가 유지되도록 build_dashboard 자체에 둔다. 다시 켜려면 False.)
-FAREWELL_MODE = True
+FAREWELL_MODE = False
 
 MA_WINDOW = 6          # 이동평균 윈도우(시간)
 SPIKE_MULT = 2.0       # 스파이크 기준: 직전 평균의 N배
@@ -2812,6 +2812,32 @@ def _render_farewell(out_path):
     return out_path
 
 
+FINAL_SUMMARY_MODE = True  # 종영: 상단 라이브 예측 카드 대신 '상영 종료·최종 성적' 배너로 대체
+
+
+def final_summary_banner():
+    """종영 리뷰용 상단 배너. 공개 실시간 수집의 최종 누적으로 성적을 확정 표시."""
+    cum, upd = 0, ""
+    try:
+        with open(CSV_PATH, encoding="utf-8-sig", newline="") as f:
+            rd = csv.reader(f); next(rd, None)
+            rr = [x for x in rd if x and len(x) >= 9]
+        if rr:
+            cum = _num(rr[-1][-1]) or 0
+            upd = rr[-1][0][:16]
+    except Exception:
+        pass
+    TARGET, NUJA = 60000, 59179
+    short = TARGET - cum
+    return ('  <div class="forecast" style="background:linear-gradient(135deg,#10261a 0%,#1a1d27 65%);border-color:#2f5a42">'
+            '<div class="lbl">🏁 상영 종료 · 최종 성적</div>'
+            f'<div class="big" style="color:#4ade80">총 관객 {cum:,}명</div>'
+            f'<div class="sub2">개봉 2026-07-01 ~ 종영 · 목표 6만 대비 <b>{short:,}명 미달</b> · '
+            f'유사작 너자2(59,179) 대비 {cum - NUJA:+,}명. 3주차 호프(나홍진) 개봉 편성 절벽(1,709석·12회)으로 '
+            f'막판 수요 소멸. 아래는 개봉~종영 전체 추이·분석입니다. '
+            f'<span class="muted">(최종 확정 기준 {upd})</span></div></div>')
+
+
 def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
     if FAREWELL_MODE:
         return _render_farewell(out_path)
@@ -2857,10 +2883,12 @@ def generate(csv_path=CSV_PATH, out_path=OUT_PATH):
             .replace("__PROMO_ON__", "true" if (last.get("date") and last.get("open") and last["date"] <= last["open"]) else "false")
             .replace("__UPDATED__", datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
             .replace("__LASTTIME__", last.get("time", "") or "")
-            .replace("__FORECAST__", sixtyk_countdown() + "\n" + ai_comment_banner() + "\n"
+            .replace("__FORECAST__",
+                     (final_summary_banner() + "\n" + ai_comment_banner()) if FINAL_SUMMARY_MODE else
+                     (sixtyk_countdown() + "\n" + ai_comment_banner() + "\n"
                      + lifetime_banner(cumul_life, completed_days, last.get("date")) + "\n"
                      + top_forecast_banner(m_snaps, m_sched) + "\n" + upcoming_schedule_banner()
-                     + "\n" + secured_banner(pts, m_snaps))
+                     + "\n" + secured_banner(pts, m_snaps)))
             .replace("__CARDS__", build_cards(pts))
             .replace("__N__", str(len(pts)))
             .replace("__BOX_SECTION__", box_leaderboard(comp.get("open", "")))

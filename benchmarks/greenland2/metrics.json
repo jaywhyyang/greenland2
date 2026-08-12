@@ -4,10 +4,10 @@
     "movie_cd": "20264056",
     "open_date": "2026-07-01",
     "target": 60000,
-    "final_cum_observed": 55221,
+    "final_cum_observed": 55466,
     "hit_target": false,
     "final_status": "확정(종영 정리 시점 2026-07-20)",
-    "note": "7/16 이후 회원수집 로그인 만료 → 공개 실시간 누적 기준. 말일 tail 하루 20~55명."
+    "note": "7/16 이후 회원수집 로그인 만료 → 공개 실시간 누적 기준. 말일 tail 하루 20~55명. [8/12 롱테일 반영 최종 55,466]"
   },
   "benchmark_used": {
     "name": "너자2(늘봄가든?)",
@@ -481,11 +481,11 @@
     "20": 1.0
   },
   "closing_summary": {
-    "final_audience": 55221,
+    "final_audience": 55466,
     "target": 60000,
-    "shortfall": 4779,
+    "shortfall": 4534,
     "benchmark_너자2": 59179,
-    "vs_benchmark": -3958,
+    "vs_benchmark": -3713,
     "peak_daily": 8165,
     "cliff": "2026-07-15 호프 개봉 → 편성 1,709석·12회(92%↓), 이후 일별 500→50명대 붕괴",
     "lesson": "서울·수도권 67% 편중 + 3주차 대작 개봉 = tail 소멸. 편성이 최종을 결정."
