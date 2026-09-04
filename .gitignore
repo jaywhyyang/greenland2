@@ -3,3 +3,11 @@ __pycache__/
 
 # KOBIS 로그인 자격증명 (공개 저장소에 올리지 않음)
 kobis_login.txt
+
+# KOBIS 원시 전수 수집물 — 공개 리포에 올리지 않는다(합계 60MB+, 재수집 가능)
+# 필요하면 kobis_multichain.py / kobis_all_daily.py 로 다시 받는다(둘 다 이어받기 지원).
+multichain_weekly.csv
+all_daily.csv
+all_meta.csv
+all_seats.csv
+*.log

@@ -1,0 +1,642 @@
+<title>인 더 그레이 관객 예측</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#F2F3F5; --surface:#FFFFFF; --sunk:#E8EAEE;
+  --ink:#151922; --ink-2:#3A4250; --muted:#5A6472; --faint:#8B94A3;
+  --rule:#D9DDE4; --rule-2:#C3C9D2;
+  --accent:#B4690E; --accent-soft:#F5E6D0;
+  --s1:#B4690E; --s2:#1A5FBF; --s3:#A32D50;
+  --seat-empty:#DCE0E6; --seat-full:#B4690E;
+  --good:#2A6E3F; --warn:#B4690E; --crit:#A32D50;
+  --shadow:0 1px 2px rgba(21,25,34,.06), 0 8px 24px -12px rgba(21,25,34,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0F1218; --surface:#171A21; --sunk:#1F232C;
+    --ink:#E6E9EE; --ink-2:#C3CAD5; --muted:#9AA3B0; --faint:#6F7987;
+    --rule:#2A2F3A; --rule-2:#3A4150;
+    --accent:#D9973C; --accent-soft:#3A2C15;
+    --s1:#C8842A; --s2:#5C90E0; --s3:#D96585;
+    --seat-empty:#2C313C; --seat-full:#C8842A;
+    --good:#54A86F; --warn:#D9973C; --crit:#D96585;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0F1218; --surface:#171A21; --sunk:#1F232C;
+  --ink:#E6E9EE; --ink-2:#C3CAD5; --muted:#9AA3B0; --faint:#6F7987;
+  --rule:#2A2F3A; --rule-2:#3A4150;
+  --accent:#D9973C; --accent-soft:#3A2C15;
+  --s1:#C8842A; --s2:#5C90E0; --s3:#D96585;
+  --seat-empty:#2C313C; --seat-full:#C8842A;
+  --good:#54A86F; --warn:#D9973C; --crit:#D96585;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  font-size:15.5px; line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:940px; margin:0 auto; padding:0 24px 96px}
+h1,h2,h3{font-family:"Gothic A1","IBM Plex Sans KR",sans-serif; text-wrap:balance; margin:0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:600;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--accent);
+}
+
+/* ── header ── */
+header{padding:64px 0 40px; border-bottom:2px solid var(--ink)}
+header h1{font-size:clamp(38px,6vw,58px); font-weight:800; letter-spacing:-.02em; line-height:1.1; margin:14px 0 0}
+.sub{font-size:18px; color:var(--muted); margin:14px 0 0; max-width:60ch}
+.meta{
+  display:flex; flex-wrap:wrap; gap:8px 28px; margin-top:28px;
+  font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--faint);
+}
+.meta b{color:var(--ink-2); font-weight:500}
+
+/* ── verdict ── */
+.verdict{
+  background:var(--surface); border:1px solid var(--rule); border-radius:3px;
+  box-shadow:var(--shadow); padding:34px 34px 28px; margin:40px 0 0;
+  border-top:3px solid var(--accent);
+}
+.verdict .lede{font-size:17px; color:var(--ink-2); margin:0 0 22px; max-width:66ch}
+.figure-row{display:flex; flex-wrap:wrap; align-items:baseline; gap:10px 18px}
+.bignum{
+  font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums;
+  font-size:clamp(44px,7vw,68px); font-weight:600; letter-spacing:-.03em;
+  color:var(--ink); line-height:1;
+}
+.bignum small{font-size:.42em; font-weight:500; color:var(--muted); letter-spacing:0}
+.tag{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:600;
+  padding:4px 10px; border-radius:2px; letter-spacing:.04em;
+  background:var(--accent-soft); color:var(--accent);
+}
+
+/* ── scale ── */
+.scale{margin:34px 0 6px}
+.scale-track{position:relative; height:54px}
+.scale-bar{position:absolute; inset:22px 0 auto 0; height:10px; background:var(--sunk); border-radius:5px}
+.scale-fill{position:absolute; top:22px; height:10px; background:var(--accent); border-radius:5px}
+.scale-pt{position:absolute; top:16px; width:2px; height:22px; background:var(--ink); border-radius:1px}
+.scale-lab{position:absolute; top:0; font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--muted); white-space:nowrap; transform:translateX(-50%)}
+.scale-val{position:absolute; top:38px; font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600; color:var(--ink); white-space:nowrap; transform:translateX(-50%)}
+.scale-legend{display:flex; gap:22px; flex-wrap:wrap; margin-top:26px; font-size:13px; color:var(--muted)}
+.scale-legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+
+/* ── sections ── */
+section{margin:68px 0 0}
+.sec-head{display:flex; gap:16px; align-items:flex-start; border-bottom:1px solid var(--rule-2); padding-bottom:14px; margin-bottom:26px}
+.sec-num{
+  font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:600; color:var(--accent);
+  border:1.5px solid var(--accent); border-radius:2px; padding:2px 9px; margin-top:5px; flex:none;
+}
+section h2{font-size:clamp(23px,3.4vw,30px); font-weight:800; letter-spacing:-.015em; line-height:1.25}
+.sec-head p{margin:6px 0 0; color:var(--muted); font-size:14.5px}
+p{margin:0 0 18px; max-width:72ch}
+strong{font-weight:600; color:var(--ink)}
+.claim{
+  font-size:17.5px; font-weight:500; color:var(--ink); line-height:1.6;
+  border-left:3px solid var(--accent); padding:2px 0 2px 18px; margin:0 0 26px; max-width:66ch;
+}
+
+/* ── cards / charts ── */
+.card{background:var(--surface); border:1px solid var(--rule); border-radius:3px; padding:26px 26px 22px; margin:0 0 26px; box-shadow:var(--shadow)}
+.card h3{font-size:15px; font-weight:700; letter-spacing:-.005em; margin:0 0 3px}
+.card .cap{font-size:12.5px; color:var(--faint); margin:0 0 20px; font-family:"IBM Plex Mono",monospace}
+.card .note{font-size:13px; color:var(--muted); margin:18px 0 0; padding-top:14px; border-top:1px solid var(--rule)}
+
+/* bars */
+.bars{display:flex; flex-direction:column; gap:9px}
+.bar-row{display:grid; grid-template-columns:132px 1fr 62px; gap:12px; align-items:center; font-size:13.5px}
+.bar-row .nm{color:var(--ink-2); text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.bar-track{position:relative; background:var(--sunk); border-radius:2px; height:20px}
+.bar-fill{height:100%; border-radius:0 3px 3px 0; background:var(--s1); transition:filter .15s}
+.bar-row:hover .bar-fill{filter:brightness(1.12)}
+.bar-row .vl{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:600; color:var(--ink)}
+.bar-row.hi .nm{color:var(--ink); font-weight:600}
+.bar-row.dim .bar-fill{background:var(--seat-empty)}
+.threshold{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--s3)}
+
+/* seats */
+.seatgrid{display:grid; grid-template-columns:repeat(25,1fr); gap:3px; max-width:520px}
+.seat{aspect-ratio:1; border-radius:1.5px; background:var(--seat-empty)}
+.seat.on{background:var(--seat-full)}
+.seat-key{display:flex; gap:20px; margin-top:16px; font-size:13px; color:var(--muted); flex-wrap:wrap}
+.seat-key i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+
+/* line chart */
+.chart-scroll{overflow-x:auto}
+svg{display:block; max-width:100%; height:auto}
+.gridline{stroke:var(--rule); stroke-width:1}
+.axis-txt{font-family:"IBM Plex Mono",monospace; font-size:11px; fill:var(--faint)}
+.ctx-line{fill:none; stroke:var(--rule-2); stroke-width:1.5; opacity:.75}
+.dlab{font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:600}
+.legend{display:flex; gap:20px; flex-wrap:wrap; margin-top:16px; font-size:13px; color:var(--ink-2)}
+.legend i{display:inline-block; width:16px; height:3px; border-radius:2px; margin-right:8px; vertical-align:3px}
+
+/* tables */
+.tbl-scroll{overflow-x:auto; margin:0 0 26px}
+table{border-collapse:collapse; width:100%; font-size:13.5px; background:var(--surface); min-width:600px}
+caption{text-align:left; font-size:12.5px; color:var(--faint); padding:0 0 9px; font-family:"IBM Plex Mono",monospace}
+th,td{padding:9px 12px; border-bottom:1px solid var(--rule); text-align:right}
+th{font-size:11.5px; font-weight:600; color:var(--muted); letter-spacing:.05em; text-transform:uppercase; border-bottom:1.5px solid var(--rule-2); white-space:nowrap; font-family:"IBM Plex Mono",monospace}
+th:first-child,td:first-child{text-align:left}
+td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--sunk)}
+tr.mark td{background:var(--accent-soft)}
+tr.mark td:first-child{font-weight:600}
+td .cq{font-size:11.5px; color:var(--faint); font-family:"IBM Plex Mono",monospace}
+
+/* scenario */
+.scen{display:grid; gap:2px; background:var(--rule); border:1px solid var(--rule); border-radius:3px; overflow:hidden}
+.scen-row{display:grid; grid-template-columns:96px 1fr; background:var(--surface)}
+.scen-lab{padding:16px 18px; font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600; letter-spacing:.05em; color:var(--muted); border-right:1px solid var(--rule)}
+.scen-body{padding:16px 20px; display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 16px}
+.scen-num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-size:26px; font-weight:600; letter-spacing:-.02em}
+.scen-cond{font-size:13px; color:var(--muted)}
+.scen-row.center{background:var(--accent-soft)}
+.scen-row.center .scen-lab{color:var(--accent)}
+.scen-row.center .scen-num{color:var(--accent)}
+
+/* callouts */
+.risk{background:var(--surface); border:1px solid var(--rule); border-left:3px solid var(--crit); border-radius:3px; padding:22px 24px; margin:0 0 22px}
+.risk h3{font-size:15px; font-weight:700; margin:0 0 8px; color:var(--crit)}
+.risk p{margin:0; font-size:14.5px; color:var(--ink-2)}
+.watch{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); margin:0 0 24px}
+.watch-item{background:var(--surface); border:1px solid var(--rule); border-radius:3px; padding:20px}
+.watch-item .k{font-family:"IBM Plex Mono",monospace; font-size:11.5px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); display:block; margin-bottom:9px}
+.watch-item .v{font-family:"IBM Plex Mono",monospace; font-size:21px; font-weight:600; color:var(--ink); display:block; margin-bottom:7px}
+.watch-item p{font-size:13px; color:var(--muted); margin:0}
+
+footer{margin-top:76px; padding-top:26px; border-top:2px solid var(--ink); font-size:13px; color:var(--muted)}
+footer h3{font-size:14px; font-weight:700; margin:0 0 12px; color:var(--ink)}
+footer ul{margin:0 0 22px; padding-left:19px}
+footer li{margin-bottom:7px; max-width:76ch}
+footer code{font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--sunk); padding:1px 5px; border-radius:2px; color:var(--ink-2)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:620px){
+  .bar-row{grid-template-columns:96px 1fr 54px; font-size:12.5px}
+  .scen-row{grid-template-columns:1fr}
+  .scen-lab{border-right:none; border-bottom:1px solid var(--rule); padding-bottom:8px}
+  .seatgrid{grid-template-columns:repeat(20,1fr)}
+}
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">흥행 예측 보고 · 내부 팀 &amp; 배급사 공유</div>
+  <h1>인 더 그레이<br>관객 예측</h1>
+  <p class="sub">메가박스 단독개봉 147편을 KOBIS 체인별 상영현황으로 실측하고, 그중 조건이 일치하는 10편으로 밴드를 산출했습니다.</p>
+  <div class="meta">
+    <span>개봉 <b>2026-09-02</b></span>
+    <span>편성 <b>메가박스 단독</b></span>
+    <span>분류 <b>실사 외화 · 액션/범죄</b></span>
+    <span>작성 <b>2026-08-28</b></span>
+    <span>데이터 <b>KOBIS 2023-01-02 ~ 2026-08-28</b></span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="eyebrow">결론</div>
+  <div class="figure-row" style="margin-top:10px">
+    <div class="bignum">1.7<small>만</small> – 2.2<small>만</small></div>
+    <span class="tag">중심 시나리오</span>
+  </div>
+  <p class="lede" style="margin-top:20px">개봉일 좌석 <strong>4.5만석</strong> 전제입니다. <strong>3만을 넘으면 실사 외화 액션/범죄 단독개봉 신기록</strong>이고, 5만 이상은 개봉 물량이 아니라 3주차까지 버티는 롱런이 있어야만 가능합니다.</p>
+  <p class="lede" style="margin-top:-6px">좌석 전망이 4만석대로 내려오면서 직전 산출(2.0만–2.5만)보다 한 단계 낮췄습니다. 다만 <strong>축소 사유에 따라 해석이 갈립니다</strong> — 아래 논증 1을 함께 보십시오.</p>
+
+  <div class="scale">
+    <div class="scale-track" id="scale"></div>
+    <div class="scale-legend">
+      <span><i style="background:var(--accent)"></i>중심 밴드 1.7만–2.2만</span>
+      <span><i style="background:var(--sunk)"></i>가능 범위 1.4만–6.4만</span>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>comp를 어떻게 정했나</h2>
+      <p>배급사명이나 스크린수 추정 같은 대리지표를 쓰지 않고, 체인별 편성 실측으로 판별했습니다.</p>
+    </div>
+  </div>
+
+  <p>KOBIS 「체인영화관별 상영현황」은 영화별로 CGV·롯데시네마·메가박스·씨네Q의 스크린수를 각각 제공합니다. <strong>오리지널 런 구간에서 CGV와 롯데 편성이 모두 0인 작품</strong>을 단독개봉으로 판정했습니다. 씨네Q는 단독작에도 소수 붙기 때문에 허용했습니다.</p>
+
+  <p>2023년 1월부터 2026년 8월까지 191주를 전수 수집해 <strong>단독개봉 147편</strong>(신작 99편)을 확보했고, 여기서 인 더 그레이와 조건이 겹치는 <strong>실사 외화 · 메가박스 120관 이상 · 일본작 제외 10편</strong>을 comp로 확정했습니다. 일본작 제외는 배급사 의견을 반영한 것으로, 제외 전후 밴드 차이는 거의 없습니다.</p>
+
+  <div class="tbl-scroll">
+    <table>
+      <caption>실사 외화 단독개봉 · 메가박스 120관 이상 · 일본 제외 (n=10)</caption>
+      <thead><tr><th>작품</th><th>국적</th><th>최대 편성</th><th>개봉일 관객</th><th>최종 관객</th><th>좌석판매율</th></tr></thead>
+      <tbody>
+        <tr><td>머티리얼리스트</td><td>미국</td><td class="num">157관</td><td class="num">7,585</td><td class="num">63,767</td><td class="num">9.6%</td></tr>
+        <tr><td>룸 넥스트 도어</td><td>미국</td><td class="num">130관</td><td class="num">1,952</td><td class="num">42,542</td><td class="num">7.4%</td></tr>
+        <tr><td>누벨바그</td><td>프랑스</td><td class="num">120관</td><td class="num">4,051</td><td class="num">23,029</td><td class="num">8.2%</td></tr>
+        <tr class="mark"><td>워킹맨 <span class="cq">자사작</span></td><td>미국</td><td class="num">172관</td><td class="num">4,459</td><td class="num">21,014</td><td class="num">6.4%</td></tr>
+        <tr><td>크라임 101</td><td>미국</td><td class="num">171관</td><td class="num">3,513</td><td class="num">20,138</td><td class="num">5.3%</td></tr>
+        <tr><td>더 로즈: 완벽한 이혼</td><td>미국</td><td class="num">152관</td><td class="num">3,185</td><td class="num">18,670</td><td class="num">4.7%</td></tr>
+        <tr class="mark"><td>워페어 <span class="cq">상영중</span></td><td>미국</td><td class="num">188관</td><td class="num">3,815</td><td class="num">18,000</td><td class="num">8.0%</td></tr>
+        <tr><td>엑소시스트: 더 바티칸</td><td>미국</td><td class="num">127관</td><td class="num">2,373</td><td class="num">14,639</td><td class="num">5.5%</td></tr>
+        <tr><td>언젠틀 오퍼레이션</td><td>영국</td><td class="num">133관</td><td class="num">1,606</td><td class="num">10,987</td><td class="num">4.2%</td></tr>
+        <tr><td>굿 보이</td><td>미국</td><td class="num">139관</td><td class="num">1,402</td><td class="num">8,338</td><td class="num">4.3%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">논증 1</div>
+    <div>
+      <h2>좌석은 병목이 아니지만, 수요의 대리지표입니다</h2>
+      <p>물리적으로 자리가 모자란 적은 없습니다. 그런데도 좌석은 최종 관객을 가장 잘 예측합니다. 둘은 모순이 아닙니다.</p>
+    </div>
+  </div>
+
+  <p class="claim">단독개봉작은 공급 좌석의 90~96%를 팔지 못합니다. 좌석이 모자라서 못 판 사례가 없습니다.</p>
+
+  <p>여기까지는 사실입니다. 다만 <strong>이것으로부터 &ldquo;좌석 규모는 예측에 쓸모없다&rdquo;가 따라 나오지는 않습니다.</strong> 실제로는 정반대입니다.</p>
+
+  <div class="card">
+    <h3>워킹맨 좌석판매율 6.4%</h3>
+    <p class="cap">전 상영기간 공급 327,865석 · 판매 21,014명 — 200석당 채워진 좌석</p>
+    <div class="seatgrid" id="seats" role="img" aria-label="200개 좌석 중 13개만 채워진 격자. 좌석판매율 6.4%를 나타냄."></div>
+    <div class="seat-key">
+      <span><i style="background:var(--seat-full)"></i>판매 6.4%</span>
+      <span><i style="background:var(--seat-empty)"></i>미판매 93.6%</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>comp 10편의 좌석판매율</h3>
+    <p class="cap">전 상영기간 누적 관객 ÷ 누적 공급 좌석</p>
+    <div class="bars" id="sellrate"></div>
+    <p class="note">최고 머티리얼리스트 9.6%와 최저 굿 보이 4.3% 사이가 <strong>2.2배</strong>입니다. 같은 좌석을 깔아도 결과가 이만큼 갈립니다.</p>
+  </div>
+
+  <div class="card">
+    <h3>그런데 최종 관객을 가장 잘 예측하는 건 좌석입니다</h3>
+    <p class="cap">실사 외화 단독개봉 신작 28편(일본 제외) · 로그-로그 회귀</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>예측 변수</th><th>탄력도</th><th>R²</th></tr></thead>
+        <tbody>
+          <tr class="mark"><td>개봉일 좌석</td><td class="num">+0.908</td><td class="num">0.666</td></tr>
+          <tr><td>최대 편성관</td><td class="num">+1.678</td><td class="num">0.627</td></tr>
+          <tr><td>개봉일 관객</td><td class="num">+0.961</td><td class="num">0.609</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note"><strong>좌석이 단일 최고 예측 변수입니다</strong> — 개봉일 관객보다도 낫습니다. 자리가 남아도는데 왜 그럴까요. <strong>좌석은 극장이 그 영화에 걸어둔 수요 기대치이기 때문입니다.</strong> 메가박스가 6만석을 깔았다면 그만큼 들 거라고 판단한 것이고, 그 판단이 대체로 맞았습니다. 좌석은 관객을 만들어내는 원인이 아니라, 이미 형성된 기대를 읽어낸 신호입니다.</p>
+  </div>
+
+  <div class="claim" style="border-left-color:var(--s2)">그래서 <strong>좌석이 왜 줄었는지</strong>가 숫자보다 중요합니다. 극장이 수요를 낮게 봐서 줄인 것이라면 밴드를 내려야 하고, 경쟁작 편성에 밀려서라면 그렇지 않습니다.</div>
+
+  <p>후자라면 관객이 사라지는 게 아니라 회차만 줄어듭니다. 좌석판매율이 8%대인 구간에서는 그 정도 축소가 흡수됩니다. 워페어가 정확히 이 경우였습니다 — 45,012석은 수요 기대가 낮아서가 아니라 오디세이에 밀린 결과였습니다.</p>
+
+  <p>보조 근거가 둘 더 있습니다. 첫째, <strong>개봉일 좌석과 좌석판매율의 상관이 −0.43</strong>입니다. 좌석이 줄면 판매율이 올라 일부 상쇄됩니다(탄력도가 1이 아닌 0.908인 이유입니다). 둘째, 인 더 그레이가 속한 <strong>150관 이상 구간에서는 좌석의 판별력이 약합니다</strong> — 6편의 좌석 편차는 1.39배인데 최종 편차는 3.72배였습니다. 상단에서 승부를 가르는 건 좌석이 아니라 판매율입니다.</p>
+
+  <div class="card">
+    <h3>좌석 가정별 민감도</h3>
+    <p class="cap">좌석 직접 회귀 ln(최종) = 0.217 + 0.908 · ln(좌석) 기준</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>개봉일 좌석</th><th>예측 최종</th><th>5만석 대비</th></tr></thead>
+        <tbody>
+          <tr><td>40,000</td><td class="num">18,800</td><td class="num">−18.3%</td></tr>
+          <tr><td>44,000</td><td class="num">20,500</td><td class="num">−11.0%</td></tr>
+          <tr class="mark"><td>45,000 <span class="cq">현 전제</span></td><td class="num">21,000</td><td class="num">−9.1%</td></tr>
+          <tr><td>48,000</td><td class="num">22,200</td><td class="num">−3.6%</td></tr>
+          <tr><td>50,000</td><td class="num">23,100</td><td class="num">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">4만석대라도 <strong>4.0만과 4.8만 사이가 18%p 차이</strong>입니다. 확정 좌석이 나오면 이 표에서 바로 읽으십시오. 다만 위 구분대로, 축소가 경쟁 편성 때문이라면 표의 감소폭을 그대로 적용하지 말고 5만석 쪽에 가깝게 읽는 것이 맞습니다.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">논증 2</div>
+    <div>
+      <h2>편성 상한은 메가박스의 12%입니다</h2>
+      <p>5만석은 역대 단독개봉 최대 편성을 경신해야 나오는 숫자입니다.</p>
+    </div>
+  </div>
+
+  <p>2026년 8월 28일 기준 <strong>메가박스 전국 스크린은 1,584개</strong>입니다(CGV 2,703 · 롯데시네마 1,737 · 씨네Q 101, 8/26 기준). 단독개봉작이 실제로 받아낸 최대 편성은 워페어 188관으로 <strong>전체의 약 12%</strong>였고, 그다음이 워킹맨 172관입니다.</p>
+
+  <p>현재 전제인 개봉일 4.5만석은 약 180관, 즉 <strong>11%대</strong>에 해당합니다. 워페어가 받아낸 최대치에 근접한 수준이라, 이보다 더 받기는 쉽지 않습니다.</p>
+
+  <div class="card">
+    <h3>메가박스 스크린 점유 현황</h3>
+    <p class="cap">2026-08-28 · 전체 1,584 스크린 대비 · 붉은 선 = 단독개봉 역대 최대 편성선 11.9%</p>
+    <div class="bars" id="share"></div>
+    <p class="note">상위 3편이 <strong>49.7%</strong>를 점유하고 있습니다. 주목할 점은 <strong>오디세이 점유율이 이틀 사이 25.7%에서 26.5%로 올랐다</strong>는 것입니다 — 관 수는 422에서 420으로 거의 그대로인데 메가박스 전체 스크린이 1,644에서 1,584로 줄었기 때문입니다. 같은 기간 워페어는 76관에서 70관으로 밀렸습니다. <strong>경쟁작이 빠지기를 기다리는 시나리오는 현재까지 실현되지 않고 있습니다.</strong></p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">논증 3</div>
+    <div>
+      <h2>11일이면 87%가 끝납니다</h2>
+      <p>2만이라는 벽의 정체는 롱테일의 부재입니다.</p>
+    </div>
+  </div>
+
+  <p class="claim">단독개봉은 접근성이 제한되어 볼 사람이 첫 주에 다 봅니다. 확대개봉작과 달리 입소문에 의한 2~4주차 반등이 거의 없습니다.</p>
+
+  <div class="card">
+    <h3>개봉 N일차 누적 / 최종 관객</h3>
+    <p class="cap">일본 제외 · 120관 이상 · 종영작 9편</p>
+    <div class="chart-scroll"><div id="decay"></div></div>
+    <div class="legend">
+      <span><i style="background:var(--s1)"></i>머티리얼리스트 63,767</span>
+      <span><i style="background:var(--s2)"></i>룸 넥스트 도어 42,542</span>
+      <span><i style="background:var(--s3)"></i>표준 소진형 (중앙값)</span>
+      <span><i style="background:var(--rule-2)"></i>그 외 comp</span>
+    </div>
+    <p class="note">표준형은 D7에 이미 71%, D11에 87%가 소진됩니다. <strong>그런데 2만을 크게 넘은 두 편이 정확히 예외입니다</strong> — 머티리얼리스트는 D11에 68%, 룸 넥스트 도어는 48%에 불과했습니다. 남은 절반이 3~4주차에 들어왔다는 뜻입니다.</p>
+  </div>
+
+  <div class="tbl-scroll">
+    <table>
+      <caption>개봉 N일차 누적 비중 (최종 대비 %)</caption>
+      <thead><tr><th>작품</th><th>D1</th><th>D3</th><th>D7</th><th>D11</th><th>D14</th><th>D21</th></tr></thead>
+      <tbody>
+        <tr><td>머티리얼리스트</td><td class="num">12%</td><td class="num">31%</td><td class="num">48%</td><td class="num">68%</td><td class="num">73%</td><td class="num">85%</td></tr>
+        <tr><td>룸 넥스트 도어</td><td class="num">5%</td><td class="num">12%</td><td class="num">31%</td><td class="num">48%</td><td class="num">57%</td><td class="num">72%</td></tr>
+        <tr><td>누벨바그</td><td class="num">18%</td><td class="num">29%</td><td class="num">59%</td><td class="num">72%</td><td class="num">80%</td><td class="num">91%</td></tr>
+        <tr class="mark"><td>워킹맨</td><td class="num">21%</td><td class="num">43%</td><td class="num">79%</td><td class="num">92%</td><td class="num">95%</td><td class="num">98%</td></tr>
+        <tr><td>크라임 101</td><td class="num">17%</td><td class="num">40%</td><td class="num">86%</td><td class="num">92%</td><td class="num">95%</td><td class="num">96%</td></tr>
+        <tr><td>더 로즈</td><td class="num">17%</td><td class="num">34%</td><td class="num">71%</td><td class="num">86%</td><td class="num">96%</td><td class="num">97%</td></tr>
+        <tr><td>엑소시스트: 더 바티칸</td><td class="num">16%</td><td class="num">41%</td><td class="num">86%</td><td class="num">94%</td><td class="num">98%</td><td class="num">99%</td></tr>
+        <tr><td>언젠틀 오퍼레이션</td><td class="num">15%</td><td class="num">35%</td><td class="num">74%</td><td class="num">87%</td><td class="num">93%</td><td class="num">96%</td></tr>
+        <tr><td>굿 보이</td><td class="num">17%</td><td class="num">33%</td><td class="num">63%</td><td class="num">89%</td><td class="num">97%</td><td class="num">100%</td></tr>
+        <tr class="mark"><td>중앙값</td><td class="num">17%</td><td class="num">34%</td><td class="num">71%</td><td class="num">87%</td><td class="num">95%</td><td class="num">96%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">논증 4</div>
+    <div>
+      <h2>워페어 외삽 — 두 방법이 수렴합니다</h2>
+      <p>같은 장르, 같은 편성 조건으로 2주 앞서 달리는 선행 지표입니다.</p>
+    </div>
+  </div>
+
+  <p>워페어는 액션/전쟁 실사 외화이고 <strong>188관으로 단독개봉 역대 최대 편성</strong>을 받았습니다. 8월 19일 개봉해 <strong>10일차 누적 17,510명</strong>입니다(사전상영 포함 18,000명).</p>
+
+  <p>배수를 적용할 때 comp 전체의 중앙값을 쓰면 안 됩니다. 그 안에 롱런형(룸 넥스트 도어 ×2.34)이 섞여 있어 과대 추정됩니다. <strong>워페어는 스크린이 199관에서 74관으로 무너지고 일 관객이 400명대로 내려온 전형적인 즉시소진형</strong>이므로, 같은 유형 6편(워킹맨·크라임 101·엑소시스트·더 로즈·언젠틀·굿 보이)만으로 잡습니다. 이들의 배수는 1.103~1.217에 몰려 있습니다.</p>
+
+  <div class="watch">
+    <div class="watch-item">
+      <span class="k">방법 A · 동일유형 배수</span>
+      <span class="v">20,306</span>
+      <p>즉시소진형 6편의 10일차 대비 최종 배수 중앙값 1.160 적용 (범위 19,306 – 21,317)</p>
+    </div>
+    <div class="watch-item">
+      <span class="k">방법 B · 소진 곡선</span>
+      <span class="v">20,282</span>
+      <p>같은 6편의 D10 누적 비중 중앙값 86.3%로 역산 (17,510 ÷ 0.863)</p>
+    </div>
+  </div>
+
+  <p><strong>워페어 최종은 2.0만으로 수렴합니다.</strong> 두 방법의 차이가 24명에 불과합니다. 다만 워페어는 개봉일 좌석이 45,012석에 그쳤는데, 이는 수요 기대가 낮아서가 아니라 오디세이 편성에 밀린 결과였습니다. 논증 1의 구분을 적용하면 <strong>이 2.0만은 좌석에 눌린 값이 아니라 수요 그대로의 값</strong>으로 읽어야 합니다.</p>
+
+  <p class="claim">인 더 그레이도 4만석대에서 출발한다면, 조건이 워페어와 사실상 같습니다. <strong>워페어의 2.0만이 곧 인 더 그레이의 기준선</strong>이며, 이는 중심 시나리오 2.2만과 정합적입니다.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>시나리오</h2>
+      <p>개봉일 4.5만석 전제. 좌석이 정해진 뒤 남는 변수는 좌석판매율입니다.</p>
+    </div>
+  </div>
+
+  <div class="scen">
+    <div class="scen-row">
+      <div class="scen-lab">하방</div>
+      <div class="scen-body">
+        <span class="scen-num">17,400</span>
+        <span class="scen-cond">판매율 6.6% · 개봉일 2,970명 — 크라임 101 경로. 오디세이 압박이 9월까지 지속되는 경우.</span>
+      </div>
+    </div>
+    <div class="scen-row center">
+      <div class="scen-lab">중심</div>
+      <div class="scen-body">
+        <span class="scen-num">22,200</span>
+        <span class="scen-cond">판매율 8.5% · 개봉일 3,825명 — 워킹맨·워페어 경로. 가장 가능성이 높습니다.</span>
+      </div>
+    </div>
+    <div class="scen-row">
+      <div class="scen-lab">상방</div>
+      <div class="scen-body">
+        <span class="scen-num">31,100</span>
+        <span class="scen-cond">판매율 12.1% · 개봉일 5,445명 — 머티리얼리스트 수준의 초기 반응.</span>
+      </div>
+    </div>
+    <div class="scen-row">
+      <div class="scen-lab">돌파</div>
+      <div class="scen-body">
+        <span class="scen-num">50,000+</span>
+        <span class="scen-cond">상방 조건 + 3주차까지 롱런. 개봉 물량만으로는 도달 불가.</span>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin-top:24px">추정식은 일본 제외 실사 외화 단독개봉 28편의 로그회귀입니다 — <span class="mono">ln(최종) = 2.075 + 0.961 × ln(개봉일 관객)</span>, R² 0.61. 탄력도가 1보다 작아 <strong>개봉일이 클수록 배수가 낮아지는 체감 구조</strong>이며, 이는 위 소진 곡선과 일치합니다.</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>리스크와 모니터링</h2>
+      <p>개봉 사흘이면 어느 경로인지 판별됩니다.</p>
+    </div>
+  </div>
+
+  <div class="risk">
+    <h3>단일 최대 리스크 — 9월 2일 시점 경쟁작 잔여 편성</h3>
+    <p>오디세이가 8월 28일 기준 메가박스 420관을 점유하고 있고, 점유율은 오히려 25.7%에서 26.5%로 올랐습니다(전체 스크린 축소분 때문). 관객 감소 속도도 완만합니다(주말 기준 직전 주 대비 -13%). 현재 전제(4.5만석)는 이미 이 압박을 반영한 값입니다. 오디세이가 더 오래 버텨 4만석 초반까지 밀리면 하방(1.7만 이하)으로, 반대로 빠져서 4.8만석 이상을 확보하면 중심 상단으로 이동합니다. <strong>편성 확보가 이 예측에서 통제 가능한 유일한 변수입니다.</strong></p>
+  </div>
+
+  <div class="watch">
+    <div class="watch-item">
+      <span class="k">지표 1 · 개봉일 좌석</span>
+      <span class="v">45,000석</span>
+      <p>약 180관. 확정되면 논증 1의 민감도 표에서 바로 읽으십시오. 축소 사유(수요 기대 vs 경쟁 편성)를 함께 확인해야 합니다.</p>
+    </div>
+    <div class="watch-item">
+      <span class="k">지표 2 · 개봉일 관객</span>
+      <span class="v">3,800명</span>
+      <p>2만 돌파 분기점. 넘으면 중심 이상, 2,900명 안팎이면 하방입니다.</p>
+    </div>
+    <div class="watch-item">
+      <span class="k">지표 3 · D3 누적 비중</span>
+      <span class="v">40%</span>
+      <p>개봉 3일차 누적이 최종의 40%를 넘을 기세면 즉시 소진형(2만대), 30% 안팎이면 롱런형(4만+)입니다.</p>
+    </div>
+  </div>
+
+  <p>지표 3이 가장 빠른 판별자입니다. 워킹맨 43%·크라임 101 40%는 2주 만에 소진됐고, 머티리얼리스트 31%·룸 넥스트 도어 12%는 롱런했습니다. <strong>9월 4일이면 2만대인지 4만 이상인지 갈립니다.</strong></p>
+</section>
+
+<footer>
+  <h3>데이터 출처와 한계</h3>
+  <ul>
+    <li><strong>출처</strong> — KOBIS 영화관입장권통합전산망. 「체인영화관별 상영현황」으로 체인별 편성을, 「기간별 박스오피스」와 「좌석점유율」로 일별 관객·스크린·좌석을 수집했습니다. 수집 구간은 2023-01-02 ~ 2026-08-28, 191주 전수입니다.</li>
+    <li><strong>판정 기준</strong> — 오리지널 런 구간에서 CGV·롯데시네마 편성이 모두 0이고 메가박스 편성이 있는 작품. 씨네Q는 허용했습니다. 1~2관 규모의 기획전·잔여상영을 걸러내기 위해 메가박스 최대 일간 50관 이상만 집계했습니다.</li>
+    <li><strong>커버리지 한계</strong> — 이 통계는 4대 대형체인만 포함합니다. 독립극장·예술전용관 상영은 보이지 않으므로, 판정 기준은 엄밀히 말해 "전국 유일 상영"이 아니라 "CGV·롯데 미편성"입니다.</li>
+    <li><strong>진행 중 작품</strong> — 워페어는 2026-08-28 기준 아직 상영 중이므로 18,000명은 최종이 아닌 10일차 누적입니다(잔여 74관). 추정 최종은 2.0만이며, 종영 후 밴드를 갱신해야 합니다.</li>
+    <li><strong>재현</strong> — <code>kobis_multichain.py</code>(체인별 수집) → <code>kobis_all_daily.py</code>(관객·좌석 수집) → <code>build_megabox_solo.py</code>(comp 산출). 세 스크립트 모두 이어받기를 지원하므로 재실행 시 신규 주차만 수집합니다.</li>
+  </ul>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var esc=function(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");};
+  var fmt=function(n){return n.toLocaleString("ko-KR");};
+
+  /* ── 결론 스케일 ── */
+  (function(){
+    var el=document.getElementById("scale"); if(!el) return;
+    var lo=10000, hi=70000;
+    var pos=function(v){return (Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo))*100;};
+    var h='<div class="scale-bar"></div>';
+    h+='<div class="scale-fill" style="left:'+pos(17400)+'%;width:'+(pos(22200)-pos(17400))+'%"></div>';
+    var pts=[
+      {v:14000,l:"하방",s:"1.4만"},
+      {v:17400,l:"",s:"1.7만"},
+      {v:22200,l:"중심",s:"2.2만"},
+      {v:31100,l:"상방",s:"3.1만"},
+      {v:63767,l:"실사 외화 단독 최고", s:"6.4만"}
+    ];
+    pts.forEach(function(p){
+      var x=pos(p.v);
+      h+='<div class="scale-pt" style="left:'+x+'%"></div>';
+      if(p.l) h+='<div class="scale-lab" style="left:'+x+'%">'+esc(p.l)+'</div>';
+      h+='<div class="scale-val" style="left:'+x+'%">'+esc(p.s)+'</div>';
+    });
+    el.innerHTML=h;
+  })();
+
+  /* ── 좌석 격자 (200석 중 6.4%) ── */
+  (function(){
+    var el=document.getElementById("seats"); if(!el) return;
+    var total=200, on=Math.round(total*0.064); // 13
+    var idx={}, step=total/on, i;
+    for(i=0;i<on;i++) idx[Math.floor(i*step+step*0.4)]=1;
+    var h="";
+    for(i=0;i<total;i++) h+='<div class="seat'+(idx[i]?" on":"")+'"></div>';
+    el.innerHTML=h;
+  })();
+
+  /* ── 가로 막대 ── */
+  function bars(id, rows, opts){
+    var el=document.getElementById(id); if(!el) return;
+    opts=opts||{};
+    var max=opts.max||Math.max.apply(null,rows.map(function(r){return r.v;}));
+    var h="";
+    rows.forEach(function(r){
+      var w=Math.max(r.v/max*100,1.2);
+      var thr="";
+      if(opts.threshold){
+        thr='<div class="threshold" style="left:'+(opts.threshold/max*100)+'%" title="'+esc(opts.thresholdLabel||"")+'"></div>';
+      }
+      h+='<div class="bar-row'+(r.hi?" hi":"")+(r.dim?" dim":"")+'" title="'+esc(r.nm+" · "+r.lab)+'">'
+        +'<span class="nm">'+esc(r.nm)+'</span>'
+        +'<span class="bar-track">'+thr+'<span class="bar-fill" style="width:'+w+'%"></span></span>'
+        +'<span class="vl">'+esc(r.lab)+'</span></div>';
+    });
+    el.innerHTML=h;
+  }
+
+  bars("sellrate",[
+    {nm:"머티리얼리스트",v:9.6,lab:"9.6%"},
+    {nm:"누벨바그",v:8.2,lab:"8.2%"},
+    {nm:"워페어",v:8.0,lab:"8.0%",hi:true},
+    {nm:"룸 넥스트 도어",v:7.4,lab:"7.4%"},
+    {nm:"워킹맨",v:6.4,lab:"6.4%",hi:true},
+    {nm:"엑소시스트",v:5.5,lab:"5.5%"},
+    {nm:"크라임 101",v:5.3,lab:"5.3%"},
+    {nm:"더 로즈",v:4.7,lab:"4.7%"},
+    {nm:"굿 보이",v:4.3,lab:"4.3%"},
+    {nm:"언젠틀 오퍼레이션",v:4.2,lab:"4.2%"}
+  ],{max:12});
+
+  bars("share",[
+    {nm:"오디세이",v:26.5,lab:"420관"},
+    {nm:"스파이더맨",v:11.9,lab:"189관"},
+    {nm:"오크 스트리트",v:11.3,lab:"179관"},
+    {nm:"경주기행",v:9.9,lab:"157관"},
+    {nm:"명탐정 코난",v:6.4,lab:"102관"},
+    {nm:"극장판 기븐",v:6.2,lab:"98관"},
+    {nm:"인시디어스",v:5.6,lab:"89관"},
+    {nm:"호프",v:6.0,lab:"95관"},
+    {nm:"워페어",v:4.4,lab:"70관",hi:true}
+  ],{max:28,threshold:11.9,thresholdLabel:"단독개봉 역대 최대 편성 11.9% (워페어 188관)"});
+
+  /* ── 소진 곡선 ── */
+  (function(){
+    var el=document.getElementById("decay"); if(!el) return;
+    var days=[1,3,7,11,14,21];
+    var ctx=[
+      [18,29,59,72,80,91],[21,43,79,92,95,98],[17,40,86,92,95,96],
+      [17,34,71,86,96,97],[16,41,86,94,98,99],[15,35,74,87,93,96],[17,33,63,89,97,100]
+    ];
+    var series=[
+      {n:"머티리얼리스트",v:[12,31,48,68,73,85],c:"var(--s1)"},
+      {n:"룸 넥스트 도어",v:[5,12,31,48,57,72],c:"var(--s2)"},
+      {n:"중앙값",v:[17,34,71,87,95,96],c:"var(--s3)"}
+    ];
+    var W=790,H=330,L=46,R=150,T=16,B=40;
+    var pw=W-L-R, ph=H-T-B;
+    var X=function(d){return L+(Math.log(d)-Math.log(1))/(Math.log(21)-Math.log(1))*pw;};
+    var Y=function(p){return T+(100-p)/100*ph;};
+    var path=function(v){return v.map(function(p,i){return (i?"L":"M")+X(days[i]).toFixed(1)+" "+Y(p).toFixed(1);}).join(" ");};
+    var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="개봉 N일차 누적 비중 곡선. 표준형은 11일차에 87%, 롱런한 머티리얼리스트는 68%, 룸 넥스트 도어는 48%.">';
+    [0,25,50,75,100].forEach(function(p){
+      s+='<line class="gridline" x1="'+L+'" y1="'+Y(p)+'" x2="'+(L+pw)+'" y2="'+Y(p)+'"/>';
+      s+='<text class="axis-txt" x="'+(L-9)+'" y="'+(Y(p)+4)+'" text-anchor="end">'+p+'%</text>';
+    });
+    days.forEach(function(d){
+      s+='<text class="axis-txt" x="'+X(d)+'" y="'+(H-B+21)+'" text-anchor="middle">D'+d+'</text>';
+    });
+    ctx.forEach(function(v){ s+='<path class="ctx-line" d="'+path(v)+'"/>'; });
+    series.forEach(function(se){
+      s+='<path fill="none" stroke="'+se.c+'" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" d="'+path(se.v)+'"/>';
+      se.v.forEach(function(p,i){
+        s+='<circle cx="'+X(days[i])+'" cy="'+Y(p)+'" r="4.5" fill="'+se.c+'" stroke="var(--surface)" stroke-width="2">'
+          +'<title>'+esc(se.n)+' · D'+days[i]+' '+p+'%</title></circle>';
+      });
+      var last=se.v[se.v.length-1];
+      s+='<text class="dlab" x="'+(X(21)+11)+'" y="'+(Y(last)+4)+'" fill="'+se.c+'">'+esc(se.n)+' '+last+'%</text>';
+    });
+    s+='</svg>';
+    el.innerHTML=s;
+  })();
+})();
+</script>
