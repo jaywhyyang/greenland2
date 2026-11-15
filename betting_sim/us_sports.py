@@ -37,7 +37,7 @@ def read(p):
 
 
 def games(sport):
-    pats = {"nba": "nba-odds-*", "nfl": "nfl-odds-*", "nhl": "nhl-odds-*", "mlb": "mlb-odds-*", "ncaab": "ncaa-basketball-*"}
+    pats = {"nba": "nba-odds-*", "nfl": "nfl-odds-*", "nhl": "nhl-odds-*", "mlb": "mlb-odds-*", "ncaab": "ncaa-basketball-*", "ncaaf": "ncaa-football-*"}
     out = []
     for p in sorted(glob.glob(os.path.join(D, pats[sport]))):
         try:
@@ -52,7 +52,7 @@ def games(sport):
                           "neutral": v["VH"].eq("N")})
         mlcol = "ML" if "ML" in t else "Close"
         g["vml"] = v[mlcol].map(am2dec); g["hml"] = h[mlcol].map(am2dec)
-        if sport in ("nba", "nfl", "ncaab"):  # Close 열: 작은 값 = 스프레드(그 팀이 정배), 큰 값 = 토탈
+        if sport in ("nba", "nfl", "ncaab", "ncaaf"):  # Close 열: 작은 값 = 스프레드(그 팀이 정배), 큰 값 = 토탈
             a, b = v["Close"].map(num).to_numpy(), h["Close"].map(num).to_numpy()
             vfav = a < b
             g["spread"] = np.where(vfav, a, b)         # 정배가 주는 점수
@@ -78,6 +78,10 @@ def analyze(sport):
     print(f"\n######## {sport.upper()}  경기 {len(g):,} ({g.season.iloc[0]} ~ {g.season.iloc[-1]})")
     m = g.dropna(subset=["vml", "hml"])
     m = m[m.vf != m.hf]
+    ov = 1 / m.vml + 1 / m.hml
+    bad = ((ov < 1.0) | (ov > 1.12)).sum()
+    m = m[(ov >= 1.0) & (ov <= 1.12)]  # 입력오류 배당 제거(양쪽 내재확률 합 100~112%)
+    if bad: print(f" (배당 입력오류 의심 {bad:,}경기 제외)")
     over = (1 / m.vml + 1 / m.hml - 1).mean() * 100
     print(f" [머니라인] 평균 마진 {over:.1f}%")
     legs = pd.concat([
@@ -104,7 +108,7 @@ def analyze(sport):
 
 
 if __name__ == "__main__":
-    for sp in ["nba", "nfl", "nhl", "mlb", "ncaab"]:
+    for sp in ["nba", "nfl", "nhl", "mlb", "ncaab", "ncaaf"]:
         try:
             analyze(sp)
         except Exception as e:
