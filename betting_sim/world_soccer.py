@@ -15,6 +15,7 @@ def load():
     for p in sorted(glob.glob(os.path.join(D, "*.csv"))):
         d = pd.read_csv(p, encoding="utf-8-sig", on_bad_lines="skip", low_memory=False)
         d = d.loc[:, ~d.columns.str.startswith("Unnamed")]
+        d["Country"] = d["Country"].astype(str).str.strip()
         d["ts"] = pd.to_datetime(d.Date, dayfirst=True, errors="coerce", format="mixed")
         fr.append(d)
     df = pd.concat(fr, ignore_index=True)
@@ -62,5 +63,7 @@ if __name__ == "__main__":
                                          ("Kaunitz 최고배당 vs 평균, 전체", mx, fa, 1.0, 10),
                                          ("최고배당 vs Pinnacle 공정가, 1.8~2.2", mx, fp, 1.8, 2.2)]:
             e = odds * fair - 1
-            m = per & (e > 0) & (odds >= lo) & (odds <= hi)
+            e = np.where((odds >= lo) & (odds <= hi) & np.isfinite(e), e, -9)
+            best = e == e.max(1, keepdims=True)          # 경기당 엣지 최대 결과 1개만
+            m = per & (e > 0) & best
             stat(f"{lab} {name}", odds[m], W[m])

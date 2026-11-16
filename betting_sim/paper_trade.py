@@ -33,7 +33,7 @@ WORLD = {"Japan": "JPN", "USA": "USA", "Brazil": "BRA", "Argentina": "ARG", "Mex
          "Switzerland": "SWZ", "Poland": "POL", "Romania": "ROU", "Russia": "RUS"}
 BANDS = [(1.01, 1.3), (1.3, 1.5), (1.5, 1.8), (1.8, 2.2)]
 LO, HI, TARGET_ODDS, MAX_LEGS, MAX_COMBOS = 1.01, 1.90, 1.9, 4, 2
-STEPS, FLAT_S = 3, 0.01
+STEPS, FLAT_S, VOID_DAYS = 3, 0.01, 10
 UK, KST = ZoneInfo("Europe/London"), ZoneInfo("Asia/Seoul")
 SEASON = "2627"
 START, GOAL = 10_000_000, 100_000_000
@@ -105,16 +105,17 @@ def candidates(now):
     return c.sort_values("ko").drop_duplicates(["lg", "home", "ko"]).reset_index(drop=True)
 
 
-def stake_for(tr, t, chain, odds, bold_open):
-    """트랙 t의 이번 판 베팅액."""
+def stake_for(tr, t, chain, odds, bold_open, exposure=0.0):
+    """트랙 t의 이번 판 베팅액. exposure = 이 트랙의 미정산 베팅 합계(동시 노출이 자금/바닥을 넘지 않게)."""
     cfg = TRACKS[tr]
     if t["stopped"]: return 0
-    bank = t["bank"]
+    bank = t["bank"] - exposure
     if cfg["kind"] == "bold":
         if chain != "A" or bold_open: return 0
         s = (GOAL - bank) / (odds - 1)
         return int(min(s, bank) // 1000 * 1000)
     room = max(bank - cfg["floor"], 0)
+    if room <= 0: return 0
     streak, nxt = t["chains"][chain]
     s = nxt if streak > 0 and nxt else cfg["base"] * room
     return int(min(s, room) // 1000 * 1000)
@@ -143,9 +144,17 @@ def cmd_pick(st, legs):
             pool = grp + pool; break
         combos.append((grp, odds))
     rows, used = [], set()
+    exposure = {}  # 트랙별 미정산 노출
+    if len(legs) and "stake_ATK" in legs:
+        op = legs[(legs.status.isin(["open", "leg_done"])) & (legs.combo != "")].drop_duplicates("combo")
+        for tr in TRACKS:
+            exposure[tr] = pd.to_numeric(op.get(f"stake_{tr}"), errors="coerce").fillna(0).sum()
     for (grp, odds), ch in zip(combos, free):
         cid = f"{datetime.now(KST):%Y%m%d}-{ch}"
-        stakes = {tr: stake_for(tr, st["tracks"][tr], ch, odds, bold_open) for tr in TRACKS}
+        stakes = {}
+        for tr in TRACKS:
+            stakes[tr] = stake_for(tr, st["tracks"][tr], ch, odds, bold_open, exposure.get(tr, 0.0))
+            exposure[tr] = exposure.get(tr, 0.0) + stakes[tr]
         if stakes["BOLD"]: bold_open = True
         print(f"  [{cid}] {len(grp)}폴더 묶음배당 {odds:.2f}")
         for tr, s in stakes.items():
@@ -191,11 +200,17 @@ def cmd_settle(st, legs):
             s = float(legs.at[i, "stake_S"] or 0); o = float(legs.at[i, "odds"])
             st["S"]["bank"] += s * (o - 1) if w else -s
             legs.at[i, "status"] = "leg_done" if legs.at[i, "combo"] else "done"
+        elif pd.to_datetime(legs.at[i, "ko"]) < datetime.now(UK).replace(tzinfo=None) - timedelta(days=VOID_DAYS):
+            legs.at[i, "win"] = "V"; legs.at[i, "ftr"] = "VOID"  # 연기·취소·이름불일치: 적중특례(배당 1.0) 처리
+            legs.at[i, "status"] = "leg_done" if legs.at[i, "combo"] else "done"
+            print(f"  [무효] {legs.at[i, 'home']} vs {legs.at[i, 'away']} ({legs.at[i, 'ko']}) {VOID_DAYS}일 경과 결과 없음 → 배당 1.0 처리")
     for cid in [x for x in legs.combo.unique() if x]:
         m = legs.combo == cid
         if legs.loc[m, "status"].isin(["won", "lost"]).any() or (legs.loc[m, "status"] == "open").any(): continue
-        win = (legs.loc[m, "win"] == "1").all()
-        odds = float(legs.loc[m, "combo_odds"].iloc[0]); ch = legs.loc[m, "chain"].iloc[0]
+        lw = legs.loc[m, "win"]
+        win = lw.isin(["1", "V"]).all()
+        odds = float(np.prod([float(o) for o, w in zip(legs.loc[m, "odds"], lw) if w != "V"] or [1.0]))  # 무효 다리 제외 재계산
+        ch = legs.loc[m, "chain"].iloc[0]
         msg = []
         for tr in TRACKS:
             s = float(legs.loc[m, f"stake_{tr}"].iloc[0] or 0); t = st["tracks"][tr]

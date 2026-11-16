@@ -36,6 +36,19 @@ def read(p):
     return t.reset_index(drop=True)
 
 
+def pair_rows(t):
+    """V/H 두 줄을 한 경기로 묶기. 같은 날짜 & Rot 연속(r, r+1) & V/N→H/N 일 때만 짝짓고, 고아 줄은 버림."""
+    t = t[t["VH"].isin(["V", "H", "N"])].reset_index(drop=True)
+    rot = pd.to_numeric(t["Rot"], errors="coerce").to_numpy(); dt = t["Date"].astype(str).to_numpy(); vh = t["VH"].to_numpy()
+    vi, hi, i = [], [], 0
+    while i < len(t) - 1:
+        if dt[i] == dt[i + 1] and rot[i + 1] == rot[i] + 1 and vh[i] in ("V", "N") and vh[i + 1] in ("H", "N"):
+            vi.append(i); hi.append(i + 1); i += 2
+        else:
+            i += 1
+    return t.iloc[vi].reset_index(drop=True), t.iloc[hi].reset_index(drop=True)
+
+
 def games(sport):
     pats = {"nba": "nba-odds-*", "nfl": "nfl-odds-*", "nhl": "nhl-odds-*", "mlb": "mlb-odds-*", "ncaab": "ncaa-basketball-*", "ncaaf": "ncaa-football-*"}
     out = []
@@ -45,9 +58,7 @@ def games(sport):
         except Exception:
             continue
         if "VH" not in t: continue
-        t = t[t["VH"].isin(["V", "H", "N"])].reset_index(drop=True)
-        if len(t) % 2: t = t.iloc[:-1]
-        v, h = t.iloc[0::2].reset_index(drop=True), t.iloc[1::2].reset_index(drop=True)
+        v, h = pair_rows(t)
         g = pd.DataFrame({"season": os.path.basename(p), "vf": v["Final"].map(num), "hf": h["Final"].map(num),
                           "neutral": v["VH"].eq("N")})
         mlcol = "ML" if "ML" in t else "Close"

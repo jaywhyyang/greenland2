@@ -6,16 +6,15 @@ NFL 원정 역배 핸디캡(ATS) 세부 분석. 가격은 표준 -110(1.909) 가
 import glob, os, re, warnings
 import numpy as np, pandas as pd
 warnings.filterwarnings("ignore")
-from us_sports import num, read, D, STD
+from us_sports import pair_rows, num, read, D, STD
 
 
 def load():
     out = []
     for p in sorted(glob.glob(os.path.join(D, "nfl-odds-*.html"))):
-        yr = int(re.search(r"(\d{4})", p).group(1))
-        t = read(p); t = t[t["VH"].isin(["V", "H", "N"])].reset_index(drop=True)
-        if len(t) % 2: t = t.iloc[:-1]
-        v, h = t.iloc[0::2].reset_index(drop=True), t.iloc[1::2].reset_index(drop=True)
+        yr = int(re.search(r"(\d{4})", os.path.basename(p)).group(1))
+        t = read(p); t.columns = [str(c).strip() for c in t.columns]
+        v, h = pair_rows(t)
         g = pd.DataFrame({"yr": yr, "neutral": v.VH.eq("N"), "vf": v.Final.map(num), "hf": h.Final.map(num)})
         for col in ["Open", "Close"]:
             a, b = v[col].map(num).to_numpy(), h[col].map(num).to_numpy()

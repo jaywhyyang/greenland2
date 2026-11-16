@@ -11,16 +11,14 @@ MLB 엣지 탐색 (2010~2021, sportsbookreviewsonline 공개 아카이브).
 import glob, os, re, warnings
 import numpy as np, pandas as pd
 warnings.filterwarnings("ignore")
-from us_sports import num, am2dec, D
+from us_sports import pair_rows, num, am2dec, D
 
 def load():
     rows = []
     for p in sorted(glob.glob(os.path.join(D, "mlb-odds-*.xlsx"))):
-        yr = int(re.search(r"(\d{4})", p).group(1))
+        yr = int(re.search(r"(\d{4})", os.path.basename(p)).group(1))
         t = pd.read_excel(p); t.columns = [str(c).strip() for c in t.columns]
-        t = t[t["VH"].isin(["V", "H", "N"])].reset_index(drop=True)
-        if len(t) % 2: t = t.iloc[:-1]
-        v, h = t.iloc[0::2].reset_index(drop=True), t.iloc[1::2].reset_index(drop=True)
+        v, h = pair_rows(t)
         md = v["Date"].astype(int)
         g = pd.DataFrame({"yr": yr, "date": pd.to_datetime(dict(year=yr, month=md // 100, day=md % 100), errors="coerce"),
                           "vt": v["Team"], "ht": h["Team"], "vp": v["Pitcher"].astype(str), "hp": h["Pitcher"].astype(str),
