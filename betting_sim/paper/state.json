@@ -1,20 +1,64 @@
 {
- "P": {
-  "bank": 10000000,
-  "chains": {
-   "A": [
-    0,
-    null
-   ],
-   "B": [
-    0,
-    null
-   ]
+ "tracks": {
+  "ATK": {
+   "bank": 10000000,
+   "chains": {
+    "A": [
+     0,
+     null
+    ],
+    "B": [
+     0,
+     null
+    ]
+   },
+   "stopped": false
   },
-  "stopped": false
+  "BOLD": {
+   "bank": 10000000,
+   "chains": {
+    "A": [
+     0,
+     null
+    ],
+    "B": [
+     0,
+     null
+    ]
+   },
+   "stopped": false
+  },
+  "F500": {
+   "bank": 10000000,
+   "chains": {
+    "A": [
+     0,
+     null
+    ],
+    "B": [
+     0,
+     null
+    ]
+   },
+   "stopped": false
+  },
+  "P2": {
+   "bank": 10000000,
+   "chains": {
+    "A": [
+     0,
+     null
+    ],
+    "B": [
+     0,
+     null
+    ]
+   },
+   "stopped": false
+  }
  },
  "S": {
   "bank": 10000000
  },
- "log": []
+ "version": "v3"
 }

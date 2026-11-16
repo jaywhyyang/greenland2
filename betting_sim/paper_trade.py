@@ -1,17 +1,22 @@
 """
-bet365 단일 사이트 모의투자 (가상 예산 1,000만원, 실제 돈/계정 없음).
+bet365 단일 사이트 모의투자 (가상 예산 트랙별 1,000만원, 실제 돈/계정 없음).
 
   python3 paper_trade.py run      # settle → pick → status (매일 1회)
   python3 paper_trade.py pick | settle | status
 
-규칙 v2 (화이트리스트: segments.py가 고른 '바카라보다 나았던' 리그x결과x배당대 구간)
-  다리   : bet365 배당 1.01~1.90(적중확률 50%+ 쪽만), 화이트리스트 구간, 킥오프 30분~36시간 전
-           유럽(fixtures.csv) + 유럽 외(new_league_fixtures.csv)
-  주의   : 학습구간 선정 → 검증구간 -4.5% (선정 안 된 구간 -4.3%와 차이 없음). 실전 기록으로 재확인 목적.
-  트랙 P : 다리를 킥오프 순으로 묶어 배당 1.9 이상(최소 1, 최대 4폴더) '바카라 한 판' → 하루 최대 2판
-           판마다 파롤리 3단 체인(A/B), 기본 = 자금의 2%. 자금 1억 도달 시 신규 베팅 중단(익절).
-  트랙 S : 같은 다리를 싱글 고정 1%로 (비교용)
-데이터: football-data.co.uk fixtures.csv(bet365 배당) / 시즌 결과 CSV. 로그인 불필요.
+픽 규칙 v2 (화이트리스트: segments.py가 고른 '바카라보다 나았던' 리그x결과x배당대 구간)
+  다리 : bet365 배당 1.01~1.90(적중확률 50%+ 쪽만), 화이트리스트 구간, 킥오프 30분~36시간 전
+         유럽(fixtures.csv) + 유럽 외(new_league_fixtures.csv)
+  판   : 다리를 킥오프 순으로 묶어 배당 1.9 이상(최소 1, 최대 4폴더) '바카라 한 판' → 하루 최대 2판(체인 A/B)
+  주의 : 학습구간 선정 → 검증구간 -4.5% (선정 안 된 구간 -4.3%와 차이 없음). 실전 기록으로 재확인 목적.
+
+자금운용 v3 — 같은 판에 트랙별로 동시에 가상 베팅 (staking_lab.py 비교 근거)
+  ATK  주력  : 바닥 없음, 기본 = 현재 자금의 10%, 파롤리 3단, 1억 도달 시 중단
+  BOLD 그림자: 대담한 베팅(Dubins & Savage 1965) — 1억까지 필요한 만큼 한 판에 (체인 A만, 한 번에 1판)
+  F500 그림자: 바닥 500만 보호(CPPI, Black & Perold 1992), 기본 = (자금-500만)의 10%, 파롤리 3단
+  P2   그림자: 이전 방식, 기본 = 자금의 2%, 파롤리 3단
+  S    비교  : 묶음 없이 다리마다 싱글 자금 1%
+데이터: football-data.co.uk 공개 CSV. 로그인 불필요.
 """
 import io, json, os, sys, urllib.request
 from datetime import datetime, timedelta
@@ -28,10 +33,17 @@ WORLD = {"Japan": "JPN", "USA": "USA", "Brazil": "BRA", "Argentina": "ARG", "Mex
          "Switzerland": "SWZ", "Poland": "POL", "Romania": "ROU", "Russia": "RUS"}
 BANDS = [(1.01, 1.3), (1.3, 1.5), (1.5, 1.8), (1.8, 2.2)]
 LO, HI, TARGET_ODDS, MAX_LEGS, MAX_COMBOS = 1.01, 1.90, 1.9, 4, 2
-BASE_P, STEPS, FLAT_S = 0.02, 3, 0.01
+STEPS, FLAT_S = 3, 0.01
 UK, KST = ZoneInfo("Europe/London"), ZoneInfo("Asia/Seoul")
 SEASON = "2627"
 START, GOAL = 10_000_000, 100_000_000
+# 트랙: kind = paroli(base 비율, floor) / bold
+TRACKS = {
+    "ATK":  dict(name="주력·전액공격 파롤리(자금10%)", kind="paroli", base=0.10, floor=0),
+    "BOLD": dict(name="그림자·대담한 베팅", kind="bold"),
+    "F500": dict(name="그림자·바닥500만 보호", kind="paroli", base=0.10, floor=5_000_000),
+    "P2":   dict(name="그림자·이전방식(자금2%)", kind="paroli", base=0.02, floor=0),
+}
 
 
 def get_csv(url):
@@ -43,15 +55,16 @@ def get_csv(url):
 
 
 def load_state():
-    if os.path.exists(STATE):
-        return json.load(open(STATE))
-    return {"P": {"bank": START, "chains": {"A": [0, None], "B": [0, None]}, "stopped": False},
-            "S": {"bank": START}, "log": []}
+    st = json.load(open(STATE)) if os.path.exists(STATE) else {}
+    if "tracks" not in st:  # v2 → v3 마이그레이션 (v2에서 정산된 판 없음)
+        st = {"tracks": {k: {"bank": START, "chains": {"A": [0, None], "B": [0, None]}, "stopped": False} for k in TRACKS},
+              "S": {"bank": st.get("S", {}).get("bank", START)}, "version": "v3"}
+    return st
 
 
 def load_legs():
     if not os.path.exists(LEGS) or os.path.getsize(LEGS) < 5: return pd.DataFrame()
-    return pd.read_csv(LEGS, dtype=str)
+    return pd.read_csv(LEGS, dtype=str).fillna("")
 
 
 def save(st, legs):
@@ -92,6 +105,21 @@ def candidates(now):
     return c.sort_values("ko").drop_duplicates(["lg", "home", "ko"]).reset_index(drop=True)
 
 
+def stake_for(tr, t, chain, odds, bold_open):
+    """트랙 t의 이번 판 베팅액."""
+    cfg = TRACKS[tr]
+    if t["stopped"]: return 0
+    bank = t["bank"]
+    if cfg["kind"] == "bold":
+        if chain != "A" or bold_open: return 0
+        s = (GOAL - bank) / (odds - 1)
+        return int(min(s, bank) // 1000 * 1000)
+    room = max(bank - cfg["floor"], 0)
+    streak, nxt = t["chains"][chain]
+    s = nxt if streak > 0 and nxt else cfg["base"] * room
+    return int(min(s, room) // 1000 * 1000)
+
+
 def cmd_pick(st, legs):
     now = datetime.now(UK).replace(tzinfo=None)
     c = candidates(now)
@@ -101,38 +129,41 @@ def cmd_pick(st, legs):
     print(f"[픽] 후보 다리 {len(c)}개 (bet365 1.01~1.90, 화이트리스트 {len(WLSET)}개 구간, 36시간 내 킥오프)")
     if not len(c):
         print("  오늘은 조건에 맞는 경기가 없어 베팅하지 않습니다."); return legs
-    rows, open_ch = [], set(legs.loc[legs.status == "open", "chain"].dropna()) if len(legs) else set()
+    open_ch = set(legs.loc[legs.status == "open", "chain"]) - {""} if len(legs) else set()
+    bold_open = False  # 대담한 베팅은 한 번에 1판만
+    if len(legs) and "stake_BOLD" in legs:
+        bold_open = ((legs.status == "open") & ~legs.stake_BOLD.isin(["", "0"])).any()
     free = [ch for ch in "AB" if ch not in open_ch]
-    pool = list(c.itertuples())
-    combos = []
-    while pool and len(combos) < min(MAX_COMBOS, len(free)) and not st["P"]["stopped"]:
+    pool = list(c.itertuples()); combos = []
+    while pool and len(combos) < min(MAX_COMBOS, len(free)):
         grp, odds = [], 1.0
         while pool and odds < TARGET_ODDS and len(grp) < MAX_LEGS:
             r = pool.pop(0); grp.append(r); odds *= r.odds
-        if odds < TARGET_ODDS and combos:  # 남은 다리로 1.9 못 채우면 버림(첫 판은 미달이어도 진행)
+        if odds < TARGET_ODDS and combos:
             pool = grp + pool; break
         combos.append((grp, odds))
-    used = set()
+    rows, used = [], set()
     for (grp, odds), ch in zip(combos, free):
-        streak, stake = st["P"]["chains"][ch]
-        stake = stake if streak > 0 and stake else BASE_P * st["P"]["bank"]
-        stake = int(min(stake, st["P"]["bank"]) // 1000 * 1000)
         cid = f"{datetime.now(KST):%Y%m%d}-{ch}"
-        print(f"  [{cid}] 체인{ch} 파롤리 {streak+1}단계 · {len(grp)}폴더 묶음배당 {odds:.2f} · 가상베팅 {stake:,}원")
+        stakes = {tr: stake_for(tr, st["tracks"][tr], ch, odds, bold_open) for tr in TRACKS}
+        if stakes["BOLD"]: bold_open = True
+        print(f"  [{cid}] {len(grp)}폴더 묶음배당 {odds:.2f}")
+        for tr, s in stakes.items():
+            t = st["tracks"][tr]; stp = t["chains"][ch][0] + 1 if TRACKS[tr]["kind"] == "paroli" else "-"
+            print(f"     · {TRACKS[tr]['name']}: {s:,}원" + (f" (파롤리 {stp}단계)" if s and stp != "-" else ""))
         for r in grp:
             used.add(r.Index)
             rows.append(dict(created_kst=stamp, src=r.src, lg=r.lg, side=r.side, ko=str(r.ko), home=r.home, away=r.away,
-                             odds=f"{r.odds:.2f}", combo=cid, chain=ch, combo_odds=f"{odds:.3f}", stake_p=stake,
-                             stake_s=int(FLAT_S * st["S"]["bank"] // 1000 * 1000), status="open", ftr="", win=""))
+                             odds=f"{r.odds:.2f}", combo=cid, chain=ch, combo_odds=f"{odds:.3f}",
+                             **{f"stake_{tr}": s for tr, s in stakes.items()},
+                             stake_S=int(FLAT_S * st["S"]["bank"] // 1000 * 1000), status="open", ftr="", win=""))
             print(f"     {r.ko:%m-%d %H:%M}(英) {r.lg} {r.home} vs {r.away} → {SIDES[r.side]} @{r.odds:.2f}")
-    for r in pool:  # 묶음에 안 들어간 다리는 싱글 트랙만
+    for r in pool:
         if r.Index in used: continue
         rows.append(dict(created_kst=stamp, src=r.src, lg=r.lg, side=r.side, ko=str(r.ko), home=r.home, away=r.away,
-                         odds=f"{r.odds:.2f}", combo="", chain="", combo_odds="", stake_p=0,
-                         stake_s=int(FLAT_S * st["S"]["bank"] // 1000 * 1000), status="open", ftr="", win=""))
+                         odds=f"{r.odds:.2f}", combo="", chain="", combo_odds="", **{f"stake_{tr}": 0 for tr in TRACKS},
+                         stake_S=int(FLAT_S * st["S"]["bank"] // 1000 * 1000), status="open", ftr="", win=""))
         print(f"     (싱글만) {r.ko:%m-%d %H:%M}(英) {r.lg} {r.home} vs {r.away} → {SIDES[r.side]} @{r.odds:.2f}")
-    if st["P"]["stopped"]:
-        print("  트랙P는 목표 1억 도달로 중단 상태(싱글만 기록)")
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 
@@ -152,53 +183,55 @@ def cmd_settle(st, legs):
                 res[(lg, str(pd.to_datetime(x.Date, dayfirst=True).date()), x.HomeTeam, x.AwayTeam)] = x.FTR
         except Exception as e:
             print(f"  {lg} 결과파일 오류: {e}")
-    op = legs.status == "open"
-    for i in legs[op].index:
+    for i in legs[legs.status == "open"].index:
         k = (legs.at[i, "lg"], str(pd.to_datetime(legs.at[i, "ko"]).date()), legs.at[i, "home"], legs.at[i, "away"])
         if k in res:
             w = res[k] == legs.at[i, "side"]
             legs.at[i, "ftr"] = res[k]; legs.at[i, "win"] = "1" if w else "0"
-            s = float(legs.at[i, "stake_s"]); o = float(legs.at[i, "odds"])
+            s = float(legs.at[i, "stake_S"] or 0); o = float(legs.at[i, "odds"])
             st["S"]["bank"] += s * (o - 1) if w else -s
-            legs.at[i, "status"] = "done" if not legs.at[i, "combo"] else "leg_done"
-    for cid in legs.loc[legs.combo.ne("") & legs.combo.notna(), "combo"].unique():
+            legs.at[i, "status"] = "leg_done" if legs.at[i, "combo"] else "done"
+    for cid in [x for x in legs.combo.unique() if x]:
         m = legs.combo == cid
-        if (legs.loc[m, "status"] == "won").any() or (legs.loc[m, "status"] == "lost").any(): continue
-        if (legs.loc[m, "status"] == "open").any():
-            if (legs.loc[m, "win"] == "0").any(): pass  # 이미 진 다리 있어도 전체 확정 후 처리
-            continue
+        if legs.loc[m, "status"].isin(["won", "lost"]).any() or (legs.loc[m, "status"] == "open").any(): continue
         win = (legs.loc[m, "win"] == "1").all()
-        stake, odds = float(legs.loc[m, "stake_p"].iloc[0]), float(legs.loc[m, "combo_odds"].iloc[0])
-        ch = legs.loc[m, "chain"].iloc[0]
-        pnl = stake * (odds - 1) if win else -stake
-        st["P"]["bank"] += pnl
-        c = st["P"]["chains"][ch]
-        if win:
-            c[0] += 1; c[1] = stake * odds
-            if c[0] >= STEPS: c[0], c[1] = 0, None
-        else:
-            c[0], c[1] = 0, None
+        odds = float(legs.loc[m, "combo_odds"].iloc[0]); ch = legs.loc[m, "chain"].iloc[0]
+        msg = []
+        for tr in TRACKS:
+            s = float(legs.loc[m, f"stake_{tr}"].iloc[0] or 0); t = st["tracks"][tr]
+            if s <= 0: continue
+            pnl = s * (odds - 1) if win else -s
+            t["bank"] += pnl
+            if TRACKS[tr]["kind"] == "paroli":
+                c = t["chains"][ch]
+                if win:
+                    c[0] += 1; c[1] = s * odds
+                    if c[0] >= STEPS: c[0], c[1] = 0, None
+                else:
+                    c[0], c[1] = 0, None
+            if t["bank"] >= GOAL: t["stopped"] = True
+            msg.append(f"{tr} {pnl:+,.0f}")
         legs.loc[m, "status"] = "won" if win else "lost"
-        if st["P"]["bank"] >= GOAL: st["P"]["stopped"] = True
-        print(f"[정산] {cid} {'적중' if win else '실패'} {pnl:+,.0f}원 → 트랙P {st['P']['bank']:,.0f}원")
+        print(f"[정산] {cid} 묶음 {odds:.2f} {'적중' if win else '실패'} | " + ", ".join(msg))
     return legs
 
 
 def cmd_status(st, legs):
-    p, s = st["P"]["bank"], st["S"]["bank"]
-    print(f"[현황] 트랙P(파롤리 묶음) {p:,.0f}원 (x{p/START:.2f}, 목표 1억) | 트랙S(싱글 1%) {s:,.0f}원 (x{s/START:.2f})")
+    print("[현황] (각 트랙 시작 1,000만, 목표 1억)")
+    for tr, cfg in TRACKS.items():
+        t = st["tracks"][tr]
+        print(f"  {cfg['name']:24s} {t['bank']:>13,.0f}원 (x{t['bank']/START:.2f})" + (" [1억 도달·중단]" if t["stopped"] else ""))
+    print(f"  {'비교·싱글 1%':24s} {st['S']['bank']:>13,.0f}원 (x{st['S']['bank']/START:.2f})")
     if len(legs):
-        cb = legs[legs.combo.notna() & legs.combo.ne("")].drop_duplicates("combo")
+        cb = legs[legs.combo != ""].drop_duplicates("combo")
         w, l = (cb.status == "won").sum(), (cb.status == "lost").sum()
         lg = legs[legs.win.isin(["0", "1"])]
-        print(f"  묶음 {w}승 {l}패 (진행 {len(cb)-w-l}) | 다리 적중 {int((lg.win=='1').sum())}/{len(lg)}")
-        print("  체인 " + ", ".join(f"{k}: {v[0]}연승" for k, v in st["P"]["chains"].items()))
+        print(f"  판 {w}승 {l}패 (진행 {len(cb)-w-l}) | 다리 적중 {int((lg.win=='1').sum())}/{len(lg)}")
 
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
     st, legs = load_state(), load_legs()
-    if len(legs): legs = legs.fillna("")
     if cmd in ("settle", "run"): legs = cmd_settle(st, legs)
     if cmd in ("pick", "run"): legs = cmd_pick(st, legs)
     if cmd != "status": save(st, legs)
