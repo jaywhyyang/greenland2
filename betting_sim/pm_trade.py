@@ -6,8 +6,8 @@
 - 시장   : Polymarket 승패(moneyline) 시장 — NBA/NHL/NFL/대학미식축구/축구 주요 리그
 - 배당   : 해당 결과를 '매수'하는 가격(ask)의 역수 = 1/ask  (예: 0.775 → 1.29)
 - 스캔   : (1) 8일 내 마감되는 '모든' 이벤트를 날짜로 전수 조회(마감=경기+7일인 리그 대응) + (2) 종목 태그 조회(테니스 등) → 합집합
-- 다리   : 배당 1.01~1.90, 호가차 <= 6센트(거래량 무관, $1k 미만은 '저유동성' 표시), 시작 15분~24시간 전
-- 판     : 거래량 많은 순으로 묶어 배당 1.9 이상(1~4폴더), 동시에 최대 2판(체인 A/B)
+- 다리   : 배당 1.30~1.55(pm-v6), 호가차 <= 6센트(거래량 무관, $1k 미만은 '저유동성' 표시), 시작 15분~24시간 전
+- 판     : 거래량 많은 다리를 기준으로 묶음 배당 1.90~2.20 중 2.0에 가장 가깝게(1~4폴더), 동시에 최대 2판(체인 A/B)
            (pm-v5부터 동시 최대 3판, 체인 A/B/C) → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
 - 자금   : paper_trade.py와 같은 5트랙(ATK 주력 / BOLD / F500 / P2 / 싱글), 트랙별 1,000만원
 - 정산   : 시장 마감 후 결과가격(1/0)으로 즉시 확정. 50/50 또는 10일 경과 미확정은 무효(배당 1.0)
@@ -24,7 +24,7 @@ DIR = os.path.join(HERE, "paper_pm")
 LEGS, STATE = os.path.join(DIR, "legs.csv"), os.path.join(DIR, "state.json")
 API = "https://gamma-api.polymarket.com"
 TAGS = ["nba", "nhl", "nfl", "cfb", "mlb", "epl", "la-liga", "serie-a", "bundesliga", "ligue-1", "ucl", "tennis", "esports", "mls", "kbl", "k-league", "j-league", "basketball", "soccer", "hockey"]
-LO, HI, TARGET_ODDS, MAX_LEGS = 1.01, 1.90, 1.9, 4
+LO, HI, TARGET_ODDS, MAX_LEGS = 1.30, 1.55, 1.9, 4  # pm-v6: 다리 1.30~1.55 (원안: 1.4~1.5 두 개 → 약 2배)
 MIN_VOL, MAX_SPREAD, AHEAD_MIN, AHEAD_H, VOID_DAYS = 0, 0.06, 15, 24, 10  # v3: 거래량 조건 없음, 호가차 4센트 이하만
 LOWLIQ = 1_000  # 이 미만 거래량은 '저유동성' 표시
 KST = ZoneInfo("Asia/Seoul")
@@ -118,21 +118,46 @@ def candidates():
     return c.sort_values(["vol", "ko"], ascending=[False, True]).drop_duplicates("market_id").reset_index(drop=True)  # v4: 거래량 많은 경기 우선
 
 
+ODDS_BAND, AIM = (1.90, 2.20), 2.00  # pm-v6: 묶음 배당을 2.0 근처(1.90~2.20)로
+
+
+def build_combo(pool, top=60):
+    """거래량 상위 다리부터 기준으로 삼아, 묶음 배당이 1.90~2.20 안에서 2.0에 가장 가까운 조합(1~4폴더)을 찾는다."""
+    from itertools import combinations
+    cand = pool[:top]
+    for i, anchor in enumerate(cand):          # 거래량 높은 다리를 반드시 포함
+        rest = cand[:i] + cand[i + 1:]
+        best = None
+        if ODDS_BAND[0] <= anchor.odds <= ODDS_BAND[1]:
+            best = ([anchor], anchor.odds)
+        for k in range(1, MAX_LEGS):
+            for others in combinations(rest[:25], k):
+                o = anchor.odds * np.prod([r.odds for r in others])
+                if ODDS_BAND[0] <= o <= ODDS_BAND[1] and (best is None or abs(o - AIM) < abs(best[1] - AIM)
+                                                          or (abs(o - AIM) == abs(best[1] - AIM) and k + 1 < len(best[0]))):
+                    best = ([anchor, *others], o)
+            if best and abs(best[1] - AIM) < 0.03: break  # 충분히 가까우면 다리 수 늘리지 않음
+        if best:
+            return sorted(best[0], key=lambda r: r.ko), float(best[1])
+    return None
+
+
 def cmd_pick(st, legs):
     c = candidates()
     if len(legs) and len(c):
         c = c[~c.market_id.isin(set(legs.market_id))]
-    print(f"[픽] 후보 다리 {len(c)}개 (Polymarket 전 종목 승패시장, 배당 1.01~1.90, 호가차 {MAX_SPREAD*100:.0f}센트 이하, {AHEAD_H}시간 내 시작)")
+    print(f"[픽] 후보 다리 {len(c)}개 (Polymarket 전 종목 승패시장, 배당 {LO}~{HI}, 호가차 {MAX_SPREAD*100:.0f}센트 이하, {AHEAD_H}시간 내 시작)")
     if not len(c): print("  이번 스캔엔 조건에 맞는 경기가 없습니다."); return legs
     open_ch = set(legs.loc[legs.status.isin(["open", "leg_done"]) & (legs.combo != ""), "chain"]) if len(legs) else set()
     free = [ch for ch in CHAINS if ch not in open_ch]
     if not free: print(f"  체인 {'/'.join(CHAINS)} 모두 진행 중 → 결과 확정 후 다음 스캔에서 이어갑니다."); return legs
     pool = list(c.itertuples()); combos = []
     while pool and len(combos) < len(free):
-        grp, odds = [], 1.0
-        while pool and odds < TARGET_ODDS and len(grp) < MAX_LEGS:
-            r = pool.pop(0); grp.append(r); odds *= r.odds
-        if odds < TARGET_ODDS and combos: pool = grp + pool; break
+        best = build_combo(pool)
+        if not best: break
+        grp, odds = best
+        ids = {r.market_id for r in grp}
+        pool = [r for r in pool if r.market_id not in ids]
         combos.append((grp, odds))
     exposure = {}
     if len(legs):
