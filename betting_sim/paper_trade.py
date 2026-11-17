@@ -101,7 +101,9 @@ def candidates(now):
             out.append(pd.DataFrame({"src": src, "lg": fx.lg, "ko": fx.ko, "home": fx.home, "away": fx.away, "side": l, "odds": o}))
     c = pd.concat(out, ignore_index=True).dropna()
     c = c[(c.ko > now + timedelta(minutes=30)) & (c.ko < now + timedelta(hours=36)) & c.odds.between(LO, HI)]
-    c = c[[(lg, sd, band(o)) in WLSET for lg, sd, o in zip(c.lg, c.side, c.odds)]]
+    c = c[[(lg, sd, band(o)) in WLSET for lg, sd, o in zip(c.lg, c.side, c.odds)]] if len(c) else c
+    if not len(c):  # 후보 0건이면 빈 표(열 유지) 반환 — 빈 표 정렬 시 KeyError 방지
+        return pd.DataFrame(columns=["src", "lg", "ko", "home", "away", "side", "odds"])
     return c.sort_values("ko").drop_duplicates(["lg", "home", "ko"]).reset_index(drop=True)
 
 
