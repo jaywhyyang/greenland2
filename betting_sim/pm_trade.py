@@ -7,7 +7,7 @@
 - 배당   : 해당 결과를 '매수'하는 가격(ask)의 역수 = 1/ask  (예: 0.775 → 1.29)
 - 스캔   : (1) 8일 내 마감되는 '모든' 이벤트를 날짜로 전수 조회(마감=경기+7일인 리그 대응) + (2) 종목 태그 조회(테니스 등) → 합집합
 - 다리   : 배당 1.01~1.90, 호가차 <= 6센트(거래량 무관, $1k 미만은 '저유동성' 표시), 시작 15분~24시간 전
-- 판     : 시작 순으로 묶어 배당 1.9 이상(1~4폴더), 동시에 최대 2판(체인 A/B)
+- 판     : 거래량 많은 순으로 묶어 배당 1.9 이상(1~4폴더), 동시에 최대 2판(체인 A/B)
            → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
 - 자금   : paper_trade.py와 같은 5트랙(ATK 주력 / BOLD / F500 / P2 / 싱글), 트랙별 1,000만원
 - 정산   : 시장 마감 후 결과가격(1/0)으로 즉시 확정. 50/50 또는 10일 경과 미확정은 무효(배당 1.0)
@@ -108,7 +108,7 @@ def candidates():
                                          pick=pick, ko=ko, price=round(price, 4), odds=round(odds, 3), vol=round(vol)))
     c = pd.DataFrame(rows)
     if not len(c): return c
-    return c.sort_values(["ko", "vol"], ascending=[True, False]).drop_duplicates("market_id").reset_index(drop=True)
+    return c.sort_values(["vol", "ko"], ascending=[False, True]).drop_duplicates("market_id").reset_index(drop=True)  # v4: 거래량 많은 경기 우선
 
 
 def cmd_pick(st, legs):
