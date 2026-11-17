@@ -5,8 +5,8 @@
 
 - 시장   : Polymarket 승패(moneyline) 시장 — NBA/NHL/NFL/대학미식축구/축구 주요 리그
 - 배당   : 해당 결과를 '매수'하는 가격(ask)의 역수 = 1/ask  (예: 0.775 → 1.29)
-- 스캔   : (1) 36시간 내 마감되는 '모든' 이벤트를 날짜로 전수 조회 + (2) 종목 태그 조회(테니스 등) → 합집합
-- 다리   : 배당 1.01~1.90, 거래량 >= $1,000, 호가차 <= 4센트, 시작 15분~24시간 전
+- 스캔   : (1) 8일 내 마감되는 '모든' 이벤트를 날짜로 전수 조회(마감=경기+7일인 리그 대응) + (2) 종목 태그 조회(테니스 등) → 합집합
+- 다리   : 배당 1.01~1.90, 호가차 <= 6센트(거래량 무관, $1k 미만은 '저유동성' 표시), 시작 15분~24시간 전
 - 판     : 시작 순으로 묶어 배당 1.9 이상(1~4폴더), 동시에 최대 2판(체인 A/B)
            → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
 - 자금   : paper_trade.py와 같은 5트랙(ATK 주력 / BOLD / F500 / P2 / 싱글), 트랙별 1,000만원
@@ -23,9 +23,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, "paper_pm")
 LEGS, STATE = os.path.join(DIR, "legs.csv"), os.path.join(DIR, "state.json")
 API = "https://gamma-api.polymarket.com"
-TAGS = ["nba", "nhl", "nfl", "cfb", "mlb", "epl", "la-liga", "serie-a", "bundesliga", "ligue-1", "ucl", "tennis", "esports", "mls"]
+TAGS = ["nba", "nhl", "nfl", "cfb", "mlb", "epl", "la-liga", "serie-a", "bundesliga", "ligue-1", "ucl", "tennis", "esports", "mls", "kbl", "k-league", "j-league", "basketball", "soccer", "hockey"]
 LO, HI, TARGET_ODDS, MAX_LEGS = 1.01, 1.90, 1.9, 4
-MIN_VOL, MAX_SPREAD, AHEAD_MIN, AHEAD_H, VOID_DAYS = 1_000, 0.04, 15, 24, 10  # v2: 24시간 내 전 경기 스캔, 거래량 $1k+
+MIN_VOL, MAX_SPREAD, AHEAD_MIN, AHEAD_H, VOID_DAYS = 0, 0.06, 15, 24, 10  # v3: 거래량 조건 없음, 호가차 4센트 이하만
+LOWLIQ = 1_000  # 이 미만 거래량은 '저유동성' 표시
 KST = ZoneInfo("Asia/Seoul")
 
 
@@ -61,15 +62,18 @@ def save(st, legs):
 
 def candidates():
     now = now_utc(); rows = []; evs_all = []; seen = set()
-    a, b = now.strftime("%Y-%m-%dT%H:%M:%SZ"), (now + timedelta(hours=36)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    for off in range(0, 5000, 100):  # 날짜 전수 조회
-        try:
-            evs = get(f"/events?closed=false&end_date_min={a}&end_date_max={b}&limit=100&offset={off}")
-        except Exception as e:
-            print(f"  날짜조회 오류: {e}"); break
-        if not isinstance(evs, list) or not evs: break
-        evs_all += [("all", e) for e in evs]
-        if len(evs) < 100: break
+    # 마감일 기준 8일을 12시간 조각으로 나눠 전수 조회(한 번에 크게 조회하면 서버 상한에 잘림)
+    for k in range(16):
+        a = (now + timedelta(hours=12 * k)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        b = (now + timedelta(hours=12 * (k + 1))).strftime("%Y-%m-%dT%H:%M:%SZ")
+        for off in range(0, 3000, 100):
+            try:
+                evs = get(f"/events?closed=false&end_date_min={a}&end_date_max={b}&limit=100&offset={off}")
+            except Exception as e:
+                print(f"  날짜조회 오류: {e}"); break
+            if not isinstance(evs, list) or not evs: break
+            evs_all += [("all", e) for e in evs]
+            if len(evs) < 100: break
     for tag in TAGS:  # 마감일이 늦게 잡힌 경기 보완
         try:
             evs = get(f"/events?tag_slug={tag}&closed=false&limit=100")
@@ -111,7 +115,7 @@ def cmd_pick(st, legs):
     c = candidates()
     if len(legs) and len(c):
         c = c[~c.market_id.isin(set(legs.market_id))]
-    print(f"[픽] 후보 다리 {len(c)}개 (Polymarket 전 종목 승패시장, 배당 1.01~1.90, 거래량 ${MIN_VOL:,}+, {AHEAD_H}시간 내 시작)")
+    print(f"[픽] 후보 다리 {len(c)}개 (Polymarket 전 종목 승패시장, 배당 1.01~1.90, 호가차 {MAX_SPREAD*100:.0f}센트 이하, {AHEAD_H}시간 내 시작)")
     if not len(c): print("  이번 스캔엔 조건에 맞는 경기가 없습니다."); return legs
     open_ch = set(legs.loc[legs.status.isin(["open", "leg_done"]) & (legs.combo != ""), "chain"]) if len(legs) else set()
     free = [ch for ch in "AB" if ch not in open_ch]
@@ -146,7 +150,8 @@ def cmd_pick(st, legs):
                              combo_odds=f"{odds:.3f}", **{f"stake_{tr}": s for tr, s in stakes.items()},
                              stake_S=int(FLAT_S * st["S"]["bank"] // 1000 * 1000), status="open", win=""))
             kst = pd.Timestamp(r.ko).tz_localize("UTC").tz_convert(KST)
-            print(f"     {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (가격 {r.price:.3f}, 거래량 ${r.vol:,})")
+            liq = " ·저유동성" if r.vol < LOWLIQ else ""
+            print(f"     {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (가격 {r.price:.3f}, 거래량 ${r.vol:,}{liq})")
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 
