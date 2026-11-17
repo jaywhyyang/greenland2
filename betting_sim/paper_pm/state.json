@@ -1,7 +1,7 @@
 {
  "tracks": {
   "ATK": {
-   "bank": 10000000,
+   "bank": 8100000.0,
    "chains": {
     "A": [
      0,
@@ -15,7 +15,7 @@
    "stopped": false
   },
   "BOLD": {
-   "bank": 10000000,
+   "bank": 0.0,
    "chains": {
     "A": [
      0,
@@ -29,7 +29,7 @@
    "stopped": false
   },
   "F500": {
-   "bank": 10000000,
+   "bank": 9050000.0,
    "chains": {
     "A": [
      0,
@@ -43,7 +43,7 @@
    "stopped": false
   },
   "P2": {
-   "bank": 10000000,
+   "bank": 9604000.0,
    "chains": {
     "A": [
      0,
@@ -58,7 +58,7 @@
   }
  },
  "S": {
-  "bank": 10000000
+  "bank": 9894900.0
  },
  "version": "pm-v1"
 }
