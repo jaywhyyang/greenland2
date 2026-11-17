@@ -10,6 +10,10 @@
     "B": [
      0,
      null
+    ],
+    "C": [
+     0,
+     null
     ]
    },
    "stopped": false
@@ -22,6 +26,10 @@
      null
     ],
     "B": [
+     0,
+     null
+    ],
+    "C": [
      0,
      null
     ]
@@ -38,6 +46,10 @@
     "B": [
      0,
      null
+    ],
+    "C": [
+     0,
+     null
     ]
    },
    "stopped": false
@@ -50,6 +62,10 @@
      null
     ],
     "B": [
+     0,
+     null
+    ],
+    "C": [
      0,
      null
     ]

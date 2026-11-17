@@ -8,7 +8,7 @@
 - 스캔   : (1) 8일 내 마감되는 '모든' 이벤트를 날짜로 전수 조회(마감=경기+7일인 리그 대응) + (2) 종목 태그 조회(테니스 등) → 합집합
 - 다리   : 배당 1.01~1.90, 호가차 <= 6센트(거래량 무관, $1k 미만은 '저유동성' 표시), 시작 15분~24시간 전
 - 판     : 거래량 많은 순으로 묶어 배당 1.9 이상(1~4폴더), 동시에 최대 2판(체인 A/B)
-           → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
+           (pm-v5부터 동시 최대 3판, 체인 A/B/C) → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
 - 자금   : paper_trade.py와 같은 5트랙(ATK 주력 / BOLD / F500 / P2 / 싱글), 트랙별 1,000만원
 - 정산   : 시장 마감 후 결과가격(1/0)으로 즉시 확정. 50/50 또는 10일 경과 미확정은 무효(배당 1.0)
 참고: 예측시장 가격은 마진이 거의 없는 '공정가'에 가까움. 엣지 기대보다 '매일 실전 기록' 목적.
@@ -43,10 +43,17 @@ def now_utc():
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+CHAINS = "ABC"  # pm-v5: 동시 진행 판 최대 3개
+
+
 def load_state():
-    if os.path.exists(STATE): return json.load(open(STATE))
-    return {"tracks": {k: {"bank": START, "chains": {"A": [0, None], "B": [0, None]}, "stopped": False} for k in TRACKS},
-            "S": {"bank": START}, "version": "pm-v1"}
+    if os.path.exists(STATE):
+        st = json.load(open(STATE))
+        for t in st["tracks"].values():
+            for ch in CHAINS: t["chains"].setdefault(ch, [0, None])
+        return st
+    return {"tracks": {k: {"bank": START, "chains": {ch: [0, None] for ch in CHAINS}, "stopped": False} for k in TRACKS},
+            "S": {"bank": START}, "version": "pm-v5"}
 
 
 def load_legs():
@@ -118,8 +125,8 @@ def cmd_pick(st, legs):
     print(f"[픽] 후보 다리 {len(c)}개 (Polymarket 전 종목 승패시장, 배당 1.01~1.90, 호가차 {MAX_SPREAD*100:.0f}센트 이하, {AHEAD_H}시간 내 시작)")
     if not len(c): print("  이번 스캔엔 조건에 맞는 경기가 없습니다."); return legs
     open_ch = set(legs.loc[legs.status.isin(["open", "leg_done"]) & (legs.combo != ""), "chain"]) if len(legs) else set()
-    free = [ch for ch in "AB" if ch not in open_ch]
-    if not free: print("  체인 A/B 모두 진행 중 → 결과 확정 후 다음 스캔에서 이어갑니다."); return legs
+    free = [ch for ch in CHAINS if ch not in open_ch]
+    if not free: print(f"  체인 {'/'.join(CHAINS)} 모두 진행 중 → 결과 확정 후 다음 스캔에서 이어갑니다."); return legs
     pool = list(c.itertuples()); combos = []
     while pool and len(combos) < len(free):
         grp, odds = [], 1.0
@@ -215,7 +222,7 @@ def cmd_status(st, legs):
         w, l = (cb.status == "won").sum(), (cb.status == "lost").sum()
         lg = legs[legs.win.isin(["0", "1"])]
         print(f"  판 {w}승 {l}패 (진행 {len(cb)-w-l}) | 다리 적중 {int((lg.win=='1').sum())}/{len(lg)}")
-        print("  체인 " + ", ".join(f"{ch}: {st['tracks']['ATK']['chains'][ch][0]}연승" for ch in "AB"))
+        print("  체인 " + ", ".join(f"{ch}: {st['tracks']['ATK']['chains'][ch][0]}연승" for ch in CHAINS))
 
 
 if __name__ == "__main__":
