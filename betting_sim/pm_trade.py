@@ -11,13 +11,14 @@
            (pm-v5부터 동시 최대 3판, 체인 A/B/C) → 체인이 정산되면 다음 스캔에서 다음 시간대 경기로 '이어가기'
 - 자금   : paper_trade.py와 같은 5트랙(ATK 주력 / BOLD / F500 / P2 / 싱글), 트랙별 1,000만원
 - 정산   : 시장 마감 후 결과가격(1/0)으로 즉시 확정. 50/50 또는 10일 경과 미확정은 무효(배당 1.0)
+통합 장부(2026-11-18~): 축구(paper_trade.py)와 같은 자금 상태(paper_pm/state.json)를 공유.
 참고: 예측시장 가격은 마진이 거의 없는 '공정가'에 가까움. 엣지 기대보다 '매일 실전 기록' 목적.
 """
 import json, os, subprocess, sys, time
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 import numpy as np, pandas as pd
-from paper_trade import TRACKS, stake_for, STEPS, START, GOAL, FLAT_S
+from paper_trade import TRACKS, stake_for, STEPS, START, GOAL, FLAT_S, open_exposure, SOCCER_CHAINS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, "paper_pm")
@@ -50,7 +51,7 @@ def load_state():
     if os.path.exists(STATE):
         st = json.load(open(STATE))
         for t in st["tracks"].values():
-            for ch in CHAINS: t["chains"].setdefault(ch, [0, None])
+            for ch in CHAINS + SOCCER_CHAINS: t["chains"].setdefault(ch, [0, None])
         return st
     return {"tracks": {k: {"bank": START, "chains": {ch: [0, None] for ch in CHAINS}, "stopped": False} for k in TRACKS},
             "S": {"bank": START}, "version": "pm-v5"}
@@ -159,10 +160,7 @@ def cmd_pick(st, legs):
         ids = {r.market_id for r in grp}
         pool = [r for r in pool if r.market_id not in ids]
         combos.append((grp, odds))
-    exposure = {}
-    if len(legs):
-        op = legs[legs.status.isin(["open", "leg_done"]) & (legs.combo != "")].drop_duplicates("combo")
-        exposure = {tr: pd.to_numeric(op[f"stake_{tr}"], errors="coerce").fillna(0).sum() for tr in TRACKS}
+    exposure = open_exposure()  # 통합 장부(축구+Polymarket) 전체 미정산 노출
     bold_open = len(legs) > 0 and (legs.status.isin(["open", "leg_done"]) & ~legs.stake_BOLD.isin(["", "0"])).any()
     stamp = datetime.now(KST).strftime("%Y-%m-%d %H:%M"); rows = []
     for (grp, odds), ch in zip(combos, free):
@@ -237,7 +235,7 @@ def cmd_settle(st, legs):
 
 
 def cmd_status(st, legs):
-    print("[현황·Polymarket] (각 트랙 시작 1,000만, 목표 1억)")
+    print("[현황·통합 장부(축구+Polymarket)] (각 트랙 시작 1,000만, 목표 1억)")
     for tr, cfg in TRACKS.items():
         t = st["tracks"][tr]
         print(f"  {cfg['name']:24s} {t['bank']:>13,.0f}원 (x{t['bank']/START:.2f})" + (" [1억 도달·중단]" if t["stopped"] else ""))

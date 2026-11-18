@@ -10,6 +10,7 @@ bet365 단일 사이트 모의투자 (가상 예산 트랙별 1,000만원, 실�
   판   : 다리를 킥오프 순으로 묶어 배당 1.9 이상(최소 1, 최대 4폴더) '바카라 한 판' → 하루 최대 2판(체인 A/B)
   주의 : 학습구간 선정 → 검증구간 -4.5% (선정 안 된 구간 -4.3%와 차이 없음). 실전 기록으로 재확인 목적.
 
+통합 장부(2026-11-18~): 자금 상태는 paper_pm/state.json 하나를 Polymarket과 공유. 축구 판은 체인 D/E.
 자금운용 v3 — 같은 판에 트랙별로 동시에 가상 베팅 (staking_lab.py 비교 근거)
   ATK  주력  : 바닥 없음, 기본 = 현재 자금의 10%, 파롤리 3단, 1억 도달 시 중단
   BOLD 그림자: 대담한 베팅(Dubins & Savage 1965) — 1억까지 필요한 만큼 한 판에 (체인 A만, 한 번에 1판)
@@ -25,7 +26,10 @@ import numpy as np, pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, "paper")
-LEGS, STATE = os.path.join(DIR, "legs.csv"), os.path.join(DIR, "state.json")
+LEGS = os.path.join(DIR, "legs.csv")
+STATE = os.path.join(HERE, "paper_pm", "state.json")  # 통합 장부: Polymarket과 같은 자금(트랙)을 공유
+PM_LEGS = os.path.join(HERE, "paper_pm", "legs.csv")
+SOCCER_CHAINS = "DE"  # 축구 판은 체인 D/E (Polymarket은 A/B/C)
 WL = json.load(open(os.path.join(HERE, "paper", "whitelist.json")))["segments"]
 WLSET = {(d["lg"], d["side"], d["band"]) for d in WL}
 WORLD = {"Japan": "JPN", "USA": "USA", "Brazil": "BRA", "Argentina": "ARG", "Mexico": "MEX", "China": "CHN",
@@ -56,10 +60,24 @@ def get_csv(url):
 
 def load_state():
     st = json.load(open(STATE)) if os.path.exists(STATE) else {}
-    if "tracks" not in st:  # v2 → v3 마이그레이션 (v2에서 정산된 판 없음)
-        st = {"tracks": {k: {"bank": START, "chains": {"A": [0, None], "B": [0, None]}, "stopped": False} for k in TRACKS},
-              "S": {"bank": st.get("S", {}).get("bank", START)}, "version": "v3"}
+    if "tracks" not in st:
+        st = {"tracks": {k: {"bank": START, "chains": {}, "stopped": False} for k in TRACKS}, "S": {"bank": START}}
+    for t in st["tracks"].values():
+        for ch in "ABC" + SOCCER_CHAINS: t["chains"].setdefault(ch, [0, None])
     return st
+
+
+def open_exposure():
+    """통합 장부: 축구·Polymarket 양쪽의 미정산 판 베팅액 합계(트랙별)."""
+    exp = {tr: 0.0 for tr in TRACKS}
+    for p in (LEGS, PM_LEGS):
+        if not os.path.exists(p) or os.path.getsize(p) < 5: continue
+        l = pd.read_csv(p, dtype=str).fillna("")
+        if "stake_ATK" not in l: continue
+        op = l[l.status.isin(["open", "leg_done"]) & (l.combo != "")].drop_duplicates("combo")
+        for tr in TRACKS:
+            exp[tr] += pd.to_numeric(op.get(f"stake_{tr}"), errors="coerce").fillna(0).sum()
+    return exp
 
 
 def load_legs():
@@ -136,7 +154,7 @@ def cmd_pick(st, legs):
     bold_open = False  # 대담한 베팅은 한 번에 1판만
     if len(legs) and "stake_BOLD" in legs:
         bold_open = ((legs.status == "open") & ~legs.stake_BOLD.isin(["", "0"])).any()
-    free = [ch for ch in "AB" if ch not in open_ch]
+    free = [ch for ch in SOCCER_CHAINS if ch not in open_ch]
     pool = list(c.itertuples()); combos = []
     while pool and len(combos) < min(MAX_COMBOS, len(free)):
         grp, odds = [], 1.0
@@ -146,11 +164,7 @@ def cmd_pick(st, legs):
             pool = grp + pool; break
         combos.append((grp, odds))
     rows, used = [], set()
-    exposure = {}  # 트랙별 미정산 노출
-    if len(legs) and "stake_ATK" in legs:
-        op = legs[(legs.status.isin(["open", "leg_done"])) & (legs.combo != "")].drop_duplicates("combo")
-        for tr in TRACKS:
-            exposure[tr] = pd.to_numeric(op.get(f"stake_{tr}"), errors="coerce").fillna(0).sum()
+    exposure = open_exposure()  # 통합 장부 전체 미정산 노출
     for (grp, odds), ch in zip(combos, free):
         cid = f"{datetime.now(KST):%Y%m%d}-{ch}"
         stakes = {}
@@ -234,7 +248,7 @@ def cmd_settle(st, legs):
 
 
 def cmd_status(st, legs):
-    print("[현황] (각 트랙 시작 1,000만, 목표 1억)")
+    print("[현황·통합 장부(축구+Polymarket)] (각 트랙 시작 1,000만, 목표 1억)")
     for tr, cfg in TRACKS.items():
         t = st["tracks"][tr]
         print(f"  {cfg['name']:24s} {t['bank']:>13,.0f}원 (x{t['bank']/START:.2f})" + (" [1억 도달·중단]" if t["stopped"] else ""))
