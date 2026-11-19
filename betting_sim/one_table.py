@@ -7,8 +7,8 @@
 - 판은 동시에 하나뿐. 결과가 확정돼야 다음 판을 건다 (바카라 한 테이블).
 - 픽: Polymarket 전수 스캔(pm_trade.candidates) 후보 다리(배당 1.30~1.55), 두 경기 모두 12시간 안에 시작,
       2폴더 묶음 배당 1.90~2.20 조합 1개.
-      (table2~) 1순위 = The Odds API 다수 업체 공정확률 대비 엣지 합 최대(각 다리 엣지 > -2%) — '가치' 픽
-               2순위 = 기준배당 매칭이 없으면 두 경기 거래량 최솟값 최대 — '거래량' 픽 (단, 기준배당 대비 -2% 미만으로 확인된 다리는 제외)
+      (table3~) 종목 무관 '기대값 점수' 최대 조합: 공정확률 = 시장합의(The Odds API) 우선, 없으면 Polymarket 중간가,
+               거래량 $1k 미만 -1% 감점, 24시간 내 시작, 늦게 끝날수록 시간당 -0.05%
   ※ 축구(bet365 공개파일)는 결과가 2~4일 늦게 올라와 테이블이 멈추므로 메인에서 제외.
 - 메인 베팅법: 1-2-4-4-4-4 (3단 파롤리 후 4단위 유지, 지면 처음으로), 단위 = 체인 시작 자금의 8%
 - 비교 기록(같은 픽, 실제 결정에는 영향 없음):
@@ -26,7 +26,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DIR = os.path.join(HERE, "paper_table")
 LEGS, STATE = os.path.join(DIR, "legs.csv"), os.path.join(DIR, "state.json")
 START, TARGET_X = 10_000_000, 3.0
-ODDS_BAND, AIM, HORIZON_H = (1.90, 2.20), 2.00, 12
+ODDS_BAND, AIM, HORIZON_H = (1.90, 2.20), 2.00, 24
 MAIN = "M1244"
 SYSTEMS = {  # 이름: (표시명, 시퀀스, 끝에서 'reset' 또는 'stay', 단위 비율, 고정형 여부)
     "M1244":  ("메인 · 1-2-4-4-4-4", [1, 2, 4], "stay", 0.08, False),
@@ -63,32 +63,32 @@ def stake(name, s):
     return int(min(amt, s["bank"]) // 1000 * 1000)
 
 
+LOWVOL, LOWVOL_PEN, TIME_PEN = 1_000, 0.01, 0.0005  # table3
+
+
 def best_combo(c):
-    """1순위: 기준배당(The Odds API 다수 업체 공정확률)과 매칭된 다리끼리, 엣지 합이 가장 큰 조합(각 다리 엣지 > -2%).
-    2순위(기준 없음): 두 경기 거래량 최솟값이 가장 큰 조합."""
+    """table3 — 종목 무관 '기대값 점수'로 가장 좋은 조합 1개.
+    다리별 공정확률 추정: ① The Odds API 다수 업체 합의(fair_p) ② 없으면 Polymarket 중간가격(mid)
+    다리 엣지 = 배당 x 공정확률 - 1 (거래량 $1k 미만이면 -1% 불확실성 감점)
+    묶음 기대값 = (1+e1)(1+e2) - 1 - 0.05%x(마지막 경기까지 시간) → 최대값 선택. 묶음 1.90~2.20, 24시간 내."""
     import odds_ref as R
     now = PM.now_utc()
-    c = c[c.ko < now + timedelta(hours=HORIZON_H)].sort_values("vol", ascending=False).head(60).reset_index(drop=True)
+    c = c[c.ko < now + timedelta(hours=HORIZON_H)].sort_values("vol", ascending=False).head(120).reset_index(drop=True)
     c = R.match(c)
-    c["edge"] = c.odds * c.fair_p - 1
-    best = None; mode = "value"
+    c["p_hat"] = c.fair_p.where(c.fair_p.notna(), c["mid"].astype(float))
+    c["src"] = np.where(c.fair_p.notna(), "시장합의", "PM중간가")
+    c["edge"] = c.odds * c.p_hat - 1 - np.where(c.vol < LOWVOL, LOWVOL_PEN, 0)
+    best = None
     for a, b in combinations(c.itertuples(), 2):
         if a.title == b.title: continue
         o = a.odds * b.odds
         if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
-        if np.isnan(a.edge) or np.isnan(b.edge) or a.edge < -0.02 or b.edge < -0.02: continue
-        key = (a.edge + b.edge, min(a.vol, b.vol))
-        if best is None or key > best[0]: best = (key, [a, b], o)
-    if best is None:
-        mode = "volume"
-        for a, b in combinations(c.itertuples(), 2):
-            if a.title == b.title: continue
-            if (a.edge == a.edge and a.edge < -0.02) or (b.edge == b.edge and b.edge < -0.02): continue  # 비싸다고 확인된 다리 제외
-            o = a.odds * b.odds
-            if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
-            key = (min(a.vol, b.vol), -abs(o - AIM))
-            if best is None or key > best[0]: best = (key, [a, b], o)
-    return (sorted(best[1], key=lambda r: r.ko), best[2], mode) if best else None
+        hours = max((max(a.ko, b.ko) - now).total_seconds() / 3600, 0)
+        score = (1 + a.edge) * (1 + b.edge) - 1 - TIME_PEN * hours
+        if best is None or score > best[0]: best = (score, [a, b], o)
+    if not best: return None
+    mode = "value" if all(r.src == "시장합의" for r in best[1]) else "ev"
+    return sorted(best[1], key=lambda r: r.ko), best[2], mode
 
 
 def cmd_pick(st, legs):
@@ -103,17 +103,17 @@ def cmd_pick(st, legs):
     cid = f"T{datetime.now(PM.KST):%Y%m%d%H%M}"
     stamp = datetime.now(PM.KST).strftime("%Y-%m-%d %H:%M")
     m = st["systems"][MAIN]
-    print(f"[픽] 선정 방식: {'가치(기준배당 대비 Polymarket이 후한 조합)' if mode == 'value' else '거래량(기준배당 매칭 없음)'}")
+    print(f"[픽] 선정 방식: 기대값 점수 최대 (공정확률: {'두 다리 모두 시장합의' if mode == 'value' else '시장합의/PM중간가 혼합'})")
     print(f"[픽] {cid} 2폴더 묶음배당 {odds:.2f} · 메인 {SYSTEMS[MAIN][0]} {m['idx']+1}번째 칸 · 가상베팅 {stakes[MAIN]:,}원")
     for r in grp:
         kst = pd.Timestamp(r.ko).tz_localize("UTC").tz_convert(PM.KST)
-        ref = f" · 시장공정 {r.fair_p*100:.1f}% → 엣지 {r.edge*100:+.1f}%" if r.fair_p == r.fair_p else " · 기준배당 없음"
+        ref = f" · {r.src} {r.p_hat*100:.1f}% → 엣지 {r.edge*100:+.1f}%"
         print(f"   {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (거래량 ${r.vol:,}{ref})")
     print("   비교: " + ", ".join(f"{SYSTEMS[k][0].split('· ')[1]} {v:,}" for k, v in stakes.items() if k != MAIN))
     rows = [dict(created_kst=stamp, combo=cid, combo_odds=f"{odds:.3f}", tag=r.tag, market_id=r.market_id,
                  outcome_idx=r.outcome_idx, title=r.title, pick=r.pick, ko=str(r.ko), odds=f"{r.odds:.3f}", vol=r.vol,
                  status="open", win="", pick_mode=mode, fair_p=f"{r.fair_p:.4f}" if r.fair_p == r.fair_p else "",
-                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
+                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, p_hat=f"{r.p_hat:.4f}", p_src=r.src, **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 

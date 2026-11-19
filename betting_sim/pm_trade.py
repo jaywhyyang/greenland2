@@ -107,13 +107,15 @@ def candidates():
                 # 결과별 매수가: 0번 결과 = ask, 1번 결과 = 1 - bid
                 sides = [(0, ask), (1, 1 - bid)]
                 if outs == ["Yes", "No"]: sides = [(0, ask)]  # 축구 'X 승리?' 시장은 Yes만
+                mid0 = (bid + ask) / 2
                 for idx, price in sides:
                     if price <= 0: continue
                     odds = 1 / price
+                    mid = mid0 if idx == 0 else 1 - mid0
                     if LO <= odds <= HI:
                         pick = outs[idx] if outs != ["Yes", "No"] else m.get("question", "")[:60]
                         rows.append(dict(tag=tag, market_id=str(m["id"]), outcome_idx=idx, title=e.get("title", "")[:60],
-                                         pick=pick, ko=ko, price=round(price, 4), odds=round(odds, 3), vol=round(vol)))
+                                         pick=pick, ko=ko, price=round(price, 4), odds=round(odds, 3), vol=round(vol), mid=round(mid, 4)))
     c = pd.DataFrame(rows)
     if not len(c): return c
     return c.sort_values(["vol", "ko"], ascending=[False, True]).drop_duplicates("market_id").reset_index(drop=True)  # v4: 거래량 많은 경기 우선
