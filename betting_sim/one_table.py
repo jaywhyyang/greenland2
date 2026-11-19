@@ -126,7 +126,8 @@ def cmd_settle(st, legs):
             print(f"  조회 오류: {e}"); continue
         prices = [float(x) for x in json.loads(m.get("outcomePrices") or "[]")]
         idx = int(legs.at[i, "outcome_idx"])
-        if m.get("closed") and prices and max(prices) >= 0.99:
+        proposed = str(m.get("umaResolutionStatus") or "").lower() in ("proposed", "resolved")  # 결과 제안됨(이의제기 대기) 포함
+        if prices and ((m.get("closed") and max(prices) >= 0.99) or (proposed and max(prices) >= 0.995)):
             legs.at[i, "win"] = "1" if prices[idx] >= 0.99 else "0"
         elif (m.get("closed") and prices and abs(prices[idx] - 0.5) < 0.01) or \
                 pd.to_datetime(legs.at[i, "ko"]) < PM.now_utc() - timedelta(days=PM.VOID_DAYS):

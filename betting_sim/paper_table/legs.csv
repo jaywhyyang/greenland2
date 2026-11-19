@@ -1,3 +1,5 @@
-created_kst,combo,combo_odds,tag,market_id,outcome_idx,title,pick,ko,odds,vol,status,win,stake_M1244,stake_P124,stake_P12488,stake_S1326,stake_F2,stake_F10
-2026-11-19 15:42,T202611191542,2.100,counter,7121999,0,Counter-Strike: Walczaki vs KUUSAMO.gg (BO3) - CCT Europe Cl,Walczaki,2026-11-19 09:00:00,1.449,16082,open,,800000,800000,800000,800000,200000,1000000
-2026-11-19 15:42,T202611191542,2.100,atp,7001814,0,"ATP World Tour Finals, John McEnroe Group: Ben Shelton vs Ra",Ben Shelton,2026-11-19 13:00:00,1.449,62614,open,,800000,800000,800000,800000,200000,1000000
+created_kst,combo,combo_odds,tag,market_id,outcome_idx,title,pick,ko,odds,vol,status,win,stake_M1244,stake_P124,stake_P12488,stake_S1326,stake_F2,stake_F10,pick_mode,fair_p,edge,ref
+2026-11-19 15:42,T202611191542,2.100,counter,7121999,0,Counter-Strike: Walczaki vs KUUSAMO.gg (BO3) - CCT Europe Cl,Walczaki,2026-11-19 09:00:00,1.449,16082,lost,0,800000,800000,800000,800000,200000,1000000,,,,
+2026-11-19 15:42,T202611191542,2.100,atp,7001814,0,"ATP World Tour Finals, John McEnroe Group: Ben Shelton vs Ra",Ben Shelton,2026-11-19 13:00:00,1.449,62614,lost,,800000,800000,800000,800000,200000,1000000,,,,
+2026-11-19 21:17,T202611192117,1.956,atp,7001813,0,"ATP World Tour Finals, John McEnroe Group: Alexander Zverev ",Alexander Zverev,2026-11-19 19:30:00,1.408,246048,open,,736000,736000,736000,736000,196000,900000,volume,,,
+2026-11-19 21:17,T202611192117,1.956,nhl,6083800,1,Canadiens vs. Hurricanes,Hurricanes,2026-11-20 00:00:00,1.389,12351,open,,736000,736000,736000,736000,196000,900000,volume,0.7124,-0.0104,icehockey_nhl:3449054d3b59c2c7fc8cf914dbd45ea6
