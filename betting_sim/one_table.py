@@ -8,7 +8,7 @@
 - 픽: Polymarket 전수 스캔(pm_trade.candidates) 후보 다리(배당 1.30~1.55), 두 경기 모두 12시간 안에 시작,
       2폴더 묶음 배당 1.90~2.20 조합 1개.
       (table2~) 1순위 = The Odds API 다수 업체 공정확률 대비 엣지 합 최대(각 다리 엣지 > -2%) — '가치' 픽
-               2순위 = 기준배당 매칭이 없으면 두 경기 거래량 최솟값 최대 — '거래량' 픽
+               2순위 = 기준배당 매칭이 없으면 두 경기 거래량 최솟값 최대 — '거래량' 픽 (단, 기준배당 대비 -2% 미만으로 확인된 다리는 제외)
   ※ 축구(bet365 공개파일)는 결과가 2~4일 늦게 올라와 테이블이 멈추므로 메인에서 제외.
 - 메인 베팅법: 1-2-4-4-4-4 (3단 파롤리 후 4단위 유지, 지면 처음으로), 단위 = 체인 시작 자금의 8%
 - 비교 기록(같은 픽, 실제 결정에는 영향 없음):
@@ -83,6 +83,7 @@ def best_combo(c):
         mode = "volume"
         for a, b in combinations(c.itertuples(), 2):
             if a.title == b.title: continue
+            if (a.edge == a.edge and a.edge < -0.02) or (b.edge == b.edge and b.edge < -0.02): continue  # 비싸다고 확인된 다리 제외
             o = a.odds * b.odds
             if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
             key = (min(a.vol, b.vol), -abs(o - AIM))
