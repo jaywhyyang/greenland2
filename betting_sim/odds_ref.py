@@ -120,7 +120,7 @@ def match(legs, max_sports=4):
         evs = {e["id"]: e for e in odds(sp)}
         for i, eid, side in hits[sp]:
             if eid in evs:
-                yes_no = str(legs.at[i, "pick"]).lower().startswith("will")  # 축구 'X 승리?' = 3지선다
+                p_ = str(legs.at[i, "pick"]).lower(); yes_no = p_.startswith("will ") and " win" in p_  # 축구 'X 승리?' = 3지선다 (선수명 William 오인 방지)
                 fp = fair_probs(evs[eid], 3 if yes_no else 2).get(side)
                 if fp:
                     legs.at[i, "fair_p"] = fp[0]; legs.at[i, "pin_p"] = fp[1] if fp[1] else np.nan
