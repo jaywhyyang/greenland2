@@ -5,9 +5,10 @@
 
 규칙
 - 판은 동시에 하나뿐. 결과가 확정돼야 다음 판을 건다 (바카라 한 테이블).
-- 픽: Polymarket 전수 스캔(pm_trade.candidates) 후보 다리(배당 1.30~1.55) 중
-      2폴더 묶음 배당 1.90~2.20 조합에서 '두 경기 거래량의 최솟값'이 가장 큰 조합 1개
-      (동률이면 2.0에 가까운 쪽), 두 경기 모두 12시간 안에 시작.
+- 픽: Polymarket 전수 스캔(pm_trade.candidates) 후보 다리(배당 1.30~1.55), 두 경기 모두 12시간 안에 시작,
+      2폴더 묶음 배당 1.90~2.20 조합 1개.
+      (table2~) 1순위 = The Odds API 다수 업체 공정확률 대비 엣지 합 최대(각 다리 엣지 > -2%) — '가치' 픽
+               2순위 = 기준배당 매칭이 없으면 두 경기 거래량 최솟값 최대 — '거래량' 픽
   ※ 축구(bet365 공개파일)는 결과가 2~4일 늦게 올라와 테이블이 멈추므로 메인에서 제외.
 - 메인 베팅법: 1-2-4-4-4-4 (3단 파롤리 후 4단위 유지, 지면 처음으로), 단위 = 체인 시작 자금의 8%
 - 비교 기록(같은 픽, 실제 결정에는 영향 없음):
@@ -63,16 +64,30 @@ def stake(name, s):
 
 
 def best_combo(c):
+    """1순위: 기준배당(The Odds API 다수 업체 공정확률)과 매칭된 다리끼리, 엣지 합이 가장 큰 조합(각 다리 엣지 > -2%).
+    2순위(기준 없음): 두 경기 거래량 최솟값이 가장 큰 조합."""
+    import odds_ref as R
     now = PM.now_utc()
-    c = c[c.ko < now + timedelta(hours=HORIZON_H)].sort_values("vol", ascending=False).head(60)
-    best = None
+    c = c[c.ko < now + timedelta(hours=HORIZON_H)].sort_values("vol", ascending=False).head(60).reset_index(drop=True)
+    c = R.match(c)
+    c["edge"] = c.odds * c.fair_p - 1
+    best = None; mode = "value"
     for a, b in combinations(c.itertuples(), 2):
         if a.title == b.title: continue
         o = a.odds * b.odds
         if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
-        key = (min(a.vol, b.vol), -abs(o - AIM))
+        if np.isnan(a.edge) or np.isnan(b.edge) or a.edge < -0.02 or b.edge < -0.02: continue
+        key = (a.edge + b.edge, min(a.vol, b.vol))
         if best is None or key > best[0]: best = (key, [a, b], o)
-    return (sorted(best[1], key=lambda r: r.ko), best[2]) if best else None
+    if best is None:
+        mode = "volume"
+        for a, b in combinations(c.itertuples(), 2):
+            if a.title == b.title: continue
+            o = a.odds * b.odds
+            if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
+            key = (min(a.vol, b.vol), -abs(o - AIM))
+            if best is None or key > best[0]: best = (key, [a, b], o)
+    return (sorted(best[1], key=lambda r: r.ko), best[2], mode) if best else None
 
 
 def cmd_pick(st, legs):
@@ -82,19 +97,22 @@ def cmd_pick(st, legs):
     if len(legs): c = c[~c.market_id.isin(set(legs.market_id))]
     b = best_combo(c) if len(c) else None
     if not b: print(f"[픽] {HORIZON_H}시간 안에 조건(묶음 1.90~2.20)에 맞는 조합이 없습니다."); return legs
-    grp, odds = b
+    grp, odds, mode = b
     stakes = {k: stake(k, st["systems"][k]) for k in SYSTEMS}
     cid = f"T{datetime.now(PM.KST):%Y%m%d%H%M}"
     stamp = datetime.now(PM.KST).strftime("%Y-%m-%d %H:%M")
     m = st["systems"][MAIN]
+    print(f"[픽] 선정 방식: {'가치(기준배당 대비 Polymarket이 후한 조합)' if mode == 'value' else '거래량(기준배당 매칭 없음)'}")
     print(f"[픽] {cid} 2폴더 묶음배당 {odds:.2f} · 메인 {SYSTEMS[MAIN][0]} {m['idx']+1}번째 칸 · 가상베팅 {stakes[MAIN]:,}원")
     for r in grp:
         kst = pd.Timestamp(r.ko).tz_localize("UTC").tz_convert(PM.KST)
-        print(f"   {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (거래량 ${r.vol:,})")
+        ref = f" · 시장공정 {r.fair_p*100:.1f}% → 엣지 {r.edge*100:+.1f}%" if r.fair_p == r.fair_p else " · 기준배당 없음"
+        print(f"   {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (거래량 ${r.vol:,}{ref})")
     print("   비교: " + ", ".join(f"{SYSTEMS[k][0].split('· ')[1]} {v:,}" for k, v in stakes.items() if k != MAIN))
     rows = [dict(created_kst=stamp, combo=cid, combo_odds=f"{odds:.3f}", tag=r.tag, market_id=r.market_id,
                  outcome_idx=r.outcome_idx, title=r.title, pick=r.pick, ko=str(r.ko), odds=f"{r.odds:.3f}", vol=r.vol,
-                 status="open", win="", **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
+                 status="open", win="", pick_mode=mode, fair_p=f"{r.fair_p:.4f}" if r.fair_p == r.fair_p else "",
+                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 
