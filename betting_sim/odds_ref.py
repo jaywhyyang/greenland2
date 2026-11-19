@@ -109,8 +109,11 @@ def match(legs, max_sports=4):
                 if abs((pd.Timestamp(r.ko) - t0).total_seconds()) > 3 * 3600: continue
                 pt = toks(r.pick); tt = toks(r.title)
                 h, a = toks(e["home_team"]), toks(e["away_team"])
-                side = e["home_team"] if pt & h else e["away_team"] if pt & a else None
-                if side and (tt & (h | a)):  # 고른 쪽 이름 일치 + 제목에 해당 경기 팀명 + 시작 3시간 이내
+                # 고른 쪽 이름이 통째로 일치(한쪽이 다른 쪽에 포함)해야 함 — 'Alexander' 같은 이름 하나만 겹치는 오매칭 방지
+                ok = lambda s: bool(pt) and bool(s) and (pt <= s or s <= pt)
+                side, opp = (e["home_team"], a) if ok(h) else (e["away_team"], h) if ok(a) else (None, set())
+                # 상대 팀명도 제목에 있어야 함(제목이 잘린 경우만 예외)
+                if side and ((opp & tt) or len(str(r.title)) >= 58):
                     hits.setdefault(sp, []).append((i, e["id"], side))
     order = sorted(hits, key=lambda s: -len(hits[s]))[:max_sports]
     for sp in order:
