@@ -14,6 +14,7 @@
 - 비교 기록(같은 픽, 실제 결정에는 영향 없음):
     파롤리3 1-2-4(8%) / 1-2-4-8-8(8%) / 1-3-2-6(8%) / 고정 2%(연구용) / 고정 10%
 - 각 베팅법 시작 1,000만원, 목표 3배(3,000만) 도달 시 그 베팅법은 원금 1,000만을 따로 떼어 놓고 이익만으로 계속.
+- CLV(table4~): 경기 시작 직전 Polymarket 시세(close_p)와 산 배당 비교, clv = 배당 x close_p - 1. 적중보다 빠르게 실력 판정.
 조회 전용 공개 API만 사용. 계정·로그인·거래 없음.
 """
 import json, os, sys
@@ -175,5 +176,8 @@ if __name__ == "__main__":
     st, legs = load_state(), load_legs()
     if cmd in ("settle", "run"): legs = cmd_settle(st, legs)
     if cmd in ("pick", "run"): legs = cmd_pick(st, legs)
+    if cmd in ("settle", "run"):
+        import clv; legs = clv.fill(legs)  # 시작된 다리의 마감가(시작 직전 시세) 기록
     if cmd != "status": save(st, legs)
     cmd_status(st, legs)
+    import clv; clv.summary(legs, "한 테이블")
