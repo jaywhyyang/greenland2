@@ -48,7 +48,7 @@ def fill(legs):
 
 
 def summary(legs, label):
-    d = legs[legs.get("clv", pd.Series(dtype=str)).astype(str) != ""] if "clv" in legs else legs.iloc[0:0]
+    d = legs[legs["clv"].fillna("").astype(str) != ""] if "clv" in legs else legs.iloc[0:0]
     if not len(d): print(f"  [CLV·{label}] 기록 없음"); return
     v = d.clv.astype(float)
     se = v.std(ddof=1) / np.sqrt(len(v)) if len(v) > 1 else float("nan")
