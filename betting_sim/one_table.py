@@ -1,7 +1,8 @@
 """
 한 테이블 모의투자 (v-table1, 2026-11-19~) — '난사' 대신 한 번에 한 판.
 
-  python3 one_table.py run     # settle → (진행 중인 판이 없을 때만) pick → status
+  python3 one_table.py run     # settle → (진행 중인 판이 없을 때만) 후보 전체·엣지 표시 → pick → status
+  python3 one_table.py cands   # 기록 없이 지금 후보·엣지·상위 조합만 보기
 
 규칙
 - 판은 동시에 하나뿐. 결과가 확정돼야 다음 판을 건다 (바카라 한 테이블).
@@ -67,11 +68,8 @@ def stake(name, s):
 LOWVOL, LOWVOL_PEN, TIME_PEN = 1_000, 0.01, 0.0005  # table3
 
 
-def best_combo(c):
-    """table3 — 종목 무관 '기대값 점수'로 가장 좋은 조합 1개.
-    다리별 공정확률 추정: ① The Odds API 다수 업체 합의(fair_p) ② 없으면 Polymarket 중간가격(mid)
-    다리 엣지 = 배당 x 공정확률 - 1 (거래량 $1k 미만이면 -1% 불확실성 감점)
-    묶음 기대값 = (1+e1)(1+e2) - 1 - 0.05%x(마지막 경기까지 시간) → 최대값 선택. 묶음 1.90~2.20, 24시간 내."""
+def score_legs(c):
+    """후보 다리마다 공정확률·엣지 계산 (table3 규칙)."""
     import odds_ref as R
     now = PM.now_utc()
     c = c[c.ko < now + timedelta(hours=HORIZON_H)].sort_values("vol", ascending=False).head(120).reset_index(drop=True)
@@ -79,22 +77,55 @@ def best_combo(c):
     c["p_hat"] = c.fair_p.where(c.fair_p.notna(), c["mid"].astype(float))
     c["src"] = np.where(c.fair_p.notna(), "시장합의", "PM중간가")
     c["edge"] = c.odds * c.p_hat - 1 - np.where(c.vol < LOWVOL, LOWVOL_PEN, 0)
-    best = None
+    return c
+
+
+def rank_combos(c):
+    """가능한 2폴더 조합 전부를 점수순으로. [(score, [a,b], odds), ...]"""
+    now = PM.now_utc(); out = []
     for a, b in combinations(c.itertuples(), 2):
         if a.title == b.title: continue
         o = a.odds * b.odds
         if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
         hours = max((max(a.ko, b.ko) - now).total_seconds() / 3600, 0)
-        score = (1 + a.edge) * (1 + b.edge) - 1 - TIME_PEN * hours
-        if best is None or score > best[0]: best = (score, [a, b], o)
-    if not best: return None
-    mode = "value" if all(r.src == "시장합의" for r in best[1]) else "ev"
-    return sorted(best[1], key=lambda r: r.ko), best[2], mode
+        out.append(((1 + a.edge) * (1 + b.edge) - 1 - TIME_PEN * hours, sorted([a, b], key=lambda r: r.ko), o))
+    return sorted(out, key=lambda x: -x[0])
+
+
+def _kst(ko):
+    return pd.Timestamp(ko).tz_localize("UTC").tz_convert(PM.KST).strftime("%m-%d %H:%M")
+
+
+def show_candidates(c, ranked, n_legs=20, n_combos=5):
+    """후보 다리(엣지순)와 상위 조합 출력 + paper_table/candidates_latest.csv 저장."""
+    os.makedirs(DIR, exist_ok=True)
+    c.sort_values("edge", ascending=False)[["ko", "tag", "title", "pick", "odds", "vol", "p_hat", "src", "edge"]] \
+        .to_csv(os.path.join(DIR, "candidates_latest.csv"), index=False)
+    print(f"[후보] {HORIZON_H}시간 내 다리 {len(c)}개 (배당 {PM.LO}~{PM.HI}) · 시장합의 {int((c.src == '시장합의').sum())}개 · 엣지 상위 {min(n_legs, len(c))}개:")
+    for r in c.sort_values("edge", ascending=False).head(n_legs).itertuples():
+        print(f"   {r.edge*100:+5.1f}%  {_kst(r.ko)} [{r.tag}] {r.pick[:34]} @{r.odds:.2f} ({r.src} {r.p_hat*100:.1f}%, ${r.vol:,})")
+    print(f"[후보] 묶음 1.90~2.20 조합 {len(ranked)}개 · 점수 상위 {min(n_combos, len(ranked))}개:")
+    for i, (sc, g, o) in enumerate(ranked[:n_combos], 1):
+        print(f"   {i}. 점수 {sc*100:+.1f}% · 묶음 {o:.2f} = " + " × ".join(f"{r.pick[:26]} @{r.odds:.2f}({r.edge*100:+.1f}%)" for r in g))
+
+
+def best_combo(c, show=True):
+    """table3 — 종목 무관 '기대값 점수'로 가장 좋은 조합 1개.
+    다리별 공정확률 추정: ① The Odds API 다수 업체 합의(fair_p) ② 없으면 Polymarket 중간가격(mid)
+    다리 엣지 = 배당 x 공정확률 - 1 (거래량 $1k 미만이면 -1% 불확실성 감점)
+    묶음 기대값 = (1+e1)(1+e2) - 1 - 0.05%x(마지막 경기까지 시간) → 최대값 선택. 묶음 1.90~2.20, 24시간 내.
+    (table5~) 선택 전에 후보 다리·상위 조합을 모두 보여 줌."""
+    c = score_legs(c); ranked = rank_combos(c)
+    if show: show_candidates(c, ranked)
+    if not ranked: return None
+    sc, g, o = ranked[0]
+    mode = "value" if all(r.src == "시장합의" for r in g) else "ev"
+    return g, o, mode
 
 
 def cmd_pick(st, legs):
     if len(legs) and (legs.status == "open").any():
-        print("[픽] 진행 중인 판이 있어 대기합니다 (한 테이블 규칙)."); return legs
+        print("[픽] 진행 중인 판이 있어 대기합니다 (한 테이블 규칙). 후보만 보려면: python3 one_table.py cands"); return legs
     c = PM.candidates()
     if len(legs): c = c[~c.market_id.isin(set(legs.market_id))]
     b = best_combo(c) if len(c) else None
@@ -178,6 +209,10 @@ if __name__ == "__main__":
     if cmd in ("pick", "run"): legs = cmd_pick(st, legs)
     if cmd in ("settle", "run"):
         import clv; legs = clv.fill(legs)  # 시작된 다리의 마감가(시작 직전 시세) 기록
+    if cmd == "cands":  # 기록 없이 후보·엣지·상위 조합만 보기
+        c = PM.candidates()
+        if len(legs): c = c[~c.market_id.isin(set(legs.market_id))]
+        best_combo(c) if len(c) else print("[후보] 없음"); sys.exit()
     if cmd != "status": save(st, legs)
     cmd_status(st, legs)
     import clv; clv.summary(legs, "한 테이블")
