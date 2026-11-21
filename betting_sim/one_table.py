@@ -41,11 +41,20 @@ SYSTEMS = {  # 이름: (표시명, 시퀀스, 끝에서 'reset' 또는 'stay', �
 }
 # 샘플사이트 환산 배당(table6): 크롤링·접속 없이, 사용자 캡처로 잰 마진을 공정확률에 씌워 배당을 만든다.
 #   사이트배당 = 1 / (공정확률 x (1 + SITE_MARGIN)), 소수 둘째 자리 내림. 2026-11-21 알카라스-셸튼 캡처: 승패 6.4%, 핸디·오버언더 8.7~10.5%
-SITE_MARGIN = 0.064
+#   축구 승무패 캡처(라치오-레체 1.53/4.40/6.30): 3.96% → 축구 3지선다 4.0%, 그 외 2지선다 6.4%
+SITE_MARGIN = {3: 0.040, 2: 0.064}
+# table7: 다리 1.30~1.55·묶음 1.90~2.20 범위를 '샘플사이트 환산 배당' 기준으로 적용 (사용자 요청)
+LEG_BAND = (1.30, 1.55)
+PM.LO, PM.HI = 1.30, 1.75  # 사이트 배당이 PM보다 낮으므로 PM 후보는 넓게 받은 뒤 사이트 배당으로 거름
 
 
-def site_odds(p):
-    return float(np.floor(100 / (float(p) * (1 + SITE_MARGIN))) / 100)
+def is_3way(pick):
+    p = str(pick).lower(); return p.startswith("will ") and " win" in p
+
+
+def site_odds(p, pick=""):
+    m = SITE_MARGIN[3 if is_3way(pick) else 2]
+    return float(np.floor(100 / (float(p) * (1 + m))) / 100)
 
 
 def load_state():
@@ -89,7 +98,8 @@ def score_legs(c):
     c["p_hat"] = c.fair_p.where(c.fair_p.notna(), c["mid"].astype(float))
     c["src"] = np.where(c.fair_p.notna(), "시장합의", "PM중간가")
     c["edge"] = c.odds * c.p_hat - 1 - np.where(c.vol < LOWVOL, LOWVOL_PEN, 0)
-    return c
+    c["s_odds"] = [site_odds(p, k) for p, k in zip(c.p_hat, c.pick)]
+    return c[(c.s_odds >= LEG_BAND[0]) & (c.s_odds <= LEG_BAND[1])].reset_index(drop=True)
 
 
 def rank_combos(c):
@@ -98,7 +108,7 @@ def rank_combos(c):
     for a, b in combinations(c.itertuples(), 2):
         if a.title == b.title: continue
         o = a.odds * b.odds
-        if not (ODDS_BAND[0] <= o <= ODDS_BAND[1]): continue
+        if not (ODDS_BAND[0] <= a.s_odds * b.s_odds <= ODDS_BAND[1]): continue  # 사이트 환산 묶음 기준
         hours = max((max(a.ko, b.ko) - now).total_seconds() / 3600, 0)
         out.append(((1 + a.edge) * (1 + b.edge) - 1 - TIME_PEN * hours, sorted([a, b], key=lambda r: r.ko), o))
     return sorted(out, key=lambda x: -x[0])
@@ -113,12 +123,13 @@ def show_candidates(c, ranked, n_legs=20, n_combos=5):
     os.makedirs(DIR, exist_ok=True)
     c.sort_values("edge", ascending=False)[["ko", "tag", "title", "pick", "odds", "vol", "p_hat", "src", "edge"]] \
         .to_csv(os.path.join(DIR, "candidates_latest.csv"), index=False)
-    print(f"[후보] {HORIZON_H}시간 내 다리 {len(c)}개 (배당 {PM.LO}~{PM.HI}) · 시장합의 {int((c.src == '시장합의').sum())}개 · 엣지 상위 {min(n_legs, len(c))}개:")
+    print(f"[후보] {HORIZON_H}시간 내 다리 {len(c)}개 (샘플사이트 환산 {LEG_BAND[0]}~{LEG_BAND[1]}) · 시장합의 {int((c.src == '시장합의').sum())}개 · 엣지 상위 {min(n_legs, len(c))}개:")
     for r in c.sort_values("edge", ascending=False).head(n_legs).itertuples():
-        print(f"   {r.edge*100:+5.1f}%  {_kst(r.ko)} [{r.tag}] {r.pick[:34]} @{r.odds:.2f} ({r.src} {r.p_hat*100:.1f}%, ${r.vol:,})")
+        print(f"   {r.edge*100:+5.1f}%  {_kst(r.ko)} [{r.tag}] {r.pick[:34]} 사이트 {r.s_odds:.2f} / PM @{r.odds:.2f} ({r.src} {r.p_hat*100:.1f}%, ${r.vol:,})")
     print(f"[후보] 묶음 1.90~2.20 조합 {len(ranked)}개 · 점수 상위 {min(n_combos, len(ranked))}개:")
     for i, (sc, g, o) in enumerate(ranked[:n_combos], 1):
-        print(f"   {i}. 점수 {sc*100:+.1f}% · 묶음 {o:.2f} = " + " × ".join(f"{r.pick[:26]} @{r.odds:.2f}({r.edge*100:+.1f}%)" for r in g))
+        so = g[0].s_odds * g[1].s_odds
+        print(f"   {i}. 점수 {sc*100:+.1f}% · 사이트 묶음 {so:.2f} (PM {o:.2f}) = " + " × ".join(f"{r.pick[:26]} {r.s_odds:.2f}({r.edge*100:+.1f}%)" for r in g))
 
 
 def best_combo(c, show=True):
@@ -153,13 +164,13 @@ def cmd_pick(st, legs):
         kst = pd.Timestamp(r.ko).tz_localize("UTC").tz_convert(PM.KST)
         ref = f" · {r.src} {r.p_hat*100:.1f}% → 엣지 {r.edge*100:+.1f}%"
         print(f"   {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (거래량 ${r.vol:,}{ref})")
-    so = [site_odds(r.p_hat) for r in grp]
-    print(f"   샘플사이트 환산(마진 {SITE_MARGIN*100:.1f}%): " + " × ".join(f"{o:.2f}" for o in so) + f" = 묶음 {np.prod(so):.2f}")
+    so = [r.s_odds for r in grp]
+    print(f"   샘플사이트 환산(축구 승무패 마진 4.0%, 그 외 6.4%): " + " × ".join(f"{o:.2f}" for o in so) + f" = 묶음 {np.prod(so):.2f}")
     print("   비교: " + ", ".join(f"{SYSTEMS[k][0].split('· ')[1]} {v:,}" for k, v in stakes.items() if k != MAIN))
     rows = [dict(created_kst=stamp, combo=cid, combo_odds=f"{odds:.3f}", tag=r.tag, market_id=r.market_id,
                  outcome_idx=r.outcome_idx, title=r.title, pick=r.pick, ko=str(r.ko), odds=f"{r.odds:.3f}", vol=r.vol,
                  status="open", win="", pick_mode=mode, fair_p=f"{r.fair_p:.4f}" if r.fair_p == r.fair_p else "",
-                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, p_hat=f"{r.p_hat:.4f}", p_src=r.src, site_odds=f"{site_odds(r.p_hat):.2f}", **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
+                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, p_hat=f"{r.p_hat:.4f}", p_src=r.src, site_odds=f"{r.s_odds:.2f}", **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 

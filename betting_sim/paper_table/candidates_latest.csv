@@ -1,121 +1,71 @@
 ko,tag,title,pick,odds,vol,p_hat,src,edge
 2026-11-22 01:00:00,cfb,UTSA vs. UAB,UTSA,1.515,6271,0.6643356643356644,시장합의,0.0064685314685315465
-2026-11-21 19:00:00,cfb,Middle Tennessee vs. Sam Houston,Middle Tennessee,1.493,10,0.6728538283062646,시장합의,-0.005429234338746971
-2026-11-22 06:00:00,valorant,Valorant: Maxxing vs Oasis Gaming (BO5) - Asia Pacific Preda,Oasis Gaming,1.316,5622,0.755,PM중간가,-0.006419999999999981
-2026-11-21 14:30:00,bundesliga,Bayer 04 Leverkusen vs. SC Paderborn 07,Will Bayer 04 Leverkusen win on 2026-11-21?,1.316,6767,0.755,PM중간가,-0.006419999999999981
-2026-11-22 11:30:00,serie,Juventus FC vs. Venezia FC,Will Juventus FC win on 2026-11-22?,1.37,1204,0.725,PM중간가,-0.006749999999999923
-2026-11-21 17:00:00,dota,Dota 2: PlayTime vs OG (BO3) - BLAST Slam Group A,OG,1.37,1630,0.725,PM중간가,-0.006749999999999923
+2026-11-21 18:00:00,ncaa,Kent State Golden Flashes vs. Cleveland State Vikings,Kent State Golden Flashes,1.667,307,0.6086956521739131,시장합의,0.0046956521739132204
+2026-11-22 11:30:00,serie,Juventus FC vs. Venezia FC,Will Juventus FC win on 2026-11-22?,1.37,1579,0.725,PM중간가,-0.006749999999999923
 2026-11-22 00:30:00,valorant,Valorant: Xora Esports vs SaD Esports (BO3) - VCT Americas K,SaD Esports,1.429,6395,0.695,PM중간가,-0.00684499999999999
-2026-11-21 15:00:00,efl,Middlesbrough FC vs. Bristol City FC,Will Middlesbrough FC win on 2026-11-21?,1.429,1010,0.695,PM중간가,-0.00684499999999999
-2026-11-21 19:45:00,ligue,AS Monaco FC vs. AJ Auxerre,Will AS Monaco FC win on 2026-11-21?,1.429,1237,0.695,PM중간가,-0.00684499999999999
-2026-11-21 15:00:00,ufc,UFC Fight Night: Jake Matthews vs. Tahir Abdullayev (Welterw,Jake Matthews,1.429,46014,0.695,PM중간가,-0.00684499999999999
-2026-11-21 15:00:00,ufc,UFC Fight Night: Aleksandre Topuria vs. Santiago Luna (Banta,Aleksandre Topuria,1.389,36743,0.715,PM중간가,-0.00686500000000001
-2026-11-21 12:30:00,premier,Manchester City FC vs. Fulham FC,Will Manchester City FC win on 2026-11-21?,1.389,181047,0.715,PM중간가,-0.00686500000000001
-2026-11-21 12:45:00,wsl,Liverpool LFC vs. Chelsea FC,Will Chelsea FC win on 2026-11-21?,1.389,2512,0.715,PM중간가,-0.00686500000000001
-2026-11-21 14:00:00,dota,Dota 2: Team Yandex vs Natus Vincere (BO3) - BLAST Slam Grou,Team Yandex,1.333,25810,0.745,PM중간가,-0.0069150000000000045
-2026-11-21 15:00:00,ufc,UFC Fight Night: Jared Cannonier vs. Ikram Aliskerov (Middle,Ikram Aliskerov,1.351,113279,0.735,PM중간가,-0.0070149999999999935
-2026-11-21 14:00:00,dota,Dota 2: Team Nemesis vs GamerLegion (BO3) - BLAST Slam Group,GamerLegion,1.471,14136,0.675,PM중간가,-0.007074999999999831
+2026-11-21 15:00:00,ufc,UFC Fight Night: Jake Matthews vs. Tahir Abdullayev (Welterw,Jake Matthews,1.429,46053,0.695,PM중간가,-0.00684499999999999
+2026-11-21 19:45:00,ligue,AS Monaco FC vs. AJ Auxerre,Will AS Monaco FC win on 2026-11-21?,1.429,1380,0.695,PM중간가,-0.00684499999999999
+2026-11-21 15:00:00,counter,Counter-Strike: Infinite vs BakS eSports (BO3) - NODWIN Clut,BakS eSports,1.429,3697,0.695,PM중간가,-0.00684499999999999
+2026-11-21 15:00:00,efl,Middlesbrough FC vs. Bristol City FC,Will Middlesbrough FC win on 2026-11-21?,1.429,1013,0.695,PM중간가,-0.00684499999999999
+2026-11-21 15:00:00,ufc,UFC Fight Night: Aleksandre Topuria vs. Santiago Luna (Banta,Aleksandre Topuria,1.389,37078,0.715,PM중간가,-0.00686500000000001
+2026-11-21 14:00:00,dota,Dota 2: Team Nemesis vs GamerLegion (BO3) - BLAST Slam Group,GamerLegion,1.471,14817,0.675,PM중간가,-0.007074999999999831
+2026-11-21 16:15:00,ligue,OGC Nice vs. Paris Saint-Germain FC,Will Paris Saint-Germain FC win on 2026-11-21?,1.493,17435,0.665,PM중간가,-0.007154999999999911
 2026-11-21 19:00:00,dota,Dota 2: Zero Tenacity vs Inner Circle (BO3) - European Pro L,Inner Circle,1.493,1542,0.665,PM중간가,-0.007154999999999911
-2026-11-21 16:15:00,ligue,OGC Nice vs. Paris Saint-Germain FC,Will Paris Saint-Germain FC win on 2026-11-21?,1.493,16536,0.665,PM중간가,-0.007154999999999911
-2026-11-21 15:00:00,counter,Counter-Strike: Infinite vs BakS eSports (BO3) - NODWIN Clut,BakS eSports,1.408,2827,0.705,PM중간가,-0.007360000000000144
-2026-11-21 19:45:00,bel1,Yellow-Red KV Mechelen vs. Club Brugge,Will Club Brugge win on 2026-11-21?,1.408,1280,0.705,PM중간가,-0.007360000000000144
-2026-11-21 15:00:00,ufc,UFC Fight Night: Diyar Nurgozhay vs. Alik Lorenz (Light Heav,Diyar Nurgozhay,1.408,5495,0.705,PM중간가,-0.007360000000000144
-2026-11-21 12:30:00,bkbsl,Turk Telekom vs. Tofas,Turk Telekom,1.449,1666,0.685,PM중간가,-0.007434999999999858
-2026-11-21 19:45:00,serie,SSC Napoli vs. Torino FC,Will SSC Napoli win on 2026-11-21?,1.515,27056,0.655,PM중간가,-0.007674999999999987
+2026-11-21 15:00:00,ufc,UFC Fight Night: Diyar Nurgozhay vs. Alik Lorenz (Light Heav,Diyar Nurgozhay,1.408,5576,0.705,PM중간가,-0.007360000000000144
+2026-11-21 19:45:00,bel1,Yellow-Red KV Mechelen vs. Club Brugge,Will Club Brugge win on 2026-11-21?,1.408,1282,0.705,PM중간가,-0.007360000000000144
 2026-11-21 20:30:00,brazil,EC Bahia vs. Coritiba FBC,Will EC Bahia win on 2026-11-21?,1.515,8351,0.655,PM중간가,-0.007674999999999987
-2026-11-21 14:30:00,bundesliga,1. FC Union Berlin vs. RB Leipzig,Will RB Leipzig win on 2026-11-21?,1.515,2148,0.655,PM중간가,-0.007674999999999987
+2026-11-21 14:30:00,bundesliga,1. FC Union Berlin vs. RB Leipzig,Will RB Leipzig win on 2026-11-21?,1.515,4746,0.655,PM중간가,-0.007674999999999987
 2026-11-22 00:00:00,brazil,Associação Chapecoense de Futebol vs. Cruzeiro EC,Will Cruzeiro EC win on 2026-11-21?,1.515,5377,0.655,PM중간가,-0.007674999999999987
 2026-11-21 21:00:00,cfb,South Alabama vs. Southern Miss,South Alabama,1.538,3675,0.6451612903225806,시장합의,-0.007741935483870921
-2026-11-22 00:30:00,nba,Trail Blazers vs. Knicks,Knicks,1.538,51730,0.645,시장합의,-0.007989999999999942
-2026-11-21 15:00:00,premier,Tottenham Hotspur FC vs. Ipswich Town FC,Will Tottenham Hotspur FC win on 2026-11-21?,1.538,32324,0.645,PM중간가,-0.007989999999999942
-2026-11-21 15:00:00,ufc,UFC Fight Night: Shamil Gaziev vs. Tallison Teixeira (Heavyw,Shamil Gaziev,1.538,16578,0.645,PM중간가,-0.007989999999999942
+2026-11-22 00:30:00,nba,Trail Blazers vs. Knicks,Knicks,1.538,55998,0.645,시장합의,-0.007989999999999942
+2026-11-21 15:00:00,ufc,UFC Fight Night: Shamil Gaziev vs. Tallison Teixeira (Heavyw,Shamil Gaziev,1.538,17244,0.645,PM중간가,-0.007989999999999942
 2026-11-21 15:00:00,soccer,Burton Albion FC vs. Luton Town FC,Will Luton Town FC win on 2026-11-21?,1.538,1308,0.645,PM중간가,-0.007989999999999942
-2026-11-21 22:00:00,ncaa,Northeastern Huskies vs. Stonehill Skyhawks,Northeastern Huskies,1.351,736,0.7416764423155253,시장합의,-0.007995126431725277
+2026-11-21 15:00:00,ufc,"UFC Fight Night: Brian Ortega vs. Dan Hooker (Lightweight, M",Dan Hooker,1.538,54391,0.645,PM중간가,-0.007989999999999942
+2026-11-21 19:45:00,serie,SSC Napoli vs. Torino FC,Will SSC Napoli win on 2026-11-21?,1.538,28018,0.645,PM중간가,-0.007989999999999942
+2026-11-21 15:00:00,premier,Tottenham Hotspur FC vs. Ipswich Town FC,Will Tottenham Hotspur FC win on 2026-11-21?,1.538,32550,0.645,PM중간가,-0.007989999999999942
+2026-11-21 15:00:00,counter,Counter-Strike: ex-RUSTEC vs Hype Tech (BO3) - CCT Europe Pl,Hype Tech,1.613,3863,0.615,PM중간가,-0.00800500000000004
+2026-11-21 22:00:00,valorant,Valorant: FlyQuest vs Team Envy (BO3) - VCT Americas Kickoff,Team Envy,1.613,11975,0.615,PM중간가,-0.00800500000000004
+2026-11-21 15:00:00,ufc,"UFC Fight Night: Nikolas Motta vs. Dom Mar Fan (Lightweight,",Dom Mar Fan,1.613,20254,0.615,PM중간가,-0.00800500000000004
+2026-11-21 22:00:00,valorant,Valorant: Winthrop University vs YFP Gaming (BO3) - VCT Amer,YFP Gaming,1.587,7115,0.625,PM중간가,-0.008125000000000049
+2026-11-21 15:00:00,ufc,UFC Fight Night: Jirí Procházka vs. Navajo Stirling (Light H,Navajo Stirling,1.587,246854,0.625,PM중간가,-0.008125000000000049
+2026-11-21 17:30:00,premier,Newcastle United FC vs. Arsenal FC,Will Arsenal FC win on 2026-11-21?,1.587,54856,0.625,PM중간가,-0.008125000000000049
+2026-11-21 15:00:00,efl,Sheffield United FC vs. Watford FC,Will Sheffield United FC win on 2026-11-21?,1.587,1141,0.625,PM중간가,-0.008125000000000049
+2026-11-21 15:00:00,ufc,UFC Fight Night: Kyoji Horiguchi vs. Asu Almabayev (Flyweigh,Kyoji Horiguchi,1.562,28172,0.635,PM중간가,-0.00812999999999997
+2026-11-21 22:00:00,valorant,Valorant: QoR vs Shopify Rebellion Gold (BO3) - VCT Americas,QoR,1.562,10302,0.635,PM중간가,-0.00812999999999997
+2026-11-21 22:00:00,valorant,Valorant: Yellow Dragon Gaming vs Wildcard (BO3) - VCT Ameri,Wildcard,1.639,1168,0.605,PM중간가,-0.008404999999999996
 2026-11-22 00:00:00,cfb,Arizona vs. Kansas State,Arizona,1.37,1041,0.7203389830508474,시장합의,-0.01313559322033897
-2026-11-21 19:00:00,ncaa,Northern Illinois Huskies vs. Bowling Green Falcons,Bowling Green Falcons,1.493,57,0.6674364896073903,시장합의,-0.013517321016166197
-2026-11-21 20:30:00,cfb,Indiana vs. Washington,Indiana,1.351,3869,0.73,시장합의,-0.01377000000000006
-2026-11-22 03:00:00,nhl,Wild vs. Canucks,Wild,1.37,6821,0.7188160676532769,시장합의,-0.015221987315010566
-2026-11-21 15:00:00,bkbbl,Science City Jena vs. Rostock Seawolves,Rostock Seawolves,1.316,10,0.755,PM중간가,-0.016419999999999983
-2026-11-21 19:00:00,cfb,Montana vs. Montana State,Montana State,1.37,88,0.725,PM중간가,-0.016749999999999925
-2026-11-21 17:30:00,gre1,PAE PS Kalamata vs. AEK Athens,Will AEK Athens win on 2026-11-21?,1.37,24,0.725,PM중간가,-0.016749999999999925
-2026-11-21 17:00:00,cfb,University at Albany vs. North Carolina A&T,University at Albany,1.37,10,0.725,PM중간가,-0.016749999999999925
-2026-11-21 16:00:00,austria,LASK Linz vs. TSV Hartberg,Will LASK Linz win on 2026-11-21?,1.37,63,0.725,PM중간가,-0.016749999999999925
-2026-11-21 17:00:00,switzerland,Young Boys Bern vs. FC Thun,Will Young Boys Bern win on 2026-11-21?,1.37,131,0.725,PM중간가,-0.016749999999999925
-2026-11-21 17:15:00,bel1,KRC Genk vs. RAAL La Louviere,Will KRC Genk win on 2026-11-21?,1.429,18,0.695,PM중간가,-0.016844999999999992
-2026-11-21 12:30:00,soccer,Reading FC vs. Bromley FC,Will Reading FC win on 2026-11-21?,1.429,175,0.695,PM중간가,-0.016844999999999992
-2026-11-21 14:00:00,khl,KHL: HC Sochi vs. SKA St. Petersburg,SKA St. Petersburg,1.389,241,0.715,PM중간가,-0.016865000000000012
-2026-11-21 17:00:00,switzerland,FC Lugano vs. Grasshopper Club Zurich,Will FC Lugano win on 2026-11-21?,1.389,17,0.715,PM중간가,-0.016865000000000012
+2026-11-21 20:30:00,cfb,UCLA vs. Michigan,UCLA,1.613,872,0.6176148732814118,시장합의,-0.013787209397082658
+2026-11-21 16:00:00,dota,Dota 2: Power Rangers vs Team Synapse (BO3) - European Pro L,Power Rangers,1.389,5088,0.71,PM중간가,-0.013809999999999989
+2026-11-22 03:00:00,nhl,Wild vs. Canucks,Wild,1.37,7311,0.7188160676532769,시장합의,-0.015221987315010566
+2026-11-21 19:30:00,atp,"ATP World Tour Finals, Final Stage: Alexander Zverev vs Dani",Alexander Zverev,1.613,33211,0.61,PM중간가,-0.01607000000000003
 2026-11-21 17:00:00,cfb,Duquesne vs. Central Connecticut State,Central Connecticut State,1.389,551,0.715,PM중간가,-0.016865000000000012
-2026-11-21 15:30:00,qat1,Al Shahaniya vs. Al Rayyan SC,Will Al Rayyan SC win on 2026-11-21?,1.389,129,0.715,PM중간가,-0.016865000000000012
-2026-11-21 13:00:00,qat1,AL Wakrah SC vs. Al-Sailiya SC,Will AL Wakrah SC win on 2026-11-21?,1.389,421,0.715,PM중간가,-0.016865000000000012
-2026-11-21 15:00:00,efl,Wolverhampton Wanderers FC vs. Charlton Athletic FC,Will Wolverhampton Wanderers FC win on 2026-11-21?,1.333,383,0.745,PM중간가,-0.016915000000000006
-2026-11-21 17:00:00,cfb,Fordham vs. Holy Cross,Holy Cross,1.351,10,0.735,PM중간가,-0.017014999999999995
 2026-11-22 05:00:00,kor2,Daegu FC vs. Gimhae FC,Will Daegu FC win on 2026-11-22?,1.351,300,0.735,PM중간가,-0.017014999999999995
-2026-11-21 14:30:00,soccer,MŠK Žilina vs. MFK Dukla Banská Bystrica,Will MŠK Žilina win on 2026-11-21?,1.471,312,0.675,PM중간가,-0.017074999999999833
-2026-11-21 12:45:00,uae1,Khor Fakkan Club vs. Al Jazira (UAE),Will Al Jazira (UAE) win on 2026-11-21?,1.471,568,0.675,PM중간가,-0.017074999999999833
-2026-11-21 20:00:00,atp,Montevideo: Elmer Moeller vs Thiago Seyboth Wild,Thiago Seyboth Wild,1.493,264,0.665,PM중간가,-0.017154999999999913
-2026-11-21 14:00:00,czechia,FK Mladá Boleslav vs. FC Zlín,Will FK Mladá Boleslav win on 2026-11-21?,1.493,113,0.665,PM중간가,-0.017154999999999913
-2026-11-21 13:00:00,tur2,Kayserispor vs. Sariyer SK,Will Kayserispor win on 2026-11-21?,1.408,234,0.705,PM중간가,-0.017360000000000146
+2026-11-21 14:50:00,bklkl,Gargzdai Basketball vs. Taurages Taurage,Gargzdai Basketball,1.493,313,0.665,PM중간가,-0.017154999999999913
+2026-11-21 20:00:00,atp,Montevideo: Elmer Moeller vs Thiago Seyboth Wild,Thiago Seyboth Wild,1.493,572,0.665,PM중간가,-0.017154999999999913
+2026-11-21 14:00:00,czechia,FK Mladá Boleslav vs. FC Zlín,Will FK Mladá Boleslav win on 2026-11-21?,1.493,589,0.665,PM중간가,-0.017154999999999913
 2026-11-21 17:30:00,la,CD Castellón vs. CD Eldense,Will CD Castellón win on 2026-11-21?,1.408,883,0.705,PM중간가,-0.017360000000000146
-2026-11-21 18:30:00,romania,Dinamo 1948 vs. FC Petrolul Ploieşti,Will Dinamo 1948 win on 2026-11-21?,1.408,10,0.705,PM중간가,-0.017360000000000146
-2026-11-21 15:00:00,nls,Truro City vs. Hemel Hempstead Town,Will Truro City win on 2026-11-21?,1.408,57,0.705,PM중간가,-0.017360000000000146
-2026-11-21 20:00:00,atp,Drummondville: James Kent Trotter vs Liam Draxl,Liam Draxl,1.449,368,0.685,PM중간가,-0.01743499999999986
-2026-11-21 17:30:00,hungary,Ferencvarosi Budapest vs. WKW ETO FC Gyor,Will Ferencvarosi Budapest win on 2026-11-21?,1.449,58,0.685,PM중간가,-0.01743499999999986
-2026-11-21 18:30:00,austria,Grazer AK 1902 vs. SK Rapid,Will SK Rapid win on 2026-11-21?,1.449,237,0.685,PM중간가,-0.01743499999999986
-2026-11-21 21:00:00,soccer,CSD Mixco vs. CD Malacateco,Will CSD Mixco win on 2026-11-21?,1.449,157,0.685,PM중간가,-0.01743499999999986
-2026-11-21 21:30:00,atp,Montevideo: Matheus Pucinelli de Almeida vs Guido Justo,Matheus Pucinelli de Almeida,1.515,559,0.655,PM중간가,-0.01767499999999999
-2026-11-22 01:00:00,nba,Clippers vs. Mavericks,Mavericks,1.515,8094,0.6483790523690772,시장합의,-0.0177057356608481
-2026-11-21 15:00:00,hungary,Ujpest FC Budapest vs. Kisvarda FC,Will Ujpest FC Budapest win on 2026-11-21?,1.538,118,0.645,PM중간가,-0.017989999999999944
+2026-11-21 14:30:00,soccer,MŠK Žilina vs. MFK Dukla Banská Bystrica,Will MŠK Žilina win on 2026-11-21?,1.449,350,0.685,PM중간가,-0.01743499999999986
+2026-11-21 21:30:00,atp,Montevideo: Matheus Pucinelli de Almeida vs Guido Justo,Matheus Pucinelli de Almeida,1.515,562,0.655,PM중간가,-0.01767499999999999
+2026-11-22 01:00:00,nba,Clippers vs. Mavericks,Mavericks,1.515,8660,0.6483790523690772,시장합의,-0.0177057356608481
+2026-11-21 14:30:00,russian,FK Rubin Kazan vs. FK Zenit,Will FK Zenit win on 2026-11-21?,1.587,454,0.625,PM중간가,-0.01812500000000005
+2026-11-21 15:00:00,nls,Billericay Town vs. Slough Town,Will Billericay Town win on 2026-11-21?,1.587,365,0.625,PM중간가,-0.01812500000000005
+2026-11-21 17:00:00,norway,Vålerenga Fotball vs. IK Start,Will Vålerenga Fotball win on 2026-11-21?,1.562,619,0.635,PM중간가,-0.018129999999999973
 2026-11-21 20:30:00,cfb,Texas Tech vs. Baylor,Texas Tech,1.515,26504,0.6480582524271845,시장합의,-0.018191747572815498
-2026-11-21 21:00:00,cfb,Georgia Southern vs. Troy,Georgia Southern,1.316,15,0.7532956685499058,시장합의,-0.018662900188323943
-2026-11-21 20:45:00,cfb,Texas A&M vs. Oklahoma,Oklahoma,1.389,50,0.712742980561555,시장합의,-0.02000000000000001
+2026-11-21 20:00:00,wta,Colina: Leyre Romero Gormaz vs Lucia Bronzetti,Leyre Romero Gormaz,1.639,502,0.605,PM중간가,-0.018404999999999998
+2026-11-21 17:00:00,cfb,Monmouth vs. Campbell,Campbell,1.639,926,0.605,PM중간가,-0.018404999999999998
 2026-11-21 18:00:00,cfb,Houston vs. West Virginia,Houston,1.389,4786,0.7048458149779735,시장합의,-0.020969162995594814
 2026-11-22 00:30:00,cfb,Kentucky vs. Missouri,Missouri,1.538,358,0.6429415737926376,시장합의,-0.02115585950692333
-2026-11-22 00:00:00,cfb,UNLV vs. San Jose State,UNLV,1.449,20,0.6823266219239373,시장합의,-0.02130872483221479
-2026-11-21 16:00:00,dota,Dota 2: Power Rangers vs Team Synapse (BO3) - European Pro L,Power Rangers,1.408,5002,0.695,PM중간가,-0.021440000000000126
-2026-11-21 19:30:00,cfb,Iowa vs. Illinois,Iowa,1.316,2314,0.7432553274729136,시장합의,-0.021875989045645694
-2026-11-21 19:00:00,cfb,West Florida vs. West Georgia,West Florida,1.316,18,0.75,PM중간가,-0.022999999999999902
-2026-11-21 17:00:00,cfb,Wagner vs. Stonehill,Stonehill,1.316,10,0.75,PM중간가,-0.022999999999999902
-2026-11-21 20:30:00,liga,Club Alianza Lima vs. FC Cajamarca,Will Club Alianza Lima win on 2026-11-21?,1.316,85,0.75,PM중간가,-0.022999999999999902
+2026-11-22 00:00:00,nhl,Kings vs. Senators,Senators,1.613,3787,0.6064356435643565,시장합의,-0.021819306930692894
 2026-11-21 19:00:00,ncaa,Stony Brook Seawolves vs. Saint Peter's Peacocks,Stony Brook Seawolves,1.493,358,0.6610615122359944,시장합의,-0.023035162231660238
-2026-11-21 22:00:00,ncaa,Air Force Falcons vs. UTSA Roadrunners,UTSA Roadrunners,1.408,23,0.7008889192126437,시장합의,-0.023148401748597662
-2026-11-22 02:00:00,cfb,Utah vs. TCU,Utah,1.333,4159,0.7325781594473724,시장합의,-0.02347331345665271
-2026-11-21 16:00:00,ncaa,USC Upstate Spartans vs. UNCG Spartans,UNCG Spartans,1.333,48,0.74,PM중간가,-0.02358000000000004
-2026-11-21 15:00:00,itf,W35 Sao Paulo: Lucciana Perez Alarcon vs Victoria Bosio,Lucciana Perez Alarcon,1.333,107,0.74,PM중간가,-0.02358000000000004
-2026-11-21 19:00:00,cfb,Morgan State vs. North Carolina Central,North Carolina Central,1.37,15,0.72,PM중간가,-0.023599999999999947
-2026-11-21 17:00:00,pro,Nancy vs. Pau-Lacq-Orthez,Nancy,1.429,143,0.69,PM중간가,-0.02399000000000006
-2026-11-21 23:30:00,bolivia,CD Oriente Petrolero vs. Club Independiente Petrolero,Will CD Oriente Petrolero win on 2026-11-21?,1.429,19,0.69,PM중간가,-0.02399000000000006
-2026-11-21 12:35:00,setkameua,Stukalov Vladyslav vs. Khavanskyi Denys,Khavanskyi Denys,1.429,25,0.69,PM중간가,-0.02399000000000006
-2026-11-21 17:00:00,cfb,William & Mary vs. Richmond,Richmond,1.408,10,0.7,PM중간가,-0.02440000000000008
-2026-11-21 20:00:00,cfb,Western Illinois vs. Lindenwood,Western Illinois,1.408,212,0.7,PM중간가,-0.02440000000000008
-2026-11-22 12:00:00,wsl,Manchester City WFC vs. Tottenham Hotspur FC,Will Manchester City WFC win on 2026-11-22?,1.471,28,0.67,PM중간가,-0.024429999999999834
-2026-11-22 06:00:00,nbl,Brisbane Bullets vs. Sydney Kings,Sydney Kings,1.471,349,0.67,PM중간가,-0.024429999999999834
-2026-11-21 17:00:00,cfb,Cornell vs. Columbia,Cornell,1.471,38,0.67,PM중간가,-0.024429999999999834
-2026-11-21 16:00:00,ncaa,Siena Saints vs. Bucknell Bison,Siena Saints,1.429,30,0.6896551724137931,시장합의,-0.024482758620689597
-2026-11-21 17:30:00,itf,"W35 Orlando, FL: Madison Sieg vs Jordyn Hazelitt",Madison Sieg,1.493,106,0.66,PM중간가,-0.024619999999999857
-2026-11-21 17:30:00,bkbbl,Basketball Loewen Braunschweig vs. Brose Bamberg,Brose Bamberg,1.449,10,0.68,PM중간가,-0.024679999999999917
-2026-11-21 17:00:00,cfb,Howard vs. Norfolk State,Norfolk State,1.515,10,0.65,PM중간가,-0.025249999999999988
-2026-11-21 17:00:00,cfb,BYU vs. Kansas,BYU,1.493,3895,0.6517569939265091,시장합의,-0.026926808067721852
-2026-11-21 17:00:00,cfb,Wisconsin vs. Purdue,Wisconsin,1.471,680,0.6681614349775785,시장합의,-0.02713452914798197
-2026-11-21 18:45:00,snhl,NL: ZSC Lions vs. Lugano,ZSC Lions,1.316,198,0.745,PM중간가,-0.029579999999999933
+2026-11-21 20:00:00,atp,Drummondville: James Kent Trotter vs Liam Draxl,Liam Draxl,1.429,397,0.69,PM중간가,-0.02399000000000006
+2026-11-22 06:00:00,nbl,Brisbane Bullets vs. Sydney Kings,Sydney Kings,1.449,349,0.68,PM중간가,-0.024679999999999917
+2026-11-21 17:00:00,cfb,BYU vs. Kansas,BYU,1.493,4006,0.6517569939265091,시장합의,-0.026926808067721852
+2026-11-21 17:00:00,cfb,Wisconsin vs. Purdue,Wisconsin,1.471,695,0.6681614349775785,시장합의,-0.02713452914798197
 2026-11-21 17:00:00,cfb,North Texas vs. Tulane,North Texas,1.408,2285,0.6888888888888889,시장합의,-0.03004444444444454
-2026-11-21 15:00:00,bkkls,Kk Dynamic vs. SPD Radnicki Kragujevac,Kk Dynamic,1.333,84,0.735,PM중간가,-0.03024500000000007
-2026-11-21 21:00:00,cfb,Portland State vs. Eastern Washington,Eastern Washington,1.351,17,0.725,PM중간가,-0.030525000000000017
-2026-11-21 16:00:00,itf,"M15 Orlando, FL: William Manning vs Jack Secord",Jack Secord,1.351,251,0.725,PM중간가,-0.030525000000000017
-2026-11-21 19:00:00,cfb,Tennessee-Martin vs. Southeast Missouri State,Southeast Missouri State,1.351,420,0.725,PM중간가,-0.030525000000000017
 2026-11-21 21:00:00,itf,M15 Santa Cruz: Felipe De Dios vs Francisco Gay,Felipe De Dios,1.429,261,0.685,PM중간가,-0.031134999999999906
-2026-11-21 20:30:00,cfb,Yale vs. Harvard,Harvard,1.429,55,0.685,PM중간가,-0.031134999999999906
-2026-11-21 18:00:00,nhl,Oilers vs. Hurricanes,Hurricanes,1.538,121864,0.62953995157385,시장합의,-0.0317675544794187
-2026-11-21 14:50:00,bklkl,Gargzdai Basketball vs. Taurages Taurage,Gargzdai Basketball,1.471,313,0.665,PM중간가,-0.031784999999999945
-2026-11-21 17:30:00,itf,"W35 Orlando, FL: Lea Ma vs Jana Hossam Salah",Lea Ma,1.471,56,0.665,PM중간가,-0.031784999999999945
-2026-11-21 20:00:00,cfb,East Tennessee State vs. Mercer,Mercer,1.471,159,0.665,PM중간가,-0.031784999999999945
-2026-11-22 11:30:00,serc,Union Brescia vs. AC Renate,Will Union Brescia win on 2026-11-22?,1.449,65,0.675,PM중간가,-0.03192499999999986
-2026-11-21 14:00:00,itf,W15 Alcala de Henares: Eva Marie Voracek vs Paula Cembranos,Eva Marie Voracek,1.538,30,0.635,PM중간가,-0.033370000000000004
-2026-11-22 01:00:00,nba,Grizzlies vs. Timberwolves,Timberwolves,1.471,15965,0.6563245823389022,시장합의,-0.03454653937947472
-2026-11-21 18:00:00,ncaa,Denver Pioneers vs. Eastern Michigan Eagles,Eastern Michigan Eagles,1.333,72,0.7306889352818372,시장합의,-0.03599164926931108
-2026-11-21 17:00:00,shl,SHL: Färjestad vs. Malmö,Färjestad,1.316,521,0.74,PM중간가,-0.03615999999999996
-2026-11-21 17:00:00,liga,Burgos vs. Unicaja,Unicaja,1.316,20,0.74,PM중간가,-0.03615999999999996
-2026-11-21 20:00:00,cfb,Arkansas-Pine Bluff vs. Texas Southern,Arkansas-Pine Bluff,1.471,10,0.66,PM중간가,-0.039139999999999946
-2026-11-21 20:00:00,itf,M15 Santa Cruz: Pedro Liborio vs Agustin Eduardo Cuellar Lor,Agustin Eduardo Cuellar Lorberg,1.449,198,0.67,PM중간가,-0.03916999999999992
-2026-11-21 18:30:00,ncaa,Mercyhurst Lakers vs. Western Illinois Leathernecks,Mercyhurst Lakers,1.389,33,0.6896551724137931,시장합의,-0.052068965517241265
-2026-11-21 13:40:00,setkameua,Droshchynskyi Andrii vs. Holoborodko Evhenii,Droshchynskyi Andrii,1.408,20,0.68,PM중간가,-0.052560000000000044
+2026-11-22 01:00:00,nba,Grizzlies vs. Timberwolves,Timberwolves,1.471,16775,0.6563245823389022,시장합의,-0.03454653937947472
+2026-11-21 17:00:00,cfb,Ohio State vs. Nebraska,Ohio State,1.587,45299,0.6066979488032119,시장합의,-0.03717035524930268
+2026-11-21 20:00:00,liga,UCAM Murcia CB vs. Basket Zaragoza,UCAM Murcia CB,1.37,333,0.71,PM중간가,-0.03729999999999999
+2026-11-21 18:00:00,nhl,Oilers vs. Hurricanes,Hurricanes,1.515,121910,0.62953995157385,시장합의,-0.04624697336561734
+2026-11-22 05:00:00,international,ICC Women's Emerging Nations Trophy T20s: Pakistan Women vs ,Pakistan Women,1.587,385,0.605,PM중간가,-0.04986500000000004
+2026-11-21 14:05:00,setkameua,Kunchurov Dmytro vs. Solovko Serhii,Kunchurov Dmytro,1.429,263,0.67,PM중간가,-0.05256999999999989
