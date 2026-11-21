@@ -37,11 +37,23 @@ SYSTEMS = {  # 이름: (표시명, 시퀀스, 끝에서 'reset' 또는 'stay', �
     "S1326":  ("비교 · 1-3-2-6", [1, 3, 2, 6], "reset", 0.08, False),
     "F2":     ("비교 · 고정 2%(연구용)", [1], "reset", 0.02, True),
     "F10":    ("비교 · 고정 10%", [1], "reset", 0.10, True),
+    "SITE":   ("가상 · 샘플사이트 배당 1-2-4-4-4-4", [1, 2, 4], "stay", 0.08, False),
 }
+# 샘플사이트 환산 배당(table6): 크롤링·접속 없이, 사용자 캡처로 잰 마진을 공정확률에 씌워 배당을 만든다.
+#   사이트배당 = 1 / (공정확률 x (1 + SITE_MARGIN)), 소수 둘째 자리 내림. 2026-11-21 알카라스-셸튼 캡처: 승패 6.4%, 핸디·오버언더 8.7~10.5%
+SITE_MARGIN = 0.064
+
+
+def site_odds(p):
+    return float(np.floor(100 / (float(p) * (1 + SITE_MARGIN))) / 100)
 
 
 def load_state():
-    if os.path.exists(STATE): return json.load(open(STATE))
+    if os.path.exists(STATE):
+        st = json.load(open(STATE))
+        for k in SYSTEMS:  # 새로 추가된 베팅법은 1,000만으로 시작
+            st["systems"].setdefault(k, {"bank": START, "locked": 0, "unit": None, "idx": 0})
+        return st
     return {"systems": {k: {"bank": START, "locked": 0, "unit": None, "idx": 0} for k in SYSTEMS}, "version": "table1"}
 
 
@@ -141,11 +153,13 @@ def cmd_pick(st, legs):
         kst = pd.Timestamp(r.ko).tz_localize("UTC").tz_convert(PM.KST)
         ref = f" · {r.src} {r.p_hat*100:.1f}% → 엣지 {r.edge*100:+.1f}%"
         print(f"   {kst:%m-%d %H:%M}(KST) [{r.tag}] {r.title} → {r.pick} @{r.odds:.2f} (거래량 ${r.vol:,}{ref})")
+    so = [site_odds(r.p_hat) for r in grp]
+    print(f"   샘플사이트 환산(마진 {SITE_MARGIN*100:.1f}%): " + " × ".join(f"{o:.2f}" for o in so) + f" = 묶음 {np.prod(so):.2f}")
     print("   비교: " + ", ".join(f"{SYSTEMS[k][0].split('· ')[1]} {v:,}" for k, v in stakes.items() if k != MAIN))
     rows = [dict(created_kst=stamp, combo=cid, combo_odds=f"{odds:.3f}", tag=r.tag, market_id=r.market_id,
                  outcome_idx=r.outcome_idx, title=r.title, pick=r.pick, ko=str(r.ko), odds=f"{r.odds:.3f}", vol=r.vol,
                  status="open", win="", pick_mode=mode, fair_p=f"{r.fair_p:.4f}" if r.fair_p == r.fair_p else "",
-                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, p_hat=f"{r.p_hat:.4f}", p_src=r.src, **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
+                 edge=f"{r.edge:.4f}" if r.edge == r.edge else "", ref=r.ref, p_hat=f"{r.p_hat:.4f}", p_src=r.src, site_odds=f"{site_odds(r.p_hat):.2f}", **{f"stake_{k}": v for k, v in stakes.items()}) for r in grp]
     return pd.concat([legs, pd.DataFrame(rows).astype(str)], ignore_index=True)
 
 
@@ -172,8 +186,13 @@ def cmd_settle(st, legs):
         odds = float(np.prod([float(o) for o, w in zip(legs.loc[m, "odds"], lw) if w == "1"] or [1.0]))
         msg = []
         for k, (name, seq, mode, f, fixed) in SYSTEMS.items():
-            s = st["systems"][k]; amt = float(legs.loc[m, f"stake_{k}"].iloc[0] or 0)
-            pnl = amt * (odds - 1) if win else -amt
+            s = st["systems"][k]
+            col = f"stake_{k}"; amt = float(legs.loc[m, col].iloc[0] or 0) if col in legs else 0.0
+            o_k = odds
+            if k == "SITE":
+                o_k = float(np.prod([float(so) for so, w in zip(legs.loc[m, "site_odds"], lw) if w == "1"] or [1.0]))
+            if amt == 0: continue  # 이 베팅법이 생기기 전의 판
+            pnl = amt * (o_k - 1) if win else -amt
             s["bank"] += pnl
             if not fixed:
                 if win:
